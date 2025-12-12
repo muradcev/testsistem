@@ -1,8 +1,6 @@
 module nakliyeo-mobil
 
-go 1.24.0
-
-toolchain go1.24.11
+go 1.23.0
 
 require (
 	github.com/gin-gonic/gin v1.9.1
