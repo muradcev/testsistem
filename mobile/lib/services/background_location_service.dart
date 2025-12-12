@@ -18,25 +18,29 @@ class BackgroundLocationService {
   static const String _pendingLocationsKey = 'bg_pending_locations';
 
   static Future<void> initialize() async {
-    final service = FlutterBackgroundService();
+    try {
+      final service = FlutterBackgroundService();
 
-    await service.configure(
-      androidConfiguration: AndroidConfiguration(
-        onStart: onStart,
-        autoStart: true,
-        isForegroundMode: true,
-        notificationChannelId: 'nakliyeo_location',
-        initialNotificationTitle: 'Nakliyeo',
-        initialNotificationContent: 'Konum takibi aktif',
-        foregroundServiceNotificationId: 888,
-        foregroundServiceTypes: [AndroidForegroundType.location],
-      ),
-      iosConfiguration: IosConfiguration(
-        autoStart: true,
-        onForeground: onStart,
-        onBackground: onIosBackground,
-      ),
-    );
+      await service.configure(
+        androidConfiguration: AndroidConfiguration(
+          onStart: onStart,
+          autoStart: false, // Don't auto-start, wait for explicit call after login
+          isForegroundMode: true,
+          notificationChannelId: 'nakliyeo_location',
+          initialNotificationTitle: 'Nakliyeo',
+          initialNotificationContent: 'Konum takibi aktif',
+          foregroundServiceNotificationId: 888,
+          foregroundServiceTypes: [AndroidForegroundType.location],
+        ),
+        iosConfiguration: IosConfiguration(
+          autoStart: false, // Don't auto-start
+          onForeground: onStart,
+          onBackground: onIosBackground,
+        ),
+      );
+    } catch (e) {
+      debugPrint('BackgroundLocationService configure error: $e');
+    }
   }
 
   static Future<void> startService() async {

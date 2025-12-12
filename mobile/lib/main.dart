@@ -36,7 +36,11 @@ void main() async {
   ]);
 
   // Initialize background location service
-  await BackgroundLocationService.initialize();
+  try {
+    await BackgroundLocationService.initialize();
+  } catch (e) {
+    debugPrint('Background location service initialization failed: $e');
+  }
 
   // Initialize services
   final apiService = ApiService();
@@ -46,7 +50,11 @@ void main() async {
   // Connect notification service to API service for FCM token sending
   notificationService.setApiService(apiService);
 
-  await notificationService.initialize();
+  try {
+    await notificationService.initialize();
+  } catch (e) {
+    debugPrint('Notification service initialization failed: $e');
+  }
 
   runApp(
     MultiProvider(
