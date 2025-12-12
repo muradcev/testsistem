@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import {
@@ -13,6 +14,8 @@ import {
   QuestionMarkCircleIcon,
   BellAlertIcon,
   DocumentChartBarIcon,
+  Bars3Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -32,26 +35,68 @@ const navigation = [
 export default function Layout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
+  const closeSidebar = () => setSidebarOpen(false)
+
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white shadow-sm">
+        <div className="flex items-center justify-between h-14 px-4">
+          <div className="flex items-center gap-2">
+            <TruckIcon className="h-7 w-7 text-primary-600" />
+            <span className="text-lg font-bold text-gray-900">TestSistem</span>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+          >
+            <Bars3Icon className="h-6 w-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/50"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg">
-        <div className="flex h-16 items-center gap-2 px-6 border-b">
-          <TruckIcon className="h-8 w-8 text-primary-600" />
-          <span className="text-xl font-bold text-gray-900">TestSistem</span>
+      <div
+        className={clsx(
+          'fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out',
+          'lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="flex h-16 items-center justify-between px-6 border-b">
+          <div className="flex items-center gap-2">
+            <TruckIcon className="h-8 w-8 text-primary-600" />
+            <span className="text-xl font-bold text-gray-900">TestSistem</span>
+          </div>
+          <button
+            onClick={closeSidebar}
+            className="lg:hidden p-1 rounded-lg text-gray-600 hover:bg-gray-100"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
         </div>
 
-        <nav className="mt-6 px-3">
+        <nav className="mt-6 px-3 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
           {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}
+              onClick={closeSidebar}
               className={({ isActive }) =>
                 clsx(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium mb-1',
@@ -61,15 +106,15 @@ export default function Layout() {
                 )
               }
             >
-              <item.icon className="h-5 w-5" />
-              {item.name}
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              <span className="truncate">{item.name}</span>
             </NavLink>
           ))}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-white">
           <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
               <span className="text-primary-700 font-medium">
                 {user?.name?.charAt(0).toUpperCase()}
               </span>
@@ -92,8 +137,9 @@ export default function Layout() {
       </div>
 
       {/* Main content */}
-      <div className="pl-64">
-        <main className="p-6">
+      <div className="lg:pl-64">
+        <main className="p-4 lg:p-6 pt-18 lg:pt-6">
+          <div className="lg:hidden h-14" /> {/* Spacer for mobile header */}
           <Outlet />
         </main>
       </div>

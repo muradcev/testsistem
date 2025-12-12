@@ -108,52 +108,53 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Raporlar</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Raporlar</h1>
       </div>
 
       {/* Rapor Tipleri */}
       <div className="bg-white rounded-lg shadow">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
+        <div className="border-b border-gray-200 overflow-x-auto">
+          <nav className="flex -mb-px min-w-max">
             {reportTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setSelectedReport(tab.id as ReportType)}
-                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 ${
+                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap ${
                   selectedReport === tab.id
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <tab.icon className="h-5 w-5" />
-                {tab.label}
+                <tab.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             ))}
           </nav>
         </div>
 
         {/* Tarih Filtresi */}
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="p-3 sm:p-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">
+              <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+              <span className="text-xs sm:text-sm font-medium text-gray-700">
                 Tarih Aralığı:
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {[
-                { value: '7d', label: 'Son 7 Gün' },
-                { value: '30d', label: 'Son 30 Gün' },
-                { value: '90d', label: 'Son 90 Gün' },
+                { value: '7d', label: '7 Gün' },
+                { value: '30d', label: '30 Gün' },
+                { value: '90d', label: '90 Gün' },
                 { value: 'custom', label: 'Özel' },
               ].map((option) => (
                 <button
                   key={option.value}
                   onClick={() => setDateRange(option.value as DateRange)}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${
+                  className={`px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-lg ${
                     dateRange === option.value
                       ? 'bg-primary-600 text-white'
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
@@ -164,14 +165,14 @@ export default function ReportsPage() {
               ))}
             </div>
             {dateRange === 'custom' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mt-2 sm:mt-0">
                 <input
                   type="date"
                   value={customDates.start}
                   onChange={(e) =>
                     setCustomDates((prev) => ({ ...prev, start: e.target.value }))
                   }
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded-lg"
                 />
                 <span className="text-gray-500">-</span>
                 <input
@@ -180,7 +181,7 @@ export default function ReportsPage() {
                   onChange={(e) =>
                     setCustomDates((prev) => ({ ...prev, end: e.target.value }))
                   }
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded-lg"
                 />
               </div>
             )}
@@ -188,23 +189,23 @@ export default function ReportsPage() {
         </div>
 
         {/* Rapor İçeriği */}
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
           {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            <div className="flex items-center justify-center h-48 sm:h-64">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary-600"></div>
             </div>
           ) : (
             <>
               {/* Güzergah Raporu */}
               {selectedReport === 'routes' && (
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold">Güzergah Analizi</h3>
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-semibold">Güzergah Analizi</h3>
                     <button
                       onClick={() =>
                         exportToCSV(routesData?.data?.routes || [], 'guzergah_raporu')
                       }
-                      className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 self-start sm:self-auto"
                     >
                       <ArrowDownTrayIcon className="h-4 w-4" />
                       CSV İndir
@@ -212,54 +213,54 @@ export default function ReportsPage() {
                   </div>
 
                   {/* Özet Kartlar */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <TruckIcon className="h-6 w-6 text-blue-600" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                    <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                          <TruckIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-blue-600">Toplam Sefer</p>
-                          <p className="text-2xl font-bold text-blue-900">
+                          <p className="text-xs sm:text-sm text-blue-600">Toplam Sefer</p>
+                          <p className="text-lg sm:text-2xl font-bold text-blue-900">
                             {routesData?.data?.summary?.total_trips || 0}
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <MapPinIcon className="h-6 w-6 text-green-600" />
+                    <div className="bg-green-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
+                          <MapPinIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-green-600">Toplam Mesafe</p>
-                          <p className="text-2xl font-bold text-green-900">
+                          <p className="text-xs sm:text-sm text-green-600">Toplam Mesafe</p>
+                          <p className="text-lg sm:text-2xl font-bold text-green-900">
                             {(routesData?.data?.summary?.total_distance_km || 0).toLocaleString()} km
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="bg-orange-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-orange-100 rounded-lg">
-                          <ClockIcon className="h-6 w-6 text-orange-600" />
+                    <div className="bg-orange-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
+                          <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-orange-600">Ortalama Süre</p>
-                          <p className="text-2xl font-bold text-orange-900">
+                          <p className="text-xs sm:text-sm text-orange-600">Ort. Süre</p>
+                          <p className="text-lg sm:text-2xl font-bold text-orange-900">
                             {(routesData?.data?.summary?.avg_duration_hours || 0).toFixed(1)} sa
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <ChartBarIcon className="h-6 w-6 text-purple-600" />
+                    <div className="bg-purple-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg">
+                          <ChartBarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-purple-600">Ort. Mesafe</p>
-                          <p className="text-2xl font-bold text-purple-900">
+                          <p className="text-xs sm:text-sm text-purple-600">Ort. Mesafe</p>
+                          <p className="text-lg sm:text-2xl font-bold text-purple-900">
                             {(routesData?.data?.summary?.avg_distance_km || 0).toFixed(0)} km
                           </p>
                         </div>
@@ -268,24 +269,24 @@ export default function ReportsPage() {
                   </div>
 
                   {/* Güzergah Tablosu */}
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto -mx-3 sm:mx-0">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                             Güzergah
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Sefer Sayısı
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Sefer
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Toplam Mesafe
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                            Toplam
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Ort. Mesafe
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Ort.
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Ort. Süre
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                            Süre
                           </th>
                         </tr>
                       </thead>
@@ -293,19 +294,19 @@ export default function ReportsPage() {
                         {(routesData?.data?.routes || []).map(
                           (route: any, index: number) => (
                             <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
                                 {route.from_province} → {route.to_province}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                                 {route.trip_count}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell">
                                 {route.total_distance_km?.toLocaleString()} km
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                                 {route.avg_distance_km?.toFixed(0)} km
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell">
                                 {route.avg_duration_hours?.toFixed(1)} sa
                               </td>
                             </tr>
@@ -314,7 +315,7 @@ export default function ReportsPage() {
                       </tbody>
                     </table>
                     {(routesData?.data?.routes || []).length === 0 && (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-8 sm:py-12 text-gray-500 text-sm">
                         Bu tarih aralığında güzergah verisi bulunamadı
                       </div>
                     )}
@@ -324,14 +325,14 @@ export default function ReportsPage() {
 
               {/* Durak Raporu */}
               {selectedReport === 'stops' && (
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold">Durak Analizi</h3>
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-semibold">Durak Analizi</h3>
                     <button
                       onClick={() =>
                         exportToCSV(stopsData?.data?.stops || [], 'durak_raporu')
                       }
-                      className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 self-start sm:self-auto"
                     >
                       <ArrowDownTrayIcon className="h-4 w-4" />
                       CSV İndir
@@ -339,41 +340,41 @@ export default function ReportsPage() {
                   </div>
 
                   {/* Özet Kartlar */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <MapPinIcon className="h-6 w-6 text-blue-600" />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
+                    <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                          <MapPinIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-blue-600">Toplam Durak</p>
-                          <p className="text-2xl font-bold text-blue-900">
+                          <p className="text-xs sm:text-sm text-blue-600">Toplam Durak</p>
+                          <p className="text-lg sm:text-2xl font-bold text-blue-900">
                             {stopsData?.data?.summary?.total_stops || 0}
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="bg-orange-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-orange-100 rounded-lg">
-                          <ClockIcon className="h-6 w-6 text-orange-600" />
+                    <div className="bg-orange-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
+                          <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-orange-600">Ort. Durak Süresi</p>
-                          <p className="text-2xl font-bold text-orange-900">
+                          <p className="text-xs sm:text-sm text-orange-600">Ort. Süre</p>
+                          <p className="text-lg sm:text-2xl font-bold text-orange-900">
                             {(stopsData?.data?.summary?.avg_duration_minutes || 0).toFixed(0)} dk
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <DocumentChartBarIcon className="h-6 w-6 text-green-600" />
+                    <div className="bg-green-50 rounded-lg p-3 sm:p-4 col-span-2 sm:col-span-1">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
+                          <DocumentChartBarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-green-600">Toplam Süre</p>
-                          <p className="text-2xl font-bold text-green-900">
+                          <p className="text-xs sm:text-sm text-green-600">Toplam Süre</p>
+                          <p className="text-lg sm:text-2xl font-bold text-green-900">
                             {(stopsData?.data?.summary?.total_duration_hours || 0).toFixed(1)} sa
                           </p>
                         </div>
@@ -382,23 +383,23 @@ export default function ReportsPage() {
                   </div>
 
                   {/* Durak Tablosu */}
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto -mx-3 sm:mx-0">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                             Konum
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Durak Sayısı
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Sayı
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Ort. Süre
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Ort.
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            En Uzun
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                            Max
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                             Tip
                           </th>
                         </tr>
@@ -407,21 +408,21 @@ export default function ReportsPage() {
                         {(stopsData?.data?.stops || []).map(
                           (stop: any, index: number) => (
                             <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {stop.location_name || `${stop.province}, ${stop.district}`}
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                                {stop.location_name || `${stop.province}`}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                                 {stop.stop_count}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                                 {stop.avg_duration_minutes?.toFixed(0)} dk
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell">
                                 {stop.max_duration_minutes?.toFixed(0)} dk
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                                 <span
-                                  className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs font-medium rounded-full ${
                                     stop.stop_type === 'rest'
                                       ? 'bg-green-100 text-green-800'
                                       : stop.stop_type === 'loading'
@@ -434,9 +435,9 @@ export default function ReportsPage() {
                                   {stop.stop_type === 'rest'
                                     ? 'Mola'
                                     : stop.stop_type === 'loading'
-                                    ? 'Yükleme'
+                                    ? 'Yük'
                                     : stop.stop_type === 'unloading'
-                                    ? 'Boşaltma'
+                                    ? 'Boşalt'
                                     : stop.stop_type || 'Diğer'}
                                 </span>
                               </td>
@@ -446,7 +447,7 @@ export default function ReportsPage() {
                       </tbody>
                     </table>
                     {(stopsData?.data?.stops || []).length === 0 && (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-8 sm:py-12 text-gray-500 text-sm">
                         Bu tarih aralığında durak verisi bulunamadı
                       </div>
                     )}
@@ -456,32 +457,32 @@ export default function ReportsPage() {
 
               {/* Soru İstatistikleri */}
               {selectedReport === 'questions' && (
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold">Soru İstatistikleri</h3>
+                <div className="space-y-4 sm:space-y-6">
+                  <h3 className="text-base sm:text-lg font-semibold">Soru İstatistikleri</h3>
 
                   {/* Özet Kartlar */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <QuestionMarkCircleIcon className="h-6 w-6 text-blue-600" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                    <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                          <QuestionMarkCircleIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-blue-600">Onay Bekleyen</p>
-                          <p className="text-2xl font-bold text-blue-900">
+                          <p className="text-xs sm:text-sm text-blue-600">Onay Bekleyen</p>
+                          <p className="text-lg sm:text-2xl font-bold text-blue-900">
                             {questionStatsData?.data?.stats?.pending_approval || 0}
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <ChartBarIcon className="h-6 w-6 text-green-600" />
+                    <div className="bg-green-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
+                          <ChartBarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-green-600">Yanıt Oranı</p>
-                          <p className="text-2xl font-bold text-green-900">
+                          <p className="text-xs sm:text-sm text-green-600">Yanıt Oranı</p>
+                          <p className="text-lg sm:text-2xl font-bold text-green-900">
                             %{(questionStatsData?.data?.stats?.answer_rate || 0).toFixed(1)}
                           </p>
                         </div>
@@ -490,17 +491,17 @@ export default function ReportsPage() {
                   </div>
 
                   {/* Duruma Göre Dağılım */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white border rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="bg-white border rounded-lg p-3 sm:p-4">
+                      <h4 className="font-medium text-gray-900 text-sm sm:text-base mb-3 sm:mb-4">
                         Duruma Göre Dağılım
                       </h4>
-                      <div className="space-y-3">
+                      <div className="space-y-2 sm:space-y-3">
                         {Object.entries(
                           questionStatsData?.data?.stats?.by_status || {}
                         ).map(([status, count]) => (
                           <div key={status} className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-xs sm:text-sm text-gray-600">
                               {status === 'draft'
                                 ? 'Taslak'
                                 : status === 'pending_approval'
@@ -517,7 +518,7 @@ export default function ReportsPage() {
                                 ? 'Süresi Doldu'
                                 : status}
                             </span>
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-xs sm:text-sm font-medium text-gray-900">
                               {count as number}
                             </span>
                           </div>
@@ -525,16 +526,16 @@ export default function ReportsPage() {
                       </div>
                     </div>
 
-                    <div className="bg-white border rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-4">
+                    <div className="bg-white border rounded-lg p-3 sm:p-4">
+                      <h4 className="font-medium text-gray-900 text-sm sm:text-base mb-3 sm:mb-4">
                         Kaynağa Göre Dağılım
                       </h4>
-                      <div className="space-y-3">
+                      <div className="space-y-2 sm:space-y-3">
                         {Object.entries(
                           questionStatsData?.data?.stats?.by_source || {}
                         ).map(([source, count]) => (
                           <div key={source} className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-xs sm:text-sm text-gray-600">
                               {source === 'manual'
                                 ? 'Manuel'
                                 : source === 'manual_bulk'
@@ -545,7 +546,7 @@ export default function ReportsPage() {
                                 ? 'AI Üretimi'
                                 : source}
                             </span>
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-xs sm:text-sm font-medium text-gray-900">
                               {count as number}
                             </span>
                           </div>

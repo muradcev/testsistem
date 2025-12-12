@@ -37,19 +37,19 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon: Icon, color, trend, trendLabel }: StatCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-lg shadow p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <div className={`p-3 rounded-lg ${color}`}>
-            <Icon className="h-6 w-6 text-white" />
+          <div className={`p-2 sm:p-3 rounded-lg ${color}`}>
+            <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-500">{title}</p>
-            <p className="text-2xl font-semibold text-gray-900">{value}</p>
+          <div className="ml-3 sm:ml-4">
+            <p className="text-xs sm:text-sm font-medium text-gray-500">{title}</p>
+            <p className="text-xl sm:text-2xl font-semibold text-gray-900">{value}</p>
           </div>
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`hidden sm:flex items-center ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {trend >= 0 ? (
               <ArrowTrendingUpIcon className="h-4 w-4" />
             ) : (
@@ -150,7 +150,7 @@ export default function DashboardPage() {
       <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <StatCard
           title="Toplam Şoför"
           value={stats?.total_drivers || 0}
@@ -220,7 +220,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <StatCard
           title="Bugünkü Sefer"
           value={stats?.today_trips || 0}

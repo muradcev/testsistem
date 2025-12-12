@@ -96,21 +96,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Ayarlar</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Ayarlar</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* General Settings */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
             <Cog6ToothIcon className="h-5 w-5" />
             Genel Ayarlar
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
             {/* SMS Settings */}
-            <div className="border-b pb-4 mb-4">
-              <h3 className="font-medium text-gray-900 mb-3">SMS Ayarları</h3>
+            <div className="border-b pb-3 sm:pb-4 mb-3 sm:mb-4">
+              <h3 className="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">SMS Ayarları</h3>
 
               <div className="flex items-center gap-2 mb-3">
                 <input
@@ -188,10 +188,10 @@ export default function SettingsPage() {
             </div>
 
             {/* Location Settings */}
-            <div className="border-b pb-4 mb-4">
-              <h3 className="font-medium text-gray-900 mb-3">Konum Ayarları</h3>
+            <div className="border-b pb-3 sm:pb-4 mb-3 sm:mb-4">
+              <h3 className="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Konum Ayarları</h3>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Aktif Aralığı (sn)
@@ -263,10 +263,10 @@ export default function SettingsPage() {
             </div>
 
             {/* Trip Settings */}
-            <div className="mb-4">
-              <h3 className="font-medium text-gray-900 mb-3">Sefer Ayarları</h3>
+            <div className="mb-3 sm:mb-4">
+              <h3 className="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Sefer Ayarları</h3>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Başlama Hız Eşiği (km/s)
@@ -314,17 +314,17 @@ export default function SettingsPage() {
         </div>
 
         {/* Broadcast Notification */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
             <BellIcon className="h-5 w-5" />
             Toplu Bildirim Gönder
           </h2>
 
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
             Tüm aktif şoförlere aynı anda bildirim gönderin.
           </p>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Başlık
@@ -363,9 +363,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-medium text-blue-900 mb-2">Ayar Açıklamaları</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+        <h3 className="font-medium text-blue-900 mb-2 text-sm sm:text-base">Ayar Açıklamaları</h3>
+        <ul className="text-xs sm:text-sm text-blue-800 space-y-1">
           <li>
             <strong>Aktif Aralığı:</strong> Şoför aktif olduğunda konum gönderme sıklığı
           </li>
@@ -375,13 +375,13 @@ export default function SettingsPage() {
           <li>
             <strong>Sefer Aralığı:</strong> Sefer sırasında konum gönderme sıklığı
           </li>
-          <li>
+          <li className="hidden sm:list-item">
             <strong>Ev Yarıçapı:</strong> Şoförün evde sayılacağı mesafe
           </li>
-          <li>
+          <li className="hidden sm:list-item">
             <strong>Başlama Hız Eşiği:</strong> Seferin başladığı kabul edilen minimum hız
           </li>
-          <li>
+          <li className="hidden sm:list-item">
             <strong>Bitiş Bekleme Süresi:</strong> Bu süre hareketsiz kalınırsa sefer sonlandırılır
           </li>
         </ul>

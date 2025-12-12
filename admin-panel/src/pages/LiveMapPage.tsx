@@ -299,28 +299,28 @@ export default function LiveMapPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Canlı Harita</h1>
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Canlı Harita</h1>
         <div className="flex items-center gap-2">
           <span
             className={`h-3 w-3 rounded-full ${
               wsConnected ? 'bg-green-500' : 'bg-red-500'
             }`}
           />
-          <span className="text-sm text-gray-500">
+          <span className="text-xs sm:text-sm text-gray-500">
             {wsConnected ? 'Canlı bağlantı aktif' : 'Bağlantı kuruluyor...'}
           </span>
         </div>
       </div>
 
       {/* Status filters */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex flex-wrap gap-3 mb-4">
-          <span className="text-sm font-medium text-gray-700">Durum:</span>
+      <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+        <div className="flex flex-wrap gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <span className="text-xs sm:text-sm font-medium text-gray-700 w-full sm:w-auto">Durum:</span>
           <button
             onClick={() => setSelectedStatus(null)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-2 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               selectedStatus === null
                 ? 'bg-primary-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -330,7 +330,7 @@ export default function LiveMapPage() {
           </button>
           <button
             onClick={() => setSelectedStatus('on_trip')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-2 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               selectedStatus === 'on_trip'
                 ? 'bg-orange-500 text-white'
                 : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
@@ -340,7 +340,7 @@ export default function LiveMapPage() {
           </button>
           <button
             onClick={() => setSelectedStatus('at_home')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-2 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               selectedStatus === 'at_home'
                 ? 'bg-blue-500 text-white'
                 : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
@@ -350,7 +350,7 @@ export default function LiveMapPage() {
           </button>
           <button
             onClick={() => setSelectedStatus('active')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-2 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               selectedStatus === 'active'
                 ? 'bg-green-500 text-white'
                 : 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -361,11 +361,11 @@ export default function LiveMapPage() {
         </div>
 
         {/* Region filters */}
-        <div className="flex flex-wrap gap-2">
-          <span className="text-sm font-medium text-gray-700 mr-2">Bölge:</span>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <span className="text-xs sm:text-sm font-medium text-gray-700 w-full sm:w-auto sm:mr-2">Bölge:</span>
           <button
             onClick={() => { setSelectedRegion(null); setSelectedProvince(null); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs font-medium transition-colors ${
               selectedRegion === null
                 ? 'bg-gray-800 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -377,7 +377,7 @@ export default function LiveMapPage() {
             <button
               key={key}
               onClick={() => { setSelectedRegion(key); setSelectedProvince(null); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 selectedRegion === key
                   ? 'text-white'
                   : 'text-gray-700 hover:opacity-80'
@@ -394,8 +394,8 @@ export default function LiveMapPage() {
 
         {/* Province filter (when region selected) */}
         {selectedRegion && (
-          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
-            <span className="text-sm font-medium text-gray-700 mr-2">İl:</span>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t">
+            <span className="text-xs sm:text-sm font-medium text-gray-700 w-full sm:w-auto sm:mr-2">İl:</span>
             <button
               onClick={() => setSelectedProvince(null)}
               className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
@@ -427,7 +427,7 @@ export default function LiveMapPage() {
       </div>
 
       {/* Map */}
-      <div className="bg-white rounded-lg shadow overflow-hidden" style={{ height: 'calc(100vh - 340px)' }}>
+      <div className="bg-white rounded-lg shadow overflow-hidden h-[50vh] sm:h-[60vh] lg:h-[calc(100vh-340px)]">
         <MapContainer
           center={[39.925533, 32.866287]} // Turkey center
           zoom={6}
@@ -491,39 +491,39 @@ export default function LiveMapPage() {
       </div>
 
       {/* Legend & Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-semibold mb-3">Durum Açıklamaları</h3>
-          <div className="flex items-center gap-6 text-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <h3 className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Durum Açıklamaları</h3>
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-orange-500 border-2 border-white shadow"></div>
               <span>Seferde</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-blue-500 border-2 border-white shadow"></div>
               <span>Evde</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500 border-2 border-white shadow"></div>
               <span>Aktif</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-gray-500 border-2 border-white shadow"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gray-500 border-2 border-white shadow"></div>
               <span>Pasif</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-semibold mb-3">Bölge Dağılımı</h3>
-          <div className="grid grid-cols-4 gap-2 text-xs">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <h3 className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Bölge Dağılımı</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             {Object.entries(turkeyRegions).map(([key, region]) => (
               <div key={key} className="flex items-center gap-1">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ backgroundColor: region.color }}
                 ></div>
-                <span>{region.name}: {getRegionCount(key)}</span>
+                <span className="truncate">{region.name}: {getRegionCount(key)}</span>
               </div>
             ))}
           </div>

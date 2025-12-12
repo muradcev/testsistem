@@ -224,61 +224,61 @@ export default function QuestionsPage() {
   const stats = statsData?.data?.stats || {}
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Akıllı Soru Sistemi</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Akıllı Soru Sistemi</h1>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs sm:text-sm self-start sm:self-auto"
         >
-          <PlusIcon className="h-5 w-5" />
-          Yeni Soru Oluştur
+          <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+          Yeni Soru
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <ClockIcon className="h-6 w-6 text-yellow-600" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-yellow-100 rounded-lg">
+              <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Onay Bekleyen</p>
-              <p className="text-2xl font-bold">{stats.pending_approval || 0}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Onay Bekleyen</p>
+              <p className="text-lg sm:text-2xl font-bold">{stats.pending_approval || 0}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircleIcon className="h-6 w-6 text-green-600" />
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
+              <CheckCircleIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Cevaplama Oranı</p>
-              <p className="text-2xl font-bold">{stats.answer_rate?.toFixed(1) || 0}%</p>
+              <p className="text-xs sm:text-sm text-gray-500">Cevap Oranı</p>
+              <p className="text-lg sm:text-2xl font-bold">{stats.answer_rate?.toFixed(1) || 0}%</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <TruckIcon className="h-6 w-6 text-orange-600" />
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
+              <TruckIcon className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Seferde</p>
-              <p className="text-2xl font-bold">{driversOnTrip.length}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Seferde</p>
+              <p className="text-lg sm:text-2xl font-bold">{driversOnTrip.length}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <UserIcon className="h-6 w-6 text-blue-600" />
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+              <UserIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Beklemede</p>
-              <p className="text-2xl font-bold">{idleDrivers.length}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Beklemede</p>
+              <p className="text-lg sm:text-2xl font-bold">{idleDrivers.length}</p>
             </div>
           </div>
         </div>
@@ -286,90 +286,95 @@ export default function QuestionsPage() {
 
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px flex-wrap">
+        <div className="border-b border-gray-200 overflow-x-auto">
+          <nav className="flex -mb-px min-w-max">
             <button
               onClick={() => setActiveTab('pending')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${
+              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                 activeTab === 'pending'
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <ClockIcon className="h-4 w-4" />
-              Onay Bekleyenler ({pendingQuestions.length})
+              <span className="hidden sm:inline">Onay Bekleyenler</span>
+              <span className="sm:hidden">Onay</span>
+              ({pendingQuestions.length})
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${
+              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                 activeTab === 'history'
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <ChatBubbleLeftRightIcon className="h-4 w-4" />
-              Soru Geçmişi
+              <span className="hidden sm:inline">Soru Geçmişi</span>
+              <span className="sm:hidden">Geçmiş</span>
             </button>
             <button
               onClick={() => setActiveTab('bulk')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${
+              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                 activeTab === 'bulk'
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <UsersIcon className="h-4 w-4" />
-              Toplu Soru Gönder
+              <span className="hidden sm:inline">Toplu Gönder</span>
+              <span className="sm:hidden">Toplu</span>
             </button>
             <button
               onClick={() => setActiveTab('drivers')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${
+              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                 activeTab === 'drivers'
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <TruckIcon className="h-4 w-4" />
-              Şoför Durumları
+              <span className="hidden sm:inline">Şoför Durumları</span>
+              <span className="sm:hidden">Şoförler</span>
             </button>
           </nav>
         </div>
 
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
           {/* Pending Tab */}
           {activeTab === 'pending' && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {pendingLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <div className="flex justify-center py-6 sm:py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary-600"></div>
                 </div>
               ) : pendingQuestions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-6 sm:py-8 text-gray-500 text-sm">
                   Onay bekleyen soru bulunmuyor
                 </div>
               ) : (
                 pendingQuestions.map((question) => (
-                  <div key={question.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between">
+                  <div key={question.id} className="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <span className={`px-2 py-1 rounded text-xs ${statusLabels[question.status]?.color}`}>
+                        <div className="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
+                          <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs ${statusLabels[question.status]?.color}`}>
                             {statusLabels[question.status]?.label}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {question.source_type === 'ai_generated' ? '🤖 AI Üretimi' :
-                             question.source_type === 'rule_based' ? '📋 Kural Bazlı' : '✍️ Manuel'}
+                            {question.source_type === 'ai_generated' ? '🤖 AI' :
+                             question.source_type === 'rule_based' ? '📋 Kural' : '✍️ Manuel'}
                           </span>
-                          <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                          <span className="text-xs bg-gray-100 px-1.5 sm:px-2 py-0.5 rounded hidden sm:inline">
                             {questionTypes.find(t => t.id === question.question_type)?.name || question.question_type}
                           </span>
                           {question.ai_confidence && (
-                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                              Güven: %{(question.ai_confidence * 100).toFixed(0)}
+                            <span className="text-xs text-blue-600 bg-blue-50 px-1.5 sm:px-2 py-0.5 rounded hidden sm:inline">
+                              %{(question.ai_confidence * 100).toFixed(0)}
                             </span>
                           )}
                         </div>
-                        <p className="font-medium text-gray-900 text-lg">{question.question_text}</p>
+                        <p className="font-medium text-gray-900 text-sm sm:text-lg">{question.question_text}</p>
                         {question.options && question.options.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {question.options.map((opt, idx) => (
@@ -379,20 +384,20 @@ export default function QuestionsPage() {
                             ))}
                           </div>
                         )}
-                        <p className="text-sm text-gray-500 mt-2">
+                        <p className="text-xs sm:text-sm text-gray-500 mt-2">
                           👤 {question.driver_name} {question.driver_surname}
                           {question.driver_province && ` | 📍 ${question.driver_province}`}
                         </p>
                         {question.ai_reasoning && (
-                          <p className="text-xs text-gray-400 mt-1 italic bg-gray-50 p-2 rounded">
+                          <p className="text-xs text-gray-400 mt-1 italic bg-gray-50 p-2 rounded hidden sm:block">
                             💡 {question.ai_reasoning}
                           </p>
                         )}
-                        <p className="text-xs text-gray-400 mt-2">
-                          Oluşturulma: {new Date(question.created_at).toLocaleString('tr-TR')}
+                        <p className="text-xs text-gray-400 mt-1 sm:mt-2">
+                          {new Date(question.created_at).toLocaleString('tr-TR')}
                         </p>
                       </div>
-                      <div className="flex flex-col gap-1 ml-4">
+                      <div className="flex sm:flex-col gap-1 sm:ml-4">
                         {/* Düzenleme - sadece düzenlenebilir durumlar için */}
                         {['draft', 'pending_approval', 'approved'].includes(question.status) && (
                           <button

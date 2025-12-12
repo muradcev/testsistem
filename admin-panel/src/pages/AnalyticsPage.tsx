@@ -168,26 +168,27 @@ export default function AnalyticsPage() {
     }))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Analitik & Güzergahlar</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Analitik & Güzergahlar</h1>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-8">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="flex space-x-2 sm:space-x-8 min-w-max">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <tab.icon className="h-5 w-5" />
-              {tab.label}
+              <tab.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
             </button>
           ))}
         </nav>
@@ -195,56 +196,56 @@ export default function AnalyticsPage() {
 
       {/* Charts Tab */}
       {activeTab === 'charts' && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <TruckIcon className="h-6 w-6 text-blue-600" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                  <TruckIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Sefer</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs sm:text-sm text-gray-500">Toplam Sefer</p>
+                  <p className="text-lg sm:text-xl font-semibold">
                     {dailyStats.reduce((sum, d) => sum + d.total_trips, 0)}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <MapIcon className="h-6 w-6 text-green-600" />
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
+                  <MapIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Mesafe</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs sm:text-sm text-gray-500">Toplam Mesafe</p>
+                  <p className="text-lg sm:text-xl font-semibold">
                     {(dailyStats.reduce((sum, d) => sum + d.total_distance_km, 0) / 1000).toFixed(0)}K km
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <CurrencyDollarIcon className="h-6 w-6 text-orange-600" />
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
+                  <CurrencyDollarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Ort. Fiyat</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs sm:text-sm text-gray-500">Ort. Fiyat</p>
+                  <p className="text-lg sm:text-xl font-semibold">
                     {(dailyStats.reduce((sum, d) => sum + d.avg_price, 0) / (dailyStats.length || 1)).toFixed(0)} TL
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <ChartBarIcon className="h-6 w-6 text-purple-600" />
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg">
+                  <ChartBarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Ciro</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs sm:text-sm text-gray-500">Toplam Ciro</p>
+                  <p className="text-lg sm:text-xl font-semibold">
                     {(dailyStats.reduce((sum, d) => sum + d.total_revenue, 0) / 1000).toFixed(0)}K TL
                   </p>
                 </div>
@@ -253,16 +254,16 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Charts Row 1 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Sefer Trendi */}
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-lg font-semibold mb-4">Gunluk Sefer Trendi</h3>
-              <div className="h-[300px]">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Gunluk Sefer Trendi</h3>
+              <div className="h-[200px] sm:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" fontSize={12} />
-                    <YAxis fontSize={12} />
+                    <XAxis dataKey="date" fontSize={10} />
+                    <YAxis fontSize={10} />
                     <Tooltip />
                     <Area
                       type="monotone"
@@ -277,14 +278,14 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Ciro Trendi */}
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-lg font-semibold mb-4">Gunluk Ciro Trendi</h3>
-              <div className="h-[300px]">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Gunluk Ciro Trendi</h3>
+              <div className="h-[200px] sm:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" fontSize={12} />
-                    <YAxis fontSize={12} />
+                    <XAxis dataKey="date" fontSize={10} />
+                    <YAxis fontSize={10} />
                     <Tooltip formatter={(value: number) => `${value.toLocaleString('tr-TR')} TL`} />
                     <Area
                       type="monotone"
@@ -300,16 +301,16 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Charts Row 2 */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Mesafe Grafiği */}
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-lg font-semibold mb-4">Gunluk Mesafe (km)</h3>
-              <div className="h-[250px]">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Gunluk Mesafe (km)</h3>
+              <div className="h-[200px] sm:h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData.slice(-14)}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" fontSize={10} />
-                    <YAxis fontSize={10} />
+                    <XAxis dataKey="date" fontSize={9} />
+                    <YAxis fontSize={9} />
                     <Tooltip formatter={(value: number) => `${value.toLocaleString('tr-TR')} km`} />
                     <Bar dataKey="mesafe" fill="#f97316" name="Mesafe (km)" />
                   </BarChart>
@@ -318,14 +319,14 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Aktif Şoför Grafiği */}
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-lg font-semibold mb-4">Aktif Sofor Sayisi</h3>
-              <div className="h-[250px]">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Aktif Sofor Sayisi</h3>
+              <div className="h-[200px] sm:h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData.slice(-14)}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" fontSize={10} />
-                    <YAxis fontSize={10} />
+                    <XAxis dataKey="date" fontSize={9} />
+                    <YAxis fontSize={9} />
                     <Tooltip />
                     <Line
                       type="monotone"
@@ -341,17 +342,17 @@ export default function AnalyticsPage() {
             </div>
 
             {/* İl Bazlı Dağılım */}
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-lg font-semibold mb-4">Il Bazli Sefer Dagilimi</h3>
-              <div className="h-[250px]">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4 sm:col-span-2 lg:col-span-1">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Il Bazli Sefer Dagilimi</h3>
+              <div className="h-[200px] sm:h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={provinceChartData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
+                      innerRadius={30}
+                      outerRadius={60}
                       paddingAngle={2}
                       dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -369,14 +370,14 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Fiyat Trendi */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-lg font-semibold mb-4">Ortalama Fiyat Trendi</h3>
-            <div className="h-[300px]">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Ortalama Fiyat Trendi</h3>
+            <div className="h-[200px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" fontSize={12} />
-                  <YAxis fontSize={12} />
+                  <XAxis dataKey="date" fontSize={10} />
+                  <YAxis fontSize={10} />
                   <Tooltip formatter={(value: number) => `${value.toLocaleString('tr-TR')} TL`} />
                   <Legend />
                   <Line
@@ -402,13 +403,13 @@ export default function AnalyticsPage() {
 
       {/* Map Tab */}
       {activeTab === 'map' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-lg font-semibold mb-2">Türkiye Güzergah Haritası</h2>
-            <p className="text-sm text-gray-500 mb-4">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+            <h2 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Türkiye Güzergah Haritası</h2>
+            <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
               Çizgi kalınlığı sefer sayısını, daire büyüklüğü şoför sayısını gösterir.
             </p>
-            <div className="h-[600px] rounded-lg overflow-hidden">
+            <div className="h-[50vh] sm:h-[60vh] lg:h-[600px] rounded-lg overflow-hidden">
               <MapContainer
                 center={[39.0, 35.0]}
                 zoom={6}
@@ -472,24 +473,24 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Legend */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-medium mb-3">Harita Açıklamaları</h3>
-            <div className="flex flex-wrap gap-6 text-sm">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+            <h3 className="font-medium text-sm sm:text-base mb-2 sm:mb-3">Harita Açıklamaları</h3>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-6 text-xs sm:text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-blue-500 rounded"></div>
+                <div className="w-6 sm:w-8 h-1 bg-blue-500 rounded"></div>
                 <span>1-10 Sefer</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-orange-500 rounded"></div>
+                <div className="w-6 sm:w-8 h-1 bg-orange-500 rounded"></div>
                 <span>11-20 Sefer</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-red-500 rounded"></div>
+                <div className="w-6 sm:w-8 h-1 bg-red-500 rounded"></div>
                 <span>20+ Sefer</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-green-500 opacity-60"></div>
-                <span>İl (büyüklük = şoför sayısı)</span>
+                <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500 opacity-60"></div>
+                <span>İl (şoför sayısı)</span>
               </div>
             </div>
           </div>
@@ -498,56 +499,56 @@ export default function AnalyticsPage() {
 
       {/* Stats Tab */}
       {activeTab === 'stats' && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <TruckIcon className="h-6 w-6 text-blue-600" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                  <TruckIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Sefer</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs sm:text-sm text-gray-500">Toplam Sefer</p>
+                  <p className="text-lg sm:text-xl font-semibold">
                     {dailyStats.reduce((sum, d) => sum + d.total_trips, 0)}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <MapIcon className="h-6 w-6 text-green-600" />
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
+                  <MapIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Mesafe</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs sm:text-sm text-gray-500">Toplam Mesafe</p>
+                  <p className="text-lg sm:text-xl font-semibold">
                     {(dailyStats.reduce((sum, d) => sum + d.total_distance_km, 0) / 1000).toFixed(0)}K km
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <CurrencyDollarIcon className="h-6 w-6 text-orange-600" />
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
+                  <CurrencyDollarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Ort. Fiyat</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs sm:text-sm text-gray-500">Ort. Fiyat</p>
+                  <p className="text-lg sm:text-xl font-semibold">
                     {(dailyStats.reduce((sum, d) => sum + d.avg_price, 0) / (dailyStats.length || 1)).toFixed(0)} ₺
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <ChartBarIcon className="h-6 w-6 text-purple-600" />
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg">
+                  <ChartBarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Ciro</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs sm:text-sm text-gray-500">Toplam Ciro</p>
+                  <p className="text-lg sm:text-xl font-semibold">
                     {(dailyStats.reduce((sum, d) => sum + d.total_revenue, 0) / 1000).toFixed(0)}K ₺
                   </p>
                 </div>
@@ -557,67 +558,70 @@ export default function AnalyticsPage() {
 
           {/* Province Stats Table */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="font-semibold">İl Bazlı İstatistikler</h3>
+            <div className="p-3 sm:p-4 border-b">
+              <h3 className="font-semibold text-sm sm:text-base">İl Bazlı İstatistikler</h3>
             </div>
+            <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     İl
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Şoför
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Sefer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Mesafe (km)
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                    Mesafe
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Ort. Fiyat
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Fiyat
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {provinceStats.slice(0, 20).map((stat, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium">{stat.province}</td>
-                    <td className="px-6 py-4 text-sm">{stat.driver_count}</td>
-                    <td className="px-6 py-4 text-sm">{stat.trip_count}</td>
-                    <td className="px-6 py-4 text-sm">{stat.total_distance_km?.toFixed(0)}</td>
-                    <td className="px-6 py-4 text-sm">{stat.avg_price?.toFixed(0)} ₺</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium">{stat.province}</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{stat.driver_count}</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{stat.trip_count}</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm hidden sm:table-cell">{stat.total_distance_km?.toFixed(0)} km</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{stat.avg_price?.toFixed(0)} ₺</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Daily Stats Table */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="font-semibold">Günlük İstatistikler</h3>
+            <div className="p-3 sm:p-4 border-b">
+              <h3 className="font-semibold text-sm sm:text-base">Günlük İstatistikler</h3>
             </div>
+            <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Tarih
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Aktif Şoför
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                    Şoför
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Sefer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
                     Mesafe
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Ort. Fiyat
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Fiyat
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Ciro
                   </th>
                 </tr>
@@ -625,72 +629,74 @@ export default function AnalyticsPage() {
               <tbody className="divide-y divide-gray-200">
                 {dailyStats.slice(0, 30).map((stat, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium whitespace-nowrap">
                       {new Date(stat.stat_date).toLocaleDateString('tr-TR')}
                     </td>
-                    <td className="px-6 py-4 text-sm">{stat.active_drivers}</td>
-                    <td className="px-6 py-4 text-sm">{stat.total_trips}</td>
-                    <td className="px-6 py-4 text-sm">{stat.total_distance_km?.toFixed(0)} km</td>
-                    <td className="px-6 py-4 text-sm">{stat.avg_price?.toFixed(0)} ₺</td>
-                    <td className="px-6 py-4 text-sm">{stat.total_revenue?.toFixed(0)} ₺</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm hidden sm:table-cell">{stat.active_drivers}</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{stat.total_trips}</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm hidden sm:table-cell">{stat.total_distance_km?.toFixed(0)} km</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{stat.avg_price?.toFixed(0)} ₺</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{stat.total_revenue?.toFixed(0)} ₺</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
 
       {/* Prices Tab */}
       {activeTab === 'prices' && (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="font-semibold">Şehirlerarası Fiyat Matrisi</h3>
-              <p className="text-sm text-gray-500">
+            <div className="p-3 sm:p-4 border-b">
+              <h3 className="font-semibold text-sm sm:text-base">Şehirlerarası Fiyat Matrisi</h3>
+              <p className="text-xs sm:text-sm text-gray-500">
                 Güzergah bazlı ortalama fiyatlar ve güvenilirlik seviyeleri
               </p>
             </div>
+            <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Nereden
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Nereye
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
                     Sefer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
                     Mesafe
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Ort. Fiyat
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Fiyat
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
                     TL/Km
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Güvenilirlik
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Güven
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {prices.map((price: any, idx: number) => (
                   <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium">{price.from_province}</td>
-                    <td className="px-6 py-4 text-sm">{price.to_province}</td>
-                    <td className="px-6 py-4 text-sm">{price.trip_count}</td>
-                    <td className="px-6 py-4 text-sm">{price.avg_distance_km?.toFixed(0)} km</td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium">{price.from_province}</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{price.to_province}</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm hidden sm:table-cell">{price.trip_count}</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm hidden md:table-cell">{price.avg_distance_km?.toFixed(0)} km</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-green-600">
                       {price.avg_price?.toFixed(0)} ₺
                     </td>
-                    <td className="px-6 py-4 text-sm">{price.price_per_km_avg?.toFixed(2)} ₺</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm hidden md:table-cell">{price.price_per_km_avg?.toFixed(2)} ₺</td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span
-                        className={`px-2 py-1 text-xs rounded-full ${
+                        className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs rounded-full ${
                           price.confidence_level === 'high_confidence'
                             ? 'bg-green-100 text-green-800'
                             : price.confidence_level === 'medium_confidence'
@@ -709,9 +715,10 @@ export default function AnalyticsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             {prices.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-8 sm:py-12 text-gray-500 text-sm">
                 Henüz yeterli fiyat verisi yok
               </div>
             )}
