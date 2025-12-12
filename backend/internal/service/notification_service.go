@@ -3,51 +3,17 @@ package service
 import (
 	"context"
 	"log"
-	"sync"
-
-	firebase "firebase.google.com/go/v4"
-	"firebase.google.com/go/v4/messaging"
-	"google.golang.org/api/option"
 )
 
 type NotificationService struct {
-	fcmClient      *messaging.Client
-	fcmCredentials string
-	initialized    bool
-	initMutex      sync.Once
+	initialized bool
 }
 
 func NewNotificationService(fcmCredentials string) *NotificationService {
-	ns := &NotificationService{
-		fcmCredentials: fcmCredentials,
+	log.Println("Bildirim servisi başlatıldı (mock mod - Firebase devre dışı)")
+	return &NotificationService{
+		initialized: false,
 	}
-
-	// Firebase'i başlat
-	ns.initMutex.Do(func() {
-		if fcmCredentials != "" {
-			ctx := context.Background()
-			opt := option.WithCredentialsFile(fcmCredentials)
-			app, err := firebase.NewApp(ctx, nil, opt)
-			if err != nil {
-				log.Printf("Firebase uygulaması oluşturulamadı: %v", err)
-				return
-			}
-
-			client, err := app.Messaging(ctx)
-			if err != nil {
-				log.Printf("Firebase Messaging client oluşturulamadı: %v", err)
-				return
-			}
-
-			ns.fcmClient = client
-			ns.initialized = true
-			log.Println("Firebase Cloud Messaging başarıyla başlatıldı")
-		} else {
-			log.Println("Firebase credentials dosyası belirtilmemiş, bildirimler log'lanacak")
-		}
-	})
-
-	return ns
 }
 
 type NotificationMessage struct {
@@ -60,51 +26,10 @@ type NotificationMessage struct {
 // SendToDevice - Tek bir cihaza bildirim gönder
 func (s *NotificationService) SendToDevice(ctx context.Context, token string, message *NotificationMessage) error {
 	if token == "" {
-		log.Printf("FCM token boş, bildirim gönderilemedi")
 		return nil
 	}
-
-	// Firebase başlatılmadıysa sadece log'la
-	if !s.initialized || s.fcmClient == nil {
-		log.Printf("[MOCK] Bildirim gönderildi - Token: %s..., Başlık: %s, İçerik: %s",
-			token[:min(20, len(token))], message.Title, message.Body)
-		return nil
-	}
-
-	// Firebase mesajı oluştur
-	fcmMessage := &messaging.Message{
-		Token: token,
-		Notification: &messaging.Notification{
-			Title:    message.Title,
-			Body:     message.Body,
-			ImageURL: message.ImageURL,
-		},
-		Data: message.Data,
-		Android: &messaging.AndroidConfig{
-			Priority: "high",
-			Notification: &messaging.AndroidNotification{
-				Sound:       "default",
-				ClickAction: "FLUTTER_NOTIFICATION_CLICK",
-			},
-		},
-		APNS: &messaging.APNSConfig{
-			Payload: &messaging.APNSPayload{
-				Aps: &messaging.Aps{
-					Sound:            "default",
-					ContentAvailable: true,
-				},
-			},
-		},
-	}
-
-	// Mesajı gönder
-	response, err := s.fcmClient.Send(ctx, fcmMessage)
-	if err != nil {
-		log.Printf("FCM bildirim gönderilemedi: %v", err)
-		return err
-	}
-
-	log.Printf("FCM bildirim gönderildi: %s", response)
+	log.Printf("[MOCK] Bildirim gönderildi - Token: %s..., Başlık: %s, İçerik: %s",
+		token[:min(20, len(token))], message.Title, message.Body)
 	return nil
 }
 
@@ -113,56 +38,7 @@ func (s *NotificationService) SendToDevices(ctx context.Context, tokens []string
 	if len(tokens) == 0 {
 		return nil
 	}
-
-	// Firebase başlatılmadıysa sadece log'la
-	if !s.initialized || s.fcmClient == nil {
-		log.Printf("[MOCK] Toplu bildirim gönderildi - %d cihaz, Başlık: %s", len(tokens), message.Title)
-		return nil
-	}
-
-	// MulticastMessage oluştur
-	fcmMessage := &messaging.MulticastMessage{
-		Tokens: tokens,
-		Notification: &messaging.Notification{
-			Title:    message.Title,
-			Body:     message.Body,
-			ImageURL: message.ImageURL,
-		},
-		Data: message.Data,
-		Android: &messaging.AndroidConfig{
-			Priority: "high",
-			Notification: &messaging.AndroidNotification{
-				Sound:       "default",
-				ClickAction: "FLUTTER_NOTIFICATION_CLICK",
-			},
-		},
-		APNS: &messaging.APNSConfig{
-			Payload: &messaging.APNSPayload{
-				Aps: &messaging.Aps{
-					Sound:            "default",
-					ContentAvailable: true,
-				},
-			},
-		},
-	}
-
-	// Toplu mesaj gönder
-	response, err := s.fcmClient.SendEachForMulticast(ctx, fcmMessage)
-	if err != nil {
-		log.Printf("FCM toplu bildirim gönderilemedi: %v", err)
-		return err
-	}
-
-	log.Printf("FCM toplu bildirim gönderildi: %d başarılı, %d başarısız",
-		response.SuccessCount, response.FailureCount)
-
-	// Başarısız olan token'ları logla
-	for i, resp := range response.Responses {
-		if resp.Error != nil {
-			log.Printf("Token %s için bildirim başarısız: %v", tokens[i][:min(20, len(tokens[i]))], resp.Error)
-		}
-	}
-
+	log.Printf("[MOCK] Toplu bildirim gönderildi - %d cihaz, Başlık: %s", len(tokens), message.Title)
 	return nil
 }
 
@@ -181,12 +57,10 @@ func (s *NotificationService) SendSurveyNotification(ctx context.Context, token 
 
 // SendQuestionNotification - Soru bildirimi gönder
 func (s *NotificationService) SendQuestionNotification(ctx context.Context, token string, questionID string, questionText string) error {
-	// Soru metnini kısalt
 	body := questionText
 	if len(body) > 100 {
 		body = body[:97] + "..."
 	}
-
 	message := &NotificationMessage{
 		Title: "Yeni Soru",
 		Body:  body,
@@ -244,7 +118,6 @@ func (s *NotificationService) IsInitialized() bool {
 	return s.initialized
 }
 
-// Helper function
 func min(a, b int) int {
 	if a < b {
 		return a
