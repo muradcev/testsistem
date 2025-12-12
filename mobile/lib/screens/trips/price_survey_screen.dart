@@ -93,7 +93,7 @@ class _PriceSurveyScreenState extends State<PriceSurveyScreen> {
         tripDate: _tripDate.toIso8601String().split('T')[0],
       );
 
-      await apiService.post('/driver/price-survey', survey.toJson());
+      await apiService.post('/driver/price-survey', data: survey.toJson());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -36,7 +36,7 @@ class ConfigProvider with ChangeNotifier {
 
     try {
       final response = await _apiService.get('/config/app');
-      _config = AppConfig.fromJson(response);
+      _config = AppConfig.fromJson(response.data);
       _error = null;
     } catch (e) {
       _error = e.toString();

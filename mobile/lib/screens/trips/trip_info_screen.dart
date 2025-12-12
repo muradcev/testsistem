@@ -58,7 +58,7 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
         paidBy: _paidBy,
       );
 
-      await apiService.post('/driver/trip/pricing', pricing.toJson());
+      await apiService.post('/driver/trip/pricing', data: pricing.toJson());
 
       // Yük bilgisi kaydet
       if (_selectedCargoTypeId != null || _cargoTypeOther != null) {
@@ -76,7 +76,7 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
               : null,
         );
 
-        await apiService.post('/driver/trip/cargo', cargo.toJson());
+        await apiService.post('/driver/trip/cargo', data: cargo.toJson());
       }
 
       if (mounted) {
