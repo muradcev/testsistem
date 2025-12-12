@@ -1,6 +1,6 @@
 class ApiConstants {
-  static const String baseUrl = 'http://localhost:8080/api/v1';
-  static const String wsUrl = 'ws://localhost:8080/ws';
+  static const String baseUrl = 'https://testsistem-production.up.railway.app/api/v1';
+  static const String wsUrl = 'wss://testsistem-production.up.railway.app/ws';
 
   // Endpoints
   static const String login = '/auth/login';
