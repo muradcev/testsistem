@@ -32,7 +32,7 @@ interface Driver {
   status: string
   province: string
   district: string
-  neighborhood: string
+  neighborhood?: string
   created_at: string
   vehicles: Array<{
     id: string
@@ -174,7 +174,7 @@ export default function DriverDetailPage() {
             <div>
               <dt className="text-sm text-gray-500">Ev Adresi</dt>
               <dd className="text-sm font-medium">
-                {driver.neighborhood}, {driver.district}, {driver.province}
+                {driver.district}, {driver.province}
               </dd>
             </div>
             <div>

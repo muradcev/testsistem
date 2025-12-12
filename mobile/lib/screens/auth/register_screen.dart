@@ -24,11 +24,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   List<String> _provinces = [];
   List<String> _districts = [];
-  List<String> _neighborhoods = [];
 
   String? _selectedProvince;
   String? _selectedDistrict;
-  String? _selectedNeighborhood;
 
   @override
   void initState() {
@@ -55,24 +53,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         _districts = List<String>.from(response.data['districts'] ?? []);
         _selectedDistrict = null;
-        _selectedNeighborhood = null;
-        _neighborhoods = [];
       });
     } catch (e) {
       debugPrint('Failed to load districts: $e');
-    }
-  }
-
-  Future<void> _loadNeighborhoods(String province, String district) async {
-    try {
-      final apiService = context.read<ApiService>();
-      final response = await apiService.getNeighborhoods(province, district);
-      setState(() {
-        _neighborhoods = List<String>.from(response.data['neighborhoods'] ?? []);
-        _selectedNeighborhood = null;
-      });
-    } catch (e) {
-      debugPrint('Failed to load neighborhoods: $e');
     }
   }
 
@@ -87,7 +70,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'password': _passwordController.text,
       'province': _selectedProvince,
       'district': _selectedDistrict,
-      'neighborhood': _selectedNeighborhood,
     });
 
     if (success && mounted) {
@@ -206,27 +188,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 )).toList(),
                 onChanged: (value) {
                   setState(() => _selectedDistrict = value);
-                  if (value != null && _selectedProvince != null) {
-                    _loadNeighborhoods(_selectedProvince!, value);
-                  }
                 },
                 validator: (value) => value == null ? 'İlçe seçin' : null,
-              ),
-              const SizedBox(height: 16),
-
-              // Neighborhood dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedNeighborhood,
-                decoration: const InputDecoration(
-                  labelText: 'Mahalle',
-                  prefixIcon: Icon(Icons.home),
-                ),
-                items: _neighborhoods.map((n) => DropdownMenuItem(
-                  value: n,
-                  child: Text(n),
-                )).toList(),
-                onChanged: (value) => setState(() => _selectedNeighborhood = value),
-                validator: (value) => value == null ? 'Mahalle seçin' : null,
               ),
               const SizedBox(height: 16),
 

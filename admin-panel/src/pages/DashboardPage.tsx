@@ -8,6 +8,7 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   DevicePhoneMobileIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import {
   AreaChart,
@@ -455,6 +456,29 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* APK Download */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold mb-2">Mobil Uygulama</h2>
+            <p className="text-green-100 mb-4">
+              Şoförler için Android uygulamasını indirin
+            </p>
+            <a
+              href="/downloads/nakliyeo-driver.apk"
+              download
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-green-50 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              APK İndir
+            </a>
+          </div>
+          <div className="hidden md:block">
+            <DevicePhoneMobileIcon className="h-24 w-24 text-green-200" />
+          </div>
+        </div>
+      </div>
 
       {/* Quick Actions */}
       <div className="bg-white rounded-lg shadow p-6">

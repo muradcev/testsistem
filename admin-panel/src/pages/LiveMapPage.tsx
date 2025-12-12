@@ -137,7 +137,9 @@ export default function LiveMapPage() {
     let wsUrl: string
     const wsEnvUrl = import.meta.env.VITE_WS_URL
     if (wsEnvUrl) {
-      wsUrl = `${wsEnvUrl}?type=admin&client_id=admin-panel-${Date.now()}`
+      // VITE_WS_URL'e /ws path'ini ekle (eğer yoksa)
+      const baseUrl = wsEnvUrl.endsWith('/ws') ? wsEnvUrl : `${wsEnvUrl}/ws`
+      wsUrl = `${baseUrl}?type=admin&client_id=admin-panel-${Date.now()}`
     } else {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host
