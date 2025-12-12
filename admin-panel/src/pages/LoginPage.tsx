@@ -5,8 +5,8 @@ import toast from 'react-hot-toast'
 import { TruckIcon } from '@heroicons/react/24/outline'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('admin@testsistem.com')
+  const [password, setPassword] = useState('admin123')
   const [loading, setLoading] = useState(false)
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
