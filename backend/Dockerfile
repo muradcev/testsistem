@@ -24,8 +24,9 @@ WORKDIR /app
 # Install ca-certificates for HTTPS
 RUN apk --no-cache add ca-certificates tzdata
 
-# Copy binary
+# Copy binary and data
 COPY --from=builder /app/main .
+COPY --from=builder /app/data ./data
 
 EXPOSE 8080
 
