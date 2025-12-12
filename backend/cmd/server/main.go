@@ -232,11 +232,13 @@ func main() {
 			adminGroup.GET("/analytics/hotspots/nearby", analyticsHandler.GetNearbyHotspots)
 
 			adminGroup.GET("/analytics/routes", analyticsHandler.GetRouteSegments)
+			adminGroup.GET("/analytics/route-segments", analyticsHandler.GetRouteSegments) // Alias
 			adminGroup.GET("/analytics/price-matrix", analyticsHandler.GetPriceMatrix)
 			adminGroup.GET("/analytics/daily-stats", analyticsHandler.GetDailyStats)
 			adminGroup.POST("/analytics/daily-stats/generate", analyticsHandler.GenerateDailyStats)
 			adminGroup.GET("/analytics/province-stats", analyticsHandler.GetProvinceStats)
 			adminGroup.GET("/analytics/heatmap", analyticsHandler.GetRouteHeatmap)
+			adminGroup.GET("/analytics/route-heatmap", analyticsHandler.GetRouteHeatmap) // Alias
 
 			adminGroup.GET("/analytics/drivers/:driver_id/routes", analyticsHandler.GetDriverRoutes)
 			adminGroup.GET("/analytics/trips/:trip_id/details", analyticsHandler.GetTripDetails)

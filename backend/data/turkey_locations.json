@@ -1,0 +1,1376 @@
+{
+  "provinces": [
+    {
+      "name": "Adana",
+      "districts": [
+        {"name": "Seyhan", "neighborhoods": ["Reşatbey", "Kurtuluş", "Döşeme", "Denizli", "Yeşiloba"]},
+        {"name": "Yüreğir", "neighborhoods": ["Köprülü", "Serinevler", "Kışla", "Şehitduran"]},
+        {"name": "Çukurova", "neighborhoods": ["Mahfesığmaz", "Beyazevler", "Toros", "Kurttepe"]},
+        {"name": "Sarıçam", "neighborhoods": ["Sapanbağları", "İncirlik", "Sofulu"]},
+        {"name": "Ceyhan", "neighborhoods": ["Cumhuriyet", "İstiklal", "Namık Kemal"]},
+        {"name": "Kozan", "neighborhoods": ["Cumhuriyet", "Tufanpaşa", "Yenice"]},
+        {"name": "İmamoğlu", "neighborhoods": ["Merkez"]},
+        {"name": "Karaisalı", "neighborhoods": ["Merkez"]},
+        {"name": "Karataş", "neighborhoods": ["Merkez"]},
+        {"name": "Pozantı", "neighborhoods": ["Merkez"]},
+        {"name": "Saimbeyli", "neighborhoods": ["Merkez"]},
+        {"name": "Tufanbeyli", "neighborhoods": ["Merkez"]},
+        {"name": "Yumurtalık", "neighborhoods": ["Merkez"]},
+        {"name": "Aladağ", "neighborhoods": ["Merkez"]},
+        {"name": "Feke", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Adıyaman",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Siteler", "Atatürk", "Cumhuriyet"]},
+        {"name": "Besni", "neighborhoods": ["Merkez"]},
+        {"name": "Çelikhan", "neighborhoods": ["Merkez"]},
+        {"name": "Gerger", "neighborhoods": ["Merkez"]},
+        {"name": "Gölbaşı", "neighborhoods": ["Merkez"]},
+        {"name": "Kahta", "neighborhoods": ["Merkez"]},
+        {"name": "Samsat", "neighborhoods": ["Merkez"]},
+        {"name": "Sincik", "neighborhoods": ["Merkez"]},
+        {"name": "Tut", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Afyonkarahisar",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Erenler", "Uydukent", "Karaman"]},
+        {"name": "Bolvadin", "neighborhoods": ["Merkez"]},
+        {"name": "Çay", "neighborhoods": ["Merkez"]},
+        {"name": "Dazkırı", "neighborhoods": ["Merkez"]},
+        {"name": "Dinar", "neighborhoods": ["Merkez"]},
+        {"name": "Emirdağ", "neighborhoods": ["Merkez"]},
+        {"name": "İhsaniye", "neighborhoods": ["Merkez"]},
+        {"name": "Sandıklı", "neighborhoods": ["Merkez"]},
+        {"name": "Sinanpaşa", "neighborhoods": ["Merkez"]},
+        {"name": "Sultandağı", "neighborhoods": ["Merkez"]},
+        {"name": "Şuhut", "neighborhoods": ["Merkez"]},
+        {"name": "Başmakçı", "neighborhoods": ["Merkez"]},
+        {"name": "Bayat", "neighborhoods": ["Merkez"]},
+        {"name": "İscehisar", "neighborhoods": ["Merkez"]},
+        {"name": "Çobanlar", "neighborhoods": ["Merkez"]},
+        {"name": "Evciler", "neighborhoods": ["Merkez"]},
+        {"name": "Hocalar", "neighborhoods": ["Merkez"]},
+        {"name": "Kızılören", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Ağrı",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Eski"]},
+        {"name": "Diyadin", "neighborhoods": ["Merkez"]},
+        {"name": "Doğubayazıt", "neighborhoods": ["Merkez"]},
+        {"name": "Eleşkirt", "neighborhoods": ["Merkez"]},
+        {"name": "Hamur", "neighborhoods": ["Merkez"]},
+        {"name": "Patnos", "neighborhoods": ["Merkez"]},
+        {"name": "Taşlıçay", "neighborhoods": ["Merkez"]},
+        {"name": "Tutak", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Amasya",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Gökmedrese", "Şamlar", "Kirazlıdere"]},
+        {"name": "Göynücek", "neighborhoods": ["Merkez"]},
+        {"name": "Gümüşhacıköy", "neighborhoods": ["Merkez"]},
+        {"name": "Hamamözü", "neighborhoods": ["Merkez"]},
+        {"name": "Merzifon", "neighborhoods": ["Merkez"]},
+        {"name": "Suluova", "neighborhoods": ["Merkez"]},
+        {"name": "Taşova", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Ankara",
+      "districts": [
+        {"name": "Altındağ", "neighborhoods": ["Ulus", "Hamamönü", "Samanpazarı", "Anafartalar"]},
+        {"name": "Çankaya", "neighborhoods": ["Kızılay", "Bahçelievler", "Emek", "Balgat", "Çayyolu", "Ümitköy", "Yaşamkent", "Kavaklıdere", "Ayrancı", "Gaziosmanpaşa"]},
+        {"name": "Keçiören", "neighborhoods": ["Etlik", "Esertepe", "Kuşcağız", "Ovacık", "Subayevleri"]},
+        {"name": "Mamak", "neighborhoods": ["Natoyolu", "Şahintepe", "Cengizhan", "Kutlu"]},
+        {"name": "Yenimahalle", "neighborhoods": ["Batıkent", "Demetevler", "Ostim", "Şentepe", "Çamlıca"]},
+        {"name": "Etimesgut", "neighborhoods": ["Eryaman", "Elvankent", "Bağlıca", "Yapracık"]},
+        {"name": "Sincan", "neighborhoods": ["Fatih", "Tandoğan", "Pınarbaşı"]},
+        {"name": "Pursaklar", "neighborhoods": ["Saray", "Altınova", "Sirkeli"]},
+        {"name": "Gölbaşı", "neighborhoods": ["İncek", "Taşpınar", "Karaoğlan"]},
+        {"name": "Kahramankazan", "neighborhoods": ["Merkez"]},
+        {"name": "Polatlı", "neighborhoods": ["Merkez"]},
+        {"name": "Beypazarı", "neighborhoods": ["Merkez"]},
+        {"name": "Çubuk", "neighborhoods": ["Merkez"]},
+        {"name": "Akyurt", "neighborhoods": ["Merkez"]},
+        {"name": "Ayaş", "neighborhoods": ["Merkez"]},
+        {"name": "Bala", "neighborhoods": ["Merkez"]},
+        {"name": "Elmadağ", "neighborhoods": ["Merkez"]},
+        {"name": "Evren", "neighborhoods": ["Merkez"]},
+        {"name": "Güdül", "neighborhoods": ["Merkez"]},
+        {"name": "Haymana", "neighborhoods": ["Merkez"]},
+        {"name": "Kalecik", "neighborhoods": ["Merkez"]},
+        {"name": "Kızılcahamam", "neighborhoods": ["Merkez"]},
+        {"name": "Nallıhan", "neighborhoods": ["Merkez"]},
+        {"name": "Şereflikoçhisar", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Antalya",
+      "districts": [
+        {"name": "Muratpaşa", "neighborhoods": ["Konyaaltı", "Lara", "Şirinyalı", "Güzeloba", "Fener"]},
+        {"name": "Kepez", "neighborhoods": ["Santral", "Fabrikalar", "Varsak", "Gülveren"]},
+        {"name": "Konyaaltı", "neighborhoods": ["Liman", "Hurma", "Sarısu", "Uncalı"]},
+        {"name": "Aksu", "neighborhoods": ["Merkez"]},
+        {"name": "Döşemealtı", "neighborhoods": ["Merkez"]},
+        {"name": "Alanya", "neighborhoods": ["Oba", "Mahmutlar", "Kestel", "Avsallar"]},
+        {"name": "Manavgat", "neighborhoods": ["Side", "Çolaklı", "Evrenseki"]},
+        {"name": "Serik", "neighborhoods": ["Belek", "Kadriye"]},
+        {"name": "Kumluca", "neighborhoods": ["Merkez"]},
+        {"name": "Kaş", "neighborhoods": ["Merkez"]},
+        {"name": "Kemer", "neighborhoods": ["Merkez", "Göynük", "Beldibi"]},
+        {"name": "Finike", "neighborhoods": ["Merkez"]},
+        {"name": "Demre", "neighborhoods": ["Merkez"]},
+        {"name": "Gazipaşa", "neighborhoods": ["Merkez"]},
+        {"name": "Korkuteli", "neighborhoods": ["Merkez"]},
+        {"name": "Elmalı", "neighborhoods": ["Merkez"]},
+        {"name": "Akseki", "neighborhoods": ["Merkez"]},
+        {"name": "Gündoğmuş", "neighborhoods": ["Merkez"]},
+        {"name": "İbradı", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Artvin",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Çarşı", "Orta"]},
+        {"name": "Ardanuç", "neighborhoods": ["Merkez"]},
+        {"name": "Arhavi", "neighborhoods": ["Merkez"]},
+        {"name": "Borçka", "neighborhoods": ["Merkez"]},
+        {"name": "Hopa", "neighborhoods": ["Merkez"]},
+        {"name": "Şavşat", "neighborhoods": ["Merkez"]},
+        {"name": "Yusufeli", "neighborhoods": ["Merkez"]},
+        {"name": "Murgul", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Aydın",
+      "districts": [
+        {"name": "Efeler", "neighborhoods": ["Cumhuriyet", "Güzelhisar", "Meşrutiyet"]},
+        {"name": "Nazilli", "neighborhoods": ["Merkez"]},
+        {"name": "Söke", "neighborhoods": ["Merkez"]},
+        {"name": "Kuşadası", "neighborhoods": ["Merkez", "Kadınlar Denizi", "Güzelçamlı"]},
+        {"name": "Didim", "neighborhoods": ["Altınkum", "Akbük"]},
+        {"name": "İncirliova", "neighborhoods": ["Merkez"]},
+        {"name": "Germencik", "neighborhoods": ["Merkez"]},
+        {"name": "Bozdoğan", "neighborhoods": ["Merkez"]},
+        {"name": "Buharkent", "neighborhoods": ["Merkez"]},
+        {"name": "Çine", "neighborhoods": ["Merkez"]},
+        {"name": "Karacasu", "neighborhoods": ["Merkez"]},
+        {"name": "Karpuzlu", "neighborhoods": ["Merkez"]},
+        {"name": "Koçarlı", "neighborhoods": ["Merkez"]},
+        {"name": "Köşk", "neighborhoods": ["Merkez"]},
+        {"name": "Sultanhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Yenipazar", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Balıkesir",
+      "districts": [
+        {"name": "Altıeylül", "neighborhoods": ["Atatürk", "Paşaalanı", "Bahçelievler"]},
+        {"name": "Karesi", "neighborhoods": ["Adnan Menderes", "Eski Kuyumcular"]},
+        {"name": "Bandırma", "neighborhoods": ["Merkez"]},
+        {"name": "Edremit", "neighborhoods": ["Akçay", "Altınoluk", "Güre"]},
+        {"name": "Ayvalık", "neighborhoods": ["Merkez", "Cunda"]},
+        {"name": "Burhaniye", "neighborhoods": ["Merkez", "Ören"]},
+        {"name": "Gönen", "neighborhoods": ["Merkez"]},
+        {"name": "Susurluk", "neighborhoods": ["Merkez"]},
+        {"name": "Bigadiç", "neighborhoods": ["Merkez"]},
+        {"name": "Dursunbey", "neighborhoods": ["Merkez"]},
+        {"name": "Erdek", "neighborhoods": ["Merkez"]},
+        {"name": "Gömeç", "neighborhoods": ["Merkez"]},
+        {"name": "Havran", "neighborhoods": ["Merkez"]},
+        {"name": "İvrindi", "neighborhoods": ["Merkez"]},
+        {"name": "Kepsut", "neighborhoods": ["Merkez"]},
+        {"name": "Manyas", "neighborhoods": ["Merkez"]},
+        {"name": "Marmara", "neighborhoods": ["Merkez"]},
+        {"name": "Savaştepe", "neighborhoods": ["Merkez"]},
+        {"name": "Sındırgı", "neighborhoods": ["Merkez"]},
+        {"name": "Balya", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Bilecik",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "İstiklal"]},
+        {"name": "Bozüyük", "neighborhoods": ["Merkez"]},
+        {"name": "Gölpazarı", "neighborhoods": ["Merkez"]},
+        {"name": "Osmaneli", "neighborhoods": ["Merkez"]},
+        {"name": "Pazaryeri", "neighborhoods": ["Merkez"]},
+        {"name": "Söğüt", "neighborhoods": ["Merkez"]},
+        {"name": "Yenipazar", "neighborhoods": ["Merkez"]},
+        {"name": "İnhisar", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Bingöl",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Karşıyaka"]},
+        {"name": "Genç", "neighborhoods": ["Merkez"]},
+        {"name": "Karlıova", "neighborhoods": ["Merkez"]},
+        {"name": "Kiğı", "neighborhoods": ["Merkez"]},
+        {"name": "Solhan", "neighborhoods": ["Merkez"]},
+        {"name": "Adaklı", "neighborhoods": ["Merkez"]},
+        {"name": "Yayladere", "neighborhoods": ["Merkez"]},
+        {"name": "Yedisu", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Bitlis",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Beşminare"]},
+        {"name": "Adilcevaz", "neighborhoods": ["Merkez"]},
+        {"name": "Ahlat", "neighborhoods": ["Merkez"]},
+        {"name": "Güroymak", "neighborhoods": ["Merkez"]},
+        {"name": "Hizan", "neighborhoods": ["Merkez"]},
+        {"name": "Mutki", "neighborhoods": ["Merkez"]},
+        {"name": "Tatvan", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Bolu",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Tabaklar", "Semerkent", "Karaçayır"]},
+        {"name": "Gerede", "neighborhoods": ["Merkez"]},
+        {"name": "Göynük", "neighborhoods": ["Merkez"]},
+        {"name": "Kıbrıscık", "neighborhoods": ["Merkez"]},
+        {"name": "Mengen", "neighborhoods": ["Merkez"]},
+        {"name": "Mudurnu", "neighborhoods": ["Merkez"]},
+        {"name": "Seben", "neighborhoods": ["Merkez"]},
+        {"name": "Dörtdivan", "neighborhoods": ["Merkez"]},
+        {"name": "Yeniçağa", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Burdur",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Bahçelievler", "Pınarbaşı"]},
+        {"name": "Ağlasun", "neighborhoods": ["Merkez"]},
+        {"name": "Bucak", "neighborhoods": ["Merkez"]},
+        {"name": "Gölhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Tefenni", "neighborhoods": ["Merkez"]},
+        {"name": "Yeşilova", "neighborhoods": ["Merkez"]},
+        {"name": "Karamanlı", "neighborhoods": ["Merkez"]},
+        {"name": "Kemer", "neighborhoods": ["Merkez"]},
+        {"name": "Altınyayla", "neighborhoods": ["Merkez"]},
+        {"name": "Çavdır", "neighborhoods": ["Merkez"]},
+        {"name": "Çeltikçi", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Bursa",
+      "districts": [
+        {"name": "Osmangazi", "neighborhoods": ["Heykel", "Çekirge", "Altıparmak", "Setbaşı", "Kükürtlü"]},
+        {"name": "Nilüfer", "neighborhoods": ["Görükle", "Özlüce", "Beşevler", "İhsaniye", "Karaman"]},
+        {"name": "Yıldırım", "neighborhoods": ["Esenevler", "Millet", "Bağlarbaşı"]},
+        {"name": "Gemlik", "neighborhoods": ["Merkez"]},
+        {"name": "Mudanya", "neighborhoods": ["Merkez", "Güzelyalı"]},
+        {"name": "Gürsu", "neighborhoods": ["Merkez"]},
+        {"name": "Kestel", "neighborhoods": ["Merkez"]},
+        {"name": "İnegöl", "neighborhoods": ["Merkez", "Alanyurt", "Yenice"]},
+        {"name": "Orhangazi", "neighborhoods": ["Merkez"]},
+        {"name": "İznik", "neighborhoods": ["Merkez"]},
+        {"name": "Karacabey", "neighborhoods": ["Merkez"]},
+        {"name": "Mustafakemalpaşa", "neighborhoods": ["Merkez"]},
+        {"name": "Yenişehir", "neighborhoods": ["Merkez"]},
+        {"name": "Büyükorhan", "neighborhoods": ["Merkez"]},
+        {"name": "Harmancık", "neighborhoods": ["Merkez"]},
+        {"name": "Keles", "neighborhoods": ["Merkez"]},
+        {"name": "Orhaneli", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Çanakkale",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Fevzipaşa", "Cevatpaşa", "Kemalpaşa"]},
+        {"name": "Biga", "neighborhoods": ["Merkez"]},
+        {"name": "Çan", "neighborhoods": ["Merkez"]},
+        {"name": "Gelibolu", "neighborhoods": ["Merkez"]},
+        {"name": "Ayvacık", "neighborhoods": ["Merkez"]},
+        {"name": "Bayramiç", "neighborhoods": ["Merkez"]},
+        {"name": "Bozcaada", "neighborhoods": ["Merkez"]},
+        {"name": "Eceabat", "neighborhoods": ["Merkez"]},
+        {"name": "Ezine", "neighborhoods": ["Merkez"]},
+        {"name": "Gökçeada", "neighborhoods": ["Merkez"]},
+        {"name": "Lapseki", "neighborhoods": ["Merkez"]},
+        {"name": "Yenice", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Çankırı",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Yeni"]},
+        {"name": "Çerkeş", "neighborhoods": ["Merkez"]},
+        {"name": "Eldivan", "neighborhoods": ["Merkez"]},
+        {"name": "Ilgaz", "neighborhoods": ["Merkez"]},
+        {"name": "Kurşunlu", "neighborhoods": ["Merkez"]},
+        {"name": "Orta", "neighborhoods": ["Merkez"]},
+        {"name": "Şabanözü", "neighborhoods": ["Merkez"]},
+        {"name": "Yapraklı", "neighborhoods": ["Merkez"]},
+        {"name": "Atkaracalar", "neighborhoods": ["Merkez"]},
+        {"name": "Bayramören", "neighborhoods": ["Merkez"]},
+        {"name": "Kızılırmak", "neighborhoods": ["Merkez"]},
+        {"name": "Korgun", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Çorum",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Bahçelievler", "Gülabibey", "Ulukavak"]},
+        {"name": "Alaca", "neighborhoods": ["Merkez"]},
+        {"name": "Bayat", "neighborhoods": ["Merkez"]},
+        {"name": "İskilip", "neighborhoods": ["Merkez"]},
+        {"name": "Kargı", "neighborhoods": ["Merkez"]},
+        {"name": "Mecitözü", "neighborhoods": ["Merkez"]},
+        {"name": "Ortaköy", "neighborhoods": ["Merkez"]},
+        {"name": "Osmancık", "neighborhoods": ["Merkez"]},
+        {"name": "Sungurlu", "neighborhoods": ["Merkez"]},
+        {"name": "Boğazkale", "neighborhoods": ["Merkez"]},
+        {"name": "Uğurludağ", "neighborhoods": ["Merkez"]},
+        {"name": "Dodurga", "neighborhoods": ["Merkez"]},
+        {"name": "Laçin", "neighborhoods": ["Merkez"]},
+        {"name": "Oğuzlar", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Denizli",
+      "districts": [
+        {"name": "Pamukkale", "neighborhoods": ["Mehmetçik", "Zeytinköy", "Karşıyaka", "Kayıhan"]},
+        {"name": "Merkezefendi", "neighborhoods": ["Sümer", "Sevindik", "Gerzele"]},
+        {"name": "Acıpayam", "neighborhoods": ["Merkez"]},
+        {"name": "Buldan", "neighborhoods": ["Merkez"]},
+        {"name": "Çal", "neighborhoods": ["Merkez"]},
+        {"name": "Çameli", "neighborhoods": ["Merkez"]},
+        {"name": "Çardak", "neighborhoods": ["Merkez"]},
+        {"name": "Çivril", "neighborhoods": ["Merkez"]},
+        {"name": "Güney", "neighborhoods": ["Merkez"]},
+        {"name": "Honaz", "neighborhoods": ["Merkez"]},
+        {"name": "Kale", "neighborhoods": ["Merkez"]},
+        {"name": "Sarayköy", "neighborhoods": ["Merkez"]},
+        {"name": "Serinhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Tavas", "neighborhoods": ["Merkez"]},
+        {"name": "Babadağ", "neighborhoods": ["Merkez"]},
+        {"name": "Baklan", "neighborhoods": ["Merkez"]},
+        {"name": "Bekilli", "neighborhoods": ["Merkez"]},
+        {"name": "Beyağaç", "neighborhoods": ["Merkez"]},
+        {"name": "Bozkurt", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Diyarbakır",
+      "districts": [
+        {"name": "Bağlar", "neighborhoods": ["Bağcılar", "Mevlana", "Selahattin Eyyubi"]},
+        {"name": "Kayapınar", "neighborhoods": ["Peyas", "Huzurevleri", "Fırat"]},
+        {"name": "Sur", "neighborhoods": ["Melik Ahmet", "İskenderpaşa", "Alipaşa"]},
+        {"name": "Yenişehir", "neighborhoods": ["Şehitlik", "Diclekent", "Urfa Yolu"]},
+        {"name": "Bismil", "neighborhoods": ["Merkez"]},
+        {"name": "Çermik", "neighborhoods": ["Merkez"]},
+        {"name": "Çınar", "neighborhoods": ["Merkez"]},
+        {"name": "Çüngüş", "neighborhoods": ["Merkez"]},
+        {"name": "Dicle", "neighborhoods": ["Merkez"]},
+        {"name": "Eğil", "neighborhoods": ["Merkez"]},
+        {"name": "Ergani", "neighborhoods": ["Merkez"]},
+        {"name": "Hani", "neighborhoods": ["Merkez"]},
+        {"name": "Hazro", "neighborhoods": ["Merkez"]},
+        {"name": "Kocaköy", "neighborhoods": ["Merkez"]},
+        {"name": "Kulp", "neighborhoods": ["Merkez"]},
+        {"name": "Lice", "neighborhoods": ["Merkez"]},
+        {"name": "Silvan", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Edirne",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Yıldırım", "Sabuni", "Karaağaç"]},
+        {"name": "Keşan", "neighborhoods": ["Merkez"]},
+        {"name": "Uzunköprü", "neighborhoods": ["Merkez"]},
+        {"name": "Havsa", "neighborhoods": ["Merkez"]},
+        {"name": "İpsala", "neighborhoods": ["Merkez"]},
+        {"name": "Enez", "neighborhoods": ["Merkez"]},
+        {"name": "Lalapaşa", "neighborhoods": ["Merkez"]},
+        {"name": "Meriç", "neighborhoods": ["Merkez"]},
+        {"name": "Süloğlu", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Elazığ",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Aksaray", "Ataşehir", "Cumhuriyet"]},
+        {"name": "Ağın", "neighborhoods": ["Merkez"]},
+        {"name": "Baskil", "neighborhoods": ["Merkez"]},
+        {"name": "Karakoçan", "neighborhoods": ["Merkez"]},
+        {"name": "Keban", "neighborhoods": ["Merkez"]},
+        {"name": "Maden", "neighborhoods": ["Merkez"]},
+        {"name": "Palu", "neighborhoods": ["Merkez"]},
+        {"name": "Sivrice", "neighborhoods": ["Merkez"]},
+        {"name": "Arıcak", "neighborhoods": ["Merkez"]},
+        {"name": "Kovancılar", "neighborhoods": ["Merkez"]},
+        {"name": "Alacakaya", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Erzincan",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Fatih", "Yenimahalle", "Yalnızbağ"]},
+        {"name": "Çayırlı", "neighborhoods": ["Merkez"]},
+        {"name": "İliç", "neighborhoods": ["Merkez"]},
+        {"name": "Kemah", "neighborhoods": ["Merkez"]},
+        {"name": "Kemaliye", "neighborhoods": ["Merkez"]},
+        {"name": "Refahiye", "neighborhoods": ["Merkez"]},
+        {"name": "Tercan", "neighborhoods": ["Merkez"]},
+        {"name": "Üzümlü", "neighborhoods": ["Merkez"]},
+        {"name": "Otlukbeli", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Erzurum",
+      "districts": [
+        {"name": "Yakutiye", "neighborhoods": ["Lalapaşa", "Cumhuriyet", "Yenişehir"]},
+        {"name": "Palandöken", "neighborhoods": ["Yıldızkent", "Kayakyolu"]},
+        {"name": "Aziziye", "neighborhoods": ["Ilıca", "Gezköy"]},
+        {"name": "Aşkale", "neighborhoods": ["Merkez"]},
+        {"name": "Çat", "neighborhoods": ["Merkez"]},
+        {"name": "Hınıs", "neighborhoods": ["Merkez"]},
+        {"name": "Horasan", "neighborhoods": ["Merkez"]},
+        {"name": "İspir", "neighborhoods": ["Merkez"]},
+        {"name": "Karayazı", "neighborhoods": ["Merkez"]},
+        {"name": "Narman", "neighborhoods": ["Merkez"]},
+        {"name": "Oltu", "neighborhoods": ["Merkez"]},
+        {"name": "Olur", "neighborhoods": ["Merkez"]},
+        {"name": "Pasinler", "neighborhoods": ["Merkez"]},
+        {"name": "Şenkaya", "neighborhoods": ["Merkez"]},
+        {"name": "Tekman", "neighborhoods": ["Merkez"]},
+        {"name": "Tortum", "neighborhoods": ["Merkez"]},
+        {"name": "Karaçoban", "neighborhoods": ["Merkez"]},
+        {"name": "Uzundere", "neighborhoods": ["Merkez"]},
+        {"name": "Köprüköy", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Eskişehir",
+      "districts": [
+        {"name": "Odunpazarı", "neighborhoods": ["Akarbaşı", "Kırmızıtoprak", "Batıkent"]},
+        {"name": "Tepebaşı", "neighborhoods": ["Ertuğrul", "Hoşnudiye", "Şirintepe", "Emek"]},
+        {"name": "Alpu", "neighborhoods": ["Merkez"]},
+        {"name": "Beylikova", "neighborhoods": ["Merkez"]},
+        {"name": "Çifteler", "neighborhoods": ["Merkez"]},
+        {"name": "Günyüzü", "neighborhoods": ["Merkez"]},
+        {"name": "Han", "neighborhoods": ["Merkez"]},
+        {"name": "İnönü", "neighborhoods": ["Merkez"]},
+        {"name": "Mahmudiye", "neighborhoods": ["Merkez"]},
+        {"name": "Mihalgazi", "neighborhoods": ["Merkez"]},
+        {"name": "Mihalıççık", "neighborhoods": ["Merkez"]},
+        {"name": "Sarıcakaya", "neighborhoods": ["Merkez"]},
+        {"name": "Seyitgazi", "neighborhoods": ["Merkez"]},
+        {"name": "Sivrihisar", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Gaziantep",
+      "districts": [
+        {"name": "Şahinbey", "neighborhoods": ["Gazikent", "Mavikent", "Bülbülzade", "İbrahimli", "Kolejtepe"]},
+        {"name": "Şehitkamil", "neighborhoods": ["Karşıyaka", "Osmangazi", "Batıkent", "Güvenevler", "İncilipınar"]},
+        {"name": "Oğuzeli", "neighborhoods": ["Merkez"]},
+        {"name": "Nizip", "neighborhoods": ["Merkez"]},
+        {"name": "İslahiye", "neighborhoods": ["Merkez"]},
+        {"name": "Nurdağı", "neighborhoods": ["Merkez"]},
+        {"name": "Araban", "neighborhoods": ["Merkez"]},
+        {"name": "Yavuzeli", "neighborhoods": ["Merkez"]},
+        {"name": "Karkamış", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Giresun",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Hacısiyam", "Teyyaredüzü", "Gedikkaya"]},
+        {"name": "Bulancak", "neighborhoods": ["Merkez"]},
+        {"name": "Alucra", "neighborhoods": ["Merkez"]},
+        {"name": "Çamoluk", "neighborhoods": ["Merkez"]},
+        {"name": "Çanakçı", "neighborhoods": ["Merkez"]},
+        {"name": "Dereli", "neighborhoods": ["Merkez"]},
+        {"name": "Doğankent", "neighborhoods": ["Merkez"]},
+        {"name": "Espiye", "neighborhoods": ["Merkez"]},
+        {"name": "Eynesil", "neighborhoods": ["Merkez"]},
+        {"name": "Görele", "neighborhoods": ["Merkez"]},
+        {"name": "Güce", "neighborhoods": ["Merkez"]},
+        {"name": "Keşap", "neighborhoods": ["Merkez"]},
+        {"name": "Piraziz", "neighborhoods": ["Merkez"]},
+        {"name": "Şebinkarahisar", "neighborhoods": ["Merkez"]},
+        {"name": "Tirebolu", "neighborhoods": ["Merkez"]},
+        {"name": "Yağlıdere", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Gümüşhane",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Bağlarbaşı", "Hacıosman"]},
+        {"name": "Kelkit", "neighborhoods": ["Merkez"]},
+        {"name": "Şiran", "neighborhoods": ["Merkez"]},
+        {"name": "Torul", "neighborhoods": ["Merkez"]},
+        {"name": "Köse", "neighborhoods": ["Merkez"]},
+        {"name": "Kürtün", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Hakkari",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Keklikpınar", "Bağlar"]},
+        {"name": "Çukurca", "neighborhoods": ["Merkez"]},
+        {"name": "Şemdinli", "neighborhoods": ["Merkez"]},
+        {"name": "Yüksekova", "neighborhoods": ["Merkez"]},
+        {"name": "Derecik", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Hatay",
+      "districts": [
+        {"name": "Antakya", "neighborhoods": ["Saraykent", "Ürgen", "Armutlu", "Sümerler"]},
+        {"name": "İskenderun", "neighborhoods": ["Çay", "Barbaros", "Mustafa Kemal"]},
+        {"name": "Defne", "neighborhoods": ["Sümerler", "Cebrail", "Odabaşı"]},
+        {"name": "Samandağ", "neighborhoods": ["Merkez"]},
+        {"name": "Dörtyol", "neighborhoods": ["Merkez"]},
+        {"name": "Kırıkhan", "neighborhoods": ["Merkez"]},
+        {"name": "Reyhanlı", "neighborhoods": ["Merkez"]},
+        {"name": "Arsuz", "neighborhoods": ["Merkez"]},
+        {"name": "Payas", "neighborhoods": ["Merkez"]},
+        {"name": "Altınözü", "neighborhoods": ["Merkez"]},
+        {"name": "Belen", "neighborhoods": ["Merkez"]},
+        {"name": "Erzin", "neighborhoods": ["Merkez"]},
+        {"name": "Hassa", "neighborhoods": ["Merkez"]},
+        {"name": "Kumlu", "neighborhoods": ["Merkez"]},
+        {"name": "Yayladağı", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Isparta",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Bahçelievler", "Davraz", "Gülcü"]},
+        {"name": "Aksu", "neighborhoods": ["Merkez"]},
+        {"name": "Atabey", "neighborhoods": ["Merkez"]},
+        {"name": "Eğirdir", "neighborhoods": ["Merkez"]},
+        {"name": "Gelendost", "neighborhoods": ["Merkez"]},
+        {"name": "Gönen", "neighborhoods": ["Merkez"]},
+        {"name": "Keçiborlu", "neighborhoods": ["Merkez"]},
+        {"name": "Senirkent", "neighborhoods": ["Merkez"]},
+        {"name": "Sütçüler", "neighborhoods": ["Merkez"]},
+        {"name": "Şarkikaraağaç", "neighborhoods": ["Merkez"]},
+        {"name": "Uluborlu", "neighborhoods": ["Merkez"]},
+        {"name": "Yalvaç", "neighborhoods": ["Merkez"]},
+        {"name": "Yenişarbademli", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Mersin",
+      "districts": [
+        {"name": "Akdeniz", "neighborhoods": ["Çankaya", "Nusratiye", "Mahmudiye"]},
+        {"name": "Mezitli", "neighborhoods": ["Viranşehir", "Tece", "Davultepe"]},
+        {"name": "Toroslar", "neighborhoods": ["Yenişehir", "Arpaçsakarlar"]},
+        {"name": "Yenişehir", "neighborhoods": ["Akkent", "Güvenevler", "Bahçe"]},
+        {"name": "Tarsus", "neighborhoods": ["Şehit Kerim", "Gaziler", "Atatürk"]},
+        {"name": "Erdemli", "neighborhoods": ["Merkez", "Kızkalesi"]},
+        {"name": "Silifke", "neighborhoods": ["Merkez", "Taşucu"]},
+        {"name": "Anamur", "neighborhoods": ["Merkez"]},
+        {"name": "Aydıncık", "neighborhoods": ["Merkez"]},
+        {"name": "Bozyazı", "neighborhoods": ["Merkez"]},
+        {"name": "Çamlıyayla", "neighborhoods": ["Merkez"]},
+        {"name": "Gülnar", "neighborhoods": ["Merkez"]},
+        {"name": "Mut", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "İstanbul",
+      "districts": [
+        {"name": "Kadıköy", "neighborhoods": ["Moda", "Fenerbahçe", "Bostancı", "Göztepe", "Caferağa", "Kozyatağı", "Ataşehir", "Suadiye", "Erenköy", "Caddebostan"]},
+        {"name": "Beşiktaş", "neighborhoods": ["Etiler", "Levent", "Bebek", "Ortaköy", "Arnavutköy", "Yıldız"]},
+        {"name": "Beyoğlu", "neighborhoods": ["Taksim", "Cihangir", "Galata", "Karaköy", "Tarlabaşı"]},
+        {"name": "Şişli", "neighborhoods": ["Mecidiyeköy", "Nişantaşı", "Bomonti", "Fulya", "Osmanbey", "Esentepe"]},
+        {"name": "Bakırköy", "neighborhoods": ["Ataköy", "Yeşilköy", "Florya", "Zuhuratbaba"]},
+        {"name": "Fatih", "neighborhoods": ["Sultanahmet", "Aksaray", "Laleli", "Beyazıt", "Çarşamba", "Balat", "Fener"]},
+        {"name": "Üsküdar", "neighborhoods": ["Çengelköy", "Kuzguncuk", "Acıbadem", "Altunizade", "Ümraniye"]},
+        {"name": "Sarıyer", "neighborhoods": ["Maslak", "İstinye", "Tarabya", "Yeniköy", "Emirgan", "Zekeriyaköy"]},
+        {"name": "Ataşehir", "neighborhoods": ["İçerenköy", "Küçükbakkalköy", "Ataşehir", "Yenisahra", "Barbaros"]},
+        {"name": "Maltepe", "neighborhoods": ["Cevizli", "Küçükyalı", "Bağlarbaşı", "Altayçeşme"]},
+        {"name": "Kartal", "neighborhoods": ["Soğanlık", "Uğur Mumcu", "Kordonboyu", "Yakacık"]},
+        {"name": "Pendik", "neighborhoods": ["Kaynarca", "Kurtköy", "Yenişehir", "Güllü Bağlar"]},
+        {"name": "Tuzla", "neighborhoods": ["Aydınlı", "İçmeler", "Postane", "Şifa"]},
+        {"name": "Beykoz", "neighborhoods": ["Kavacık", "Paşabahçe", "Çubuklu", "Anadoluhisarı"]},
+        {"name": "Ümraniye", "neighborhoods": ["Çakmak", "Atatürk", "Hekimbaşı", "Tantavi", "Yamanevler"]},
+        {"name": "Sancaktepe", "neighborhoods": ["Yenidoğan", "Samandıra", "Sarıgazi"]},
+        {"name": "Sultanbeyli", "neighborhoods": ["Hasanpaşa", "Fatih", "Mecidiye"]},
+        {"name": "Çekmeköy", "neighborhoods": ["Merkez", "Taşdelen", "Alemdağ"]},
+        {"name": "Eyüpsultan", "neighborhoods": ["Eyüp", "Alibeyköy", "Yeşilpınar", "Göktürk"]},
+        {"name": "Gaziosmanpaşa", "neighborhoods": ["Karayolları", "Küçükköy", "Karlıtepe"]},
+        {"name": "Kağıthane", "neighborhoods": ["Çağlayan", "Gültepe", "Seyrantepe"]},
+        {"name": "Bayrampaşa", "neighborhoods": ["Muratpaşa", "Yıldırım", "Cevatpaşa"]},
+        {"name": "Esenler", "neighborhoods": ["Davutpaşa", "Menderes", "Oruç Reis"]},
+        {"name": "Güngören", "neighborhoods": ["Merkez", "Haznedar", "Tozkoparan"]},
+        {"name": "Bahçelievler", "neighborhoods": ["Bahçelievler", "Şirinevler", "Kocasinan", "Soğanlı"]},
+        {"name": "Bağcılar", "neighborhoods": ["Kirazlı", "Yıldıztepe", "Güneşli", "Mahmutbey"]},
+        {"name": "Küçükçekmece", "neighborhoods": ["Cennet", "Halkalı", "Atakent", "İstasyon"]},
+        {"name": "Avcılar", "neighborhoods": ["Cihangir", "Merkez", "Yeşilkent", "Mustafa Kemal Paşa"]},
+        {"name": "Başakşehir", "neighborhoods": ["Başakşehir", "Kayabaşı", "Bahçeşehir", "İkitelli"]},
+        {"name": "Esenyurt", "neighborhoods": ["Merkez", "Kıraç", "Yenikent", "Ardıçlı"]},
+        {"name": "Beylikdüzü", "neighborhoods": ["Yakuplu", "Kavakli", "Gürpınar", "Adnan Kahveci"]},
+        {"name": "Büyükçekmece", "neighborhoods": ["Merkez", "Mimarsinan", "Tepecik"]},
+        {"name": "Silivri", "neighborhoods": ["Merkez", "Selimpaşa", "Kavaklı"]},
+        {"name": "Çatalca", "neighborhoods": ["Merkez", "Ferhatpaşa"]},
+        {"name": "Arnavutköy", "neighborhoods": ["Merkez", "Hadımköy", "Taşoluk"]},
+        {"name": "Sultangazi", "neighborhoods": ["50. Yıl", "Cebeci", "Esentepe"]},
+        {"name": "Zeytinburnu", "neighborhoods": ["Kazlıçeşme", "Merkezefendi", "Yeşiltepe"]},
+        {"name": "Adalar", "neighborhoods": ["Büyükada", "Heybeliada", "Burgazada", "Kınalıada"]}
+      ]
+    },
+    {
+      "name": "İzmir",
+      "districts": [
+        {"name": "Konak", "neighborhoods": ["Alsancak", "Basmane", "Kemeraltı", "Güzelyalı", "Hatay"]},
+        {"name": "Karşıyaka", "neighborhoods": ["Bostanlı", "Mavişehir", "Çiğli", "Atakent"]},
+        {"name": "Bornova", "neighborhoods": ["Erzene", "Evka-3", "Kazımdirik", "Doğanlar"]},
+        {"name": "Buca", "neighborhoods": ["Şirinyer", "Adatepe", "Kuruçeşme", "Kozağaç"]},
+        {"name": "Bayraklı", "neighborhoods": ["Bayraklı", "Manavkuyu", "Salhane"]},
+        {"name": "Çiğli", "neighborhoods": ["Evka-5", "Ataşehir", "Harmandalı"]},
+        {"name": "Gaziemir", "neighborhoods": ["Gaziemir", "Sarnıç", "Menderes"]},
+        {"name": "Karabağlar", "neighborhoods": ["Peker", "Cennetçeşme", "Bozyaka", "Hatay"]},
+        {"name": "Narlıdere", "neighborhoods": ["Narlıdere", "Çatalkaya", "Sahilevleri"]},
+        {"name": "Balçova", "neighborhoods": ["Onur", "İnciraltı", "Teleferik"]},
+        {"name": "Güzelbahçe", "neighborhoods": ["Güzelbahçe", "Kahramandere"]},
+        {"name": "Aliağa", "neighborhoods": ["Merkez"]},
+        {"name": "Bergama", "neighborhoods": ["Merkez"]},
+        {"name": "Çeşme", "neighborhoods": ["Merkez", "Alaçatı", "Ilıca"]},
+        {"name": "Dikili", "neighborhoods": ["Merkez"]},
+        {"name": "Foça", "neighborhoods": ["Merkez", "Yenifoça"]},
+        {"name": "Karaburun", "neighborhoods": ["Merkez"]},
+        {"name": "Kemalpaşa", "neighborhoods": ["Merkez"]},
+        {"name": "Kınık", "neighborhoods": ["Merkez"]},
+        {"name": "Kiraz", "neighborhoods": ["Merkez"]},
+        {"name": "Menderes", "neighborhoods": ["Merkez", "Gümüldür"]},
+        {"name": "Menemen", "neighborhoods": ["Merkez"]},
+        {"name": "Ödemiş", "neighborhoods": ["Merkez"]},
+        {"name": "Seferihisar", "neighborhoods": ["Merkez", "Sığacık"]},
+        {"name": "Selçuk", "neighborhoods": ["Merkez", "Şirince"]},
+        {"name": "Tire", "neighborhoods": ["Merkez"]},
+        {"name": "Torbalı", "neighborhoods": ["Merkez"]},
+        {"name": "Urla", "neighborhoods": ["Merkez", "İskele"]},
+        {"name": "Beydağ", "neighborhoods": ["Merkez"]},
+        {"name": "Bayındır", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kars",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Yenişehir"]},
+        {"name": "Arpaçay", "neighborhoods": ["Merkez"]},
+        {"name": "Digor", "neighborhoods": ["Merkez"]},
+        {"name": "Kağızman", "neighborhoods": ["Merkez"]},
+        {"name": "Sarıkamış", "neighborhoods": ["Merkez"]},
+        {"name": "Selim", "neighborhoods": ["Merkez"]},
+        {"name": "Susuz", "neighborhoods": ["Merkez"]},
+        {"name": "Akyaka", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kastamonu",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Kuzeykent", "İsmet Paşa", "Hepkebirler"]},
+        {"name": "Araç", "neighborhoods": ["Merkez"]},
+        {"name": "Azdavay", "neighborhoods": ["Merkez"]},
+        {"name": "Bozkurt", "neighborhoods": ["Merkez"]},
+        {"name": "Cide", "neighborhoods": ["Merkez"]},
+        {"name": "Çatalzeytin", "neighborhoods": ["Merkez"]},
+        {"name": "Daday", "neighborhoods": ["Merkez"]},
+        {"name": "Devrekani", "neighborhoods": ["Merkez"]},
+        {"name": "İnebolu", "neighborhoods": ["Merkez"]},
+        {"name": "Küre", "neighborhoods": ["Merkez"]},
+        {"name": "Taşköprü", "neighborhoods": ["Merkez"]},
+        {"name": "Tosya", "neighborhoods": ["Merkez"]},
+        {"name": "Abana", "neighborhoods": ["Merkez"]},
+        {"name": "Ağlı", "neighborhoods": ["Merkez"]},
+        {"name": "Doğanyurt", "neighborhoods": ["Merkez"]},
+        {"name": "Hanönü", "neighborhoods": ["Merkez"]},
+        {"name": "İhsangazi", "neighborhoods": ["Merkez"]},
+        {"name": "Pınarbaşı", "neighborhoods": ["Merkez"]},
+        {"name": "Seydiler", "neighborhoods": ["Merkez"]},
+        {"name": "Şenpazar", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kayseri",
+      "districts": [
+        {"name": "Melikgazi", "neighborhoods": ["Sivas Caddesi", "Kocasinan", "Tacettin Veli", "Alpaslan"]},
+        {"name": "Kocasinan", "neighborhoods": ["Beyazşehir", "Erkilet", "Mithatpaşa", "Yıldırım Beyazıt"]},
+        {"name": "Talas", "neighborhoods": ["Mevlana", "Başakpınar", "Kiçiköy"]},
+        {"name": "Hacılar", "neighborhoods": ["Merkez"]},
+        {"name": "İncesu", "neighborhoods": ["Merkez"]},
+        {"name": "Develi", "neighborhoods": ["Merkez"]},
+        {"name": "Bünyan", "neighborhoods": ["Merkez"]},
+        {"name": "Felahiye", "neighborhoods": ["Merkez"]},
+        {"name": "Akkışla", "neighborhoods": ["Merkez"]},
+        {"name": "Pınarbaşı", "neighborhoods": ["Merkez"]},
+        {"name": "Sarıoğlan", "neighborhoods": ["Merkez"]},
+        {"name": "Sarız", "neighborhoods": ["Merkez"]},
+        {"name": "Tomarza", "neighborhoods": ["Merkez"]},
+        {"name": "Yahyalı", "neighborhoods": ["Merkez"]},
+        {"name": "Yeşilhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Özvatan", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kırklareli",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Karakaş"]},
+        {"name": "Babaeski", "neighborhoods": ["Merkez"]},
+        {"name": "Demirköy", "neighborhoods": ["Merkez"]},
+        {"name": "Kofçaz", "neighborhoods": ["Merkez"]},
+        {"name": "Lüleburgaz", "neighborhoods": ["Merkez"]},
+        {"name": "Pehlivanköy", "neighborhoods": ["Merkez"]},
+        {"name": "Pınarhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Vize", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kırşehir",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Medrese", "Yenice", "Seyrani"]},
+        {"name": "Çiçekdağı", "neighborhoods": ["Merkez"]},
+        {"name": "Kaman", "neighborhoods": ["Merkez"]},
+        {"name": "Mucur", "neighborhoods": ["Merkez"]},
+        {"name": "Akpınar", "neighborhoods": ["Merkez"]},
+        {"name": "Akçakent", "neighborhoods": ["Merkez"]},
+        {"name": "Boztepe", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kocaeli",
+      "districts": [
+        {"name": "İzmit", "neighborhoods": ["Yenişehir", "Cedit", "Körfez", "Kozluk"]},
+        {"name": "Gebze", "neighborhoods": ["Merkez", "Güzeller", "Cumhuriyet"]},
+        {"name": "Darıca", "neighborhoods": ["Bayramoğlu", "Osmangazi"]},
+        {"name": "Çayırova", "neighborhoods": ["Merkez"]},
+        {"name": "Dilovası", "neighborhoods": ["Merkez"]},
+        {"name": "Körfez", "neighborhoods": ["Merkez"]},
+        {"name": "Derince", "neighborhoods": ["Merkez"]},
+        {"name": "Gölcük", "neighborhoods": ["Merkez"]},
+        {"name": "Kartepe", "neighborhoods": ["Merkez"]},
+        {"name": "Başiskele", "neighborhoods": ["Merkez"]},
+        {"name": "Karamürsel", "neighborhoods": ["Merkez"]},
+        {"name": "Kandıra", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Konya",
+      "districts": [
+        {"name": "Selçuklu", "neighborhoods": ["Bosna Hersek", "Yazır", "Sille", "Parsana"]},
+        {"name": "Meram", "neighborhoods": ["Havzan", "Gödene", "Şükran", "Karadiğin"]},
+        {"name": "Karatay", "neighborhoods": ["Fevzi Çakmak", "Akabe", "Karaaslan"]},
+        {"name": "Ereğli", "neighborhoods": ["Merkez"]},
+        {"name": "Akşehir", "neighborhoods": ["Merkez"]},
+        {"name": "Beyşehir", "neighborhoods": ["Merkez"]},
+        {"name": "Cihanbeyli", "neighborhoods": ["Merkez"]},
+        {"name": "Çumra", "neighborhoods": ["Merkez"]},
+        {"name": "Ilgın", "neighborhoods": ["Merkez"]},
+        {"name": "Kadınhanı", "neighborhoods": ["Merkez"]},
+        {"name": "Karapınar", "neighborhoods": ["Merkez"]},
+        {"name": "Kulu", "neighborhoods": ["Merkez"]},
+        {"name": "Sarayönü", "neighborhoods": ["Merkez"]},
+        {"name": "Seydişehir", "neighborhoods": ["Merkez"]},
+        {"name": "Altınekin", "neighborhoods": ["Merkez"]},
+        {"name": "Bozkır", "neighborhoods": ["Merkez"]},
+        {"name": "Çeltik", "neighborhoods": ["Merkez"]},
+        {"name": "Derbent", "neighborhoods": ["Merkez"]},
+        {"name": "Derebucak", "neighborhoods": ["Merkez"]},
+        {"name": "Doğanhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Emirgazi", "neighborhoods": ["Merkez"]},
+        {"name": "Güneysınır", "neighborhoods": ["Merkez"]},
+        {"name": "Hadim", "neighborhoods": ["Merkez"]},
+        {"name": "Halkapınar", "neighborhoods": ["Merkez"]},
+        {"name": "Hüyük", "neighborhoods": ["Merkez"]},
+        {"name": "Taşkent", "neighborhoods": ["Merkez"]},
+        {"name": "Tuzlukçu", "neighborhoods": ["Merkez"]},
+        {"name": "Yalıhüyük", "neighborhoods": ["Merkez"]},
+        {"name": "Yunak", "neighborhoods": ["Merkez"]},
+        {"name": "Ahırlı", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kütahya",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Lala Hüseyin Paşa", "Atatürk", "Cumhuriyet"]},
+        {"name": "Altıntaş", "neighborhoods": ["Merkez"]},
+        {"name": "Domaniç", "neighborhoods": ["Merkez"]},
+        {"name": "Emet", "neighborhoods": ["Merkez"]},
+        {"name": "Gediz", "neighborhoods": ["Merkez"]},
+        {"name": "Simav", "neighborhoods": ["Merkez"]},
+        {"name": "Tavşanlı", "neighborhoods": ["Merkez"]},
+        {"name": "Aslanapa", "neighborhoods": ["Merkez"]},
+        {"name": "Çavdarhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Dumlupınar", "neighborhoods": ["Merkez"]},
+        {"name": "Hisarcık", "neighborhoods": ["Merkez"]},
+        {"name": "Pazarlar", "neighborhoods": ["Merkez"]},
+        {"name": "Şaphane", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Malatya",
+      "districts": [
+        {"name": "Battalgazi", "neighborhoods": ["Çöşnük", "Özal", "İskender"]},
+        {"name": "Yeşilyurt", "neighborhoods": ["Turgut Özal", "Çilesiz", "İnönü"]},
+        {"name": "Akçadağ", "neighborhoods": ["Merkez"]},
+        {"name": "Arapgir", "neighborhoods": ["Merkez"]},
+        {"name": "Arguvan", "neighborhoods": ["Merkez"]},
+        {"name": "Darende", "neighborhoods": ["Merkez"]},
+        {"name": "Doğanşehir", "neighborhoods": ["Merkez"]},
+        {"name": "Hekimhan", "neighborhoods": ["Merkez"]},
+        {"name": "Kuluncak", "neighborhoods": ["Merkez"]},
+        {"name": "Pütürge", "neighborhoods": ["Merkez"]},
+        {"name": "Yazıhan", "neighborhoods": ["Merkez"]},
+        {"name": "Doğanyol", "neighborhoods": ["Merkez"]},
+        {"name": "Kale", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Manisa",
+      "districts": [
+        {"name": "Şehzadeler", "neighborhoods": ["Merkez", "Uncubozköy", "Tunca"]},
+        {"name": "Yunusemre", "neighborhoods": ["Merkez", "Laleli", "Horozköy"]},
+        {"name": "Akhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Salihli", "neighborhoods": ["Merkez"]},
+        {"name": "Turgutlu", "neighborhoods": ["Merkez"]},
+        {"name": "Soma", "neighborhoods": ["Merkez"]},
+        {"name": "Alaşehir", "neighborhoods": ["Merkez"]},
+        {"name": "Demirci", "neighborhoods": ["Merkez"]},
+        {"name": "Gördes", "neighborhoods": ["Merkez"]},
+        {"name": "Kırkağaç", "neighborhoods": ["Merkez"]},
+        {"name": "Köprübaşı", "neighborhoods": ["Merkez"]},
+        {"name": "Kula", "neighborhoods": ["Merkez"]},
+        {"name": "Sarıgöl", "neighborhoods": ["Merkez"]},
+        {"name": "Saruhanlı", "neighborhoods": ["Merkez"]},
+        {"name": "Selendi", "neighborhoods": ["Merkez"]},
+        {"name": "Ahmetli", "neighborhoods": ["Merkez"]},
+        {"name": "Gölmarmara", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kahramanmaraş",
+      "districts": [
+        {"name": "Dulkadiroğlu", "neighborhoods": ["Yörükselim", "Şazibey", "Fatih"]},
+        {"name": "Onikişubat", "neighborhoods": ["Bahçelievler", "Yenişehir", "Şirinevler"]},
+        {"name": "Afşin", "neighborhoods": ["Merkez"]},
+        {"name": "Andırın", "neighborhoods": ["Merkez"]},
+        {"name": "Çağlayancerit", "neighborhoods": ["Merkez"]},
+        {"name": "Ekinözü", "neighborhoods": ["Merkez"]},
+        {"name": "Elbistan", "neighborhoods": ["Merkez"]},
+        {"name": "Göksun", "neighborhoods": ["Merkez"]},
+        {"name": "Nurhak", "neighborhoods": ["Merkez"]},
+        {"name": "Pazarcık", "neighborhoods": ["Merkez"]},
+        {"name": "Türkoğlu", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Mardin",
+      "districts": [
+        {"name": "Artuklu", "neighborhoods": ["Yalım", "Savur Yolu", "Nur"]},
+        {"name": "Kızıltepe", "neighborhoods": ["Tepebaşı", "Cumhuriyet", "Bağlar"]},
+        {"name": "Nusaybin", "neighborhoods": ["Merkez"]},
+        {"name": "Midyat", "neighborhoods": ["Merkez"]},
+        {"name": "Derik", "neighborhoods": ["Merkez"]},
+        {"name": "Mazıdağı", "neighborhoods": ["Merkez"]},
+        {"name": "Ömerli", "neighborhoods": ["Merkez"]},
+        {"name": "Dargeçit", "neighborhoods": ["Merkez"]},
+        {"name": "Savur", "neighborhoods": ["Merkez"]},
+        {"name": "Yeşilli", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Muğla",
+      "districts": [
+        {"name": "Menteşe", "neighborhoods": ["Emirbeyazit", "Muslihittin", "Orhaniye"]},
+        {"name": "Bodrum", "neighborhoods": ["Merkez", "Gümbet", "Bitez", "Turgutreis", "Yalıkavak", "Gündoğan"]},
+        {"name": "Fethiye", "neighborhoods": ["Merkez", "Ölüdeniz", "Çalış", "Hisarönü"]},
+        {"name": "Marmaris", "neighborhoods": ["Merkez", "Armutalan", "İçmeler", "Siteler"]},
+        {"name": "Milas", "neighborhoods": ["Merkez"]},
+        {"name": "Dalaman", "neighborhoods": ["Merkez"]},
+        {"name": "Ortaca", "neighborhoods": ["Merkez", "Dalyan"]},
+        {"name": "Köyceğiz", "neighborhoods": ["Merkez"]},
+        {"name": "Datça", "neighborhoods": ["Merkez"]},
+        {"name": "Kavaklıdere", "neighborhoods": ["Merkez"]},
+        {"name": "Seydikemer", "neighborhoods": ["Merkez"]},
+        {"name": "Ula", "neighborhoods": ["Merkez"]},
+        {"name": "Yatağan", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Muş",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Yeşilce"]},
+        {"name": "Bulanık", "neighborhoods": ["Merkez"]},
+        {"name": "Malazgirt", "neighborhoods": ["Merkez"]},
+        {"name": "Varto", "neighborhoods": ["Merkez"]},
+        {"name": "Hasköy", "neighborhoods": ["Merkez"]},
+        {"name": "Korkut", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Nevşehir",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Ragıp Üner", "Esentepe", "Lale"]},
+        {"name": "Avanos", "neighborhoods": ["Merkez"]},
+        {"name": "Derinkuyu", "neighborhoods": ["Merkez"]},
+        {"name": "Gülşehir", "neighborhoods": ["Merkez"]},
+        {"name": "Hacıbektaş", "neighborhoods": ["Merkez"]},
+        {"name": "Kozaklı", "neighborhoods": ["Merkez"]},
+        {"name": "Ürgüp", "neighborhoods": ["Merkez", "Göreme"]},
+        {"name": "Acıgöl", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Niğde",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Yukarıkayabaşı", "Dışarıcami", "Yenice"]},
+        {"name": "Bor", "neighborhoods": ["Merkez"]},
+        {"name": "Çamardı", "neighborhoods": ["Merkez"]},
+        {"name": "Ulukışla", "neighborhoods": ["Merkez"]},
+        {"name": "Altunhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Çiftlik", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Ordu",
+      "districts": [
+        {"name": "Altınordu", "neighborhoods": ["Şarkiye", "Akyazı", "Bahçelievler"]},
+        {"name": "Fatsa", "neighborhoods": ["Merkez"]},
+        {"name": "Ünye", "neighborhoods": ["Merkez"]},
+        {"name": "Akkuş", "neighborhoods": ["Merkez"]},
+        {"name": "Aybastı", "neighborhoods": ["Merkez"]},
+        {"name": "Çamaş", "neighborhoods": ["Merkez"]},
+        {"name": "Çatalpınar", "neighborhoods": ["Merkez"]},
+        {"name": "Çaybaşı", "neighborhoods": ["Merkez"]},
+        {"name": "Gölköy", "neighborhoods": ["Merkez"]},
+        {"name": "Gülyalı", "neighborhoods": ["Merkez"]},
+        {"name": "Gürgentepe", "neighborhoods": ["Merkez"]},
+        {"name": "İkizce", "neighborhoods": ["Merkez"]},
+        {"name": "Kabadüz", "neighborhoods": ["Merkez"]},
+        {"name": "Kabataş", "neighborhoods": ["Merkez"]},
+        {"name": "Korgan", "neighborhoods": ["Merkez"]},
+        {"name": "Kumru", "neighborhoods": ["Merkez"]},
+        {"name": "Mesudiye", "neighborhoods": ["Merkez"]},
+        {"name": "Perşembe", "neighborhoods": ["Merkez"]},
+        {"name": "Ulubey", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Rize",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Yeniköy", "Taşlıdere", "Müftü"]},
+        {"name": "Ardeşen", "neighborhoods": ["Merkez"]},
+        {"name": "Çamlıhemşin", "neighborhoods": ["Merkez"]},
+        {"name": "Çayeli", "neighborhoods": ["Merkez"]},
+        {"name": "Derepazarı", "neighborhoods": ["Merkez"]},
+        {"name": "Fındıklı", "neighborhoods": ["Merkez"]},
+        {"name": "Güneysu", "neighborhoods": ["Merkez"]},
+        {"name": "Hemşin", "neighborhoods": ["Merkez"]},
+        {"name": "İkizdere", "neighborhoods": ["Merkez"]},
+        {"name": "İyidere", "neighborhoods": ["Merkez"]},
+        {"name": "Kalkandere", "neighborhoods": ["Merkez"]},
+        {"name": "Pazar", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Sakarya",
+      "districts": [
+        {"name": "Adapazarı", "neighborhoods": ["Cumhuriyet", "Semerciler", "Yağcılar"]},
+        {"name": "Serdivan", "neighborhoods": ["Arabacıalanı", "Kemalpaşa", "Beşköprü"]},
+        {"name": "Erenler", "neighborhoods": ["Merkez"]},
+        {"name": "Arifiye", "neighborhoods": ["Merkez"]},
+        {"name": "Hendek", "neighborhoods": ["Merkez"]},
+        {"name": "Karasu", "neighborhoods": ["Merkez"]},
+        {"name": "Akyazı", "neighborhoods": ["Merkez"]},
+        {"name": "Sapanca", "neighborhoods": ["Merkez"]},
+        {"name": "Söğütlü", "neighborhoods": ["Merkez"]},
+        {"name": "Geyve", "neighborhoods": ["Merkez"]},
+        {"name": "Kaynarca", "neighborhoods": ["Merkez"]},
+        {"name": "Kocaali", "neighborhoods": ["Merkez"]},
+        {"name": "Pamukova", "neighborhoods": ["Merkez"]},
+        {"name": "Taraklı", "neighborhoods": ["Merkez"]},
+        {"name": "Ferizli", "neighborhoods": ["Merkez"]},
+        {"name": "Karapürçek", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Samsun",
+      "districts": [
+        {"name": "Atakum", "neighborhoods": ["Atakent", "Kurupelit", "Denizevleri"]},
+        {"name": "İlkadım", "neighborhoods": ["Kale", "Derebahçe", "19 Mayıs"]},
+        {"name": "Canik", "neighborhoods": ["Merkez"]},
+        {"name": "Tekkeköy", "neighborhoods": ["Merkez"]},
+        {"name": "Bafra", "neighborhoods": ["Merkez"]},
+        {"name": "Çarşamba", "neighborhoods": ["Merkez"]},
+        {"name": "Terme", "neighborhoods": ["Merkez"]},
+        {"name": "Vezirköprü", "neighborhoods": ["Merkez"]},
+        {"name": "Havza", "neighborhoods": ["Merkez"]},
+        {"name": "Kavak", "neighborhoods": ["Merkez"]},
+        {"name": "Alaçam", "neighborhoods": ["Merkez"]},
+        {"name": "Asarcık", "neighborhoods": ["Merkez"]},
+        {"name": "Ayvacık", "neighborhoods": ["Merkez"]},
+        {"name": "Ladik", "neighborhoods": ["Merkez"]},
+        {"name": "Salıpazarı", "neighborhoods": ["Merkez"]},
+        {"name": "Yakakent", "neighborhoods": ["Merkez"]},
+        {"name": "19 Mayıs", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Siirt",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Bahçelievler", "Kooperatif"]},
+        {"name": "Baykan", "neighborhoods": ["Merkez"]},
+        {"name": "Eruh", "neighborhoods": ["Merkez"]},
+        {"name": "Kurtalan", "neighborhoods": ["Merkez"]},
+        {"name": "Pervari", "neighborhoods": ["Merkez"]},
+        {"name": "Şirvan", "neighborhoods": ["Merkez"]},
+        {"name": "Tillo", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Sinop",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Gelincik", "Meydankale", "Ada"]},
+        {"name": "Ayancık", "neighborhoods": ["Merkez"]},
+        {"name": "Boyabat", "neighborhoods": ["Merkez"]},
+        {"name": "Durağan", "neighborhoods": ["Merkez"]},
+        {"name": "Erfelek", "neighborhoods": ["Merkez"]},
+        {"name": "Gerze", "neighborhoods": ["Merkez"]},
+        {"name": "Türkeli", "neighborhoods": ["Merkez"]},
+        {"name": "Dikmen", "neighborhoods": ["Merkez"]},
+        {"name": "Saraydüzü", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Sivas",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Karşıyaka", "Alibaba", "Kaleardı"]},
+        {"name": "Divriği", "neighborhoods": ["Merkez"]},
+        {"name": "Gemerek", "neighborhoods": ["Merkez"]},
+        {"name": "Gürün", "neighborhoods": ["Merkez"]},
+        {"name": "Hafik", "neighborhoods": ["Merkez"]},
+        {"name": "İmranlı", "neighborhoods": ["Merkez"]},
+        {"name": "Kangal", "neighborhoods": ["Merkez"]},
+        {"name": "Koyulhisar", "neighborhoods": ["Merkez"]},
+        {"name": "Suşehri", "neighborhoods": ["Merkez"]},
+        {"name": "Şarkışla", "neighborhoods": ["Merkez"]},
+        {"name": "Yıldızeli", "neighborhoods": ["Merkez"]},
+        {"name": "Zara", "neighborhoods": ["Merkez"]},
+        {"name": "Akıncılar", "neighborhoods": ["Merkez"]},
+        {"name": "Altınyayla", "neighborhoods": ["Merkez"]},
+        {"name": "Doğanşar", "neighborhoods": ["Merkez"]},
+        {"name": "Gölova", "neighborhoods": ["Merkez"]},
+        {"name": "Ulaş", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Tekirdağ",
+      "districts": [
+        {"name": "Süleymanpaşa", "neighborhoods": ["Aydoğdu", "Hürriyet", "Yavuz"]},
+        {"name": "Kapaklı", "neighborhoods": ["Merkez"]},
+        {"name": "Çerkezköy", "neighborhoods": ["Merkez"]},
+        {"name": "Çorlu", "neighborhoods": ["Merkez", "Kazımiye", "Muhittin"]},
+        {"name": "Ergene", "neighborhoods": ["Merkez"]},
+        {"name": "Hayrabolu", "neighborhoods": ["Merkez"]},
+        {"name": "Malkara", "neighborhoods": ["Merkez"]},
+        {"name": "Muratlı", "neighborhoods": ["Merkez"]},
+        {"name": "Saray", "neighborhoods": ["Merkez"]},
+        {"name": "Şarköy", "neighborhoods": ["Merkez"]},
+        {"name": "Marmaraereğlisi", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Tokat",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Gazi Osman Paşa", "Behzat", "Karşıyaka"]},
+        {"name": "Almus", "neighborhoods": ["Merkez"]},
+        {"name": "Artova", "neighborhoods": ["Merkez"]},
+        {"name": "Erbaa", "neighborhoods": ["Merkez"]},
+        {"name": "Niksar", "neighborhoods": ["Merkez"]},
+        {"name": "Pazar", "neighborhoods": ["Merkez"]},
+        {"name": "Reşadiye", "neighborhoods": ["Merkez"]},
+        {"name": "Turhal", "neighborhoods": ["Merkez"]},
+        {"name": "Zile", "neighborhoods": ["Merkez"]},
+        {"name": "Başçiftlik", "neighborhoods": ["Merkez"]},
+        {"name": "Sulusaray", "neighborhoods": ["Merkez"]},
+        {"name": "Yeşilyurt", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Trabzon",
+      "districts": [
+        {"name": "Ortahisar", "neighborhoods": ["Kemerkaya", "Pazarkapı", "Boztepe", "Pelitli"]},
+        {"name": "Akçaabat", "neighborhoods": ["Merkez"]},
+        {"name": "Araklı", "neighborhoods": ["Merkez"]},
+        {"name": "Arsin", "neighborhoods": ["Merkez"]},
+        {"name": "Çaykara", "neighborhoods": ["Merkez"]},
+        {"name": "Düzköy", "neighborhoods": ["Merkez"]},
+        {"name": "Hayrat", "neighborhoods": ["Merkez"]},
+        {"name": "Köprübaşı", "neighborhoods": ["Merkez"]},
+        {"name": "Maçka", "neighborhoods": ["Merkez"]},
+        {"name": "Of", "neighborhoods": ["Merkez"]},
+        {"name": "Sürmene", "neighborhoods": ["Merkez"]},
+        {"name": "Tonya", "neighborhoods": ["Merkez"]},
+        {"name": "Vakfıkebir", "neighborhoods": ["Merkez"]},
+        {"name": "Yomra", "neighborhoods": ["Merkez"]},
+        {"name": "Beşikdüzü", "neighborhoods": ["Merkez"]},
+        {"name": "Şalpazarı", "neighborhoods": ["Merkez"]},
+        {"name": "Çarşıbaşı", "neighborhoods": ["Merkez"]},
+        {"name": "Dernekpazarı", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Tunceli",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Atatürk", "Cumhuriyet"]},
+        {"name": "Çemişgezek", "neighborhoods": ["Merkez"]},
+        {"name": "Hozat", "neighborhoods": ["Merkez"]},
+        {"name": "Mazgirt", "neighborhoods": ["Merkez"]},
+        {"name": "Nazımiye", "neighborhoods": ["Merkez"]},
+        {"name": "Ovacık", "neighborhoods": ["Merkez"]},
+        {"name": "Pertek", "neighborhoods": ["Merkez"]},
+        {"name": "Pülümür", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Şanlıurfa",
+      "districts": [
+        {"name": "Eyyübiye", "neighborhoods": ["Eyüpnebi", "Yenice", "Muradiye"]},
+        {"name": "Haliliye", "neighborhoods": ["Süleymaniye", "Akşemsettin", "Şehitlik"]},
+        {"name": "Karaköprü", "neighborhoods": ["Direkli", "Haliliye", "Karaköprü"]},
+        {"name": "Akçakale", "neighborhoods": ["Merkez"]},
+        {"name": "Birecik", "neighborhoods": ["Merkez"]},
+        {"name": "Bozova", "neighborhoods": ["Merkez"]},
+        {"name": "Ceylanpınar", "neighborhoods": ["Merkez"]},
+        {"name": "Halfeti", "neighborhoods": ["Merkez"]},
+        {"name": "Harran", "neighborhoods": ["Merkez"]},
+        {"name": "Hilvan", "neighborhoods": ["Merkez"]},
+        {"name": "Siverek", "neighborhoods": ["Merkez"]},
+        {"name": "Suruç", "neighborhoods": ["Merkez"]},
+        {"name": "Viranşehir", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Uşak",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "İslice", "Dikilitaş"]},
+        {"name": "Banaz", "neighborhoods": ["Merkez"]},
+        {"name": "Eşme", "neighborhoods": ["Merkez"]},
+        {"name": "Karahallı", "neighborhoods": ["Merkez"]},
+        {"name": "Sivaslı", "neighborhoods": ["Merkez"]},
+        {"name": "Ulubey", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Van",
+      "districts": [
+        {"name": "İpekyolu", "neighborhoods": ["Şerefiye", "Hafıziye", "Alipaşa"]},
+        {"name": "Tuşba", "neighborhoods": ["Yüzüncü Yıl", "Akköprü"]},
+        {"name": "Edremit", "neighborhoods": ["Merkez"]},
+        {"name": "Erciş", "neighborhoods": ["Merkez"]},
+        {"name": "Başkale", "neighborhoods": ["Merkez"]},
+        {"name": "Çaldıran", "neighborhoods": ["Merkez"]},
+        {"name": "Çatak", "neighborhoods": ["Merkez"]},
+        {"name": "Gevaş", "neighborhoods": ["Merkez"]},
+        {"name": "Gürpınar", "neighborhoods": ["Merkez"]},
+        {"name": "Muradiye", "neighborhoods": ["Merkez"]},
+        {"name": "Özalp", "neighborhoods": ["Merkez"]},
+        {"name": "Saray", "neighborhoods": ["Merkez"]},
+        {"name": "Bahçesaray", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Yozgat",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Medrese", "Saray", "Nohutlu"]},
+        {"name": "Akdağmadeni", "neighborhoods": ["Merkez"]},
+        {"name": "Boğazlıyan", "neighborhoods": ["Merkez"]},
+        {"name": "Çayıralan", "neighborhoods": ["Merkez"]},
+        {"name": "Çekerek", "neighborhoods": ["Merkez"]},
+        {"name": "Sarıkaya", "neighborhoods": ["Merkez"]},
+        {"name": "Sorgun", "neighborhoods": ["Merkez"]},
+        {"name": "Şefaatli", "neighborhoods": ["Merkez"]},
+        {"name": "Yerköy", "neighborhoods": ["Merkez"]},
+        {"name": "Aydıncık", "neighborhoods": ["Merkez"]},
+        {"name": "Çandır", "neighborhoods": ["Merkez"]},
+        {"name": "Kadışehri", "neighborhoods": ["Merkez"]},
+        {"name": "Saraykent", "neighborhoods": ["Merkez"]},
+        {"name": "Yenifakılı", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Zonguldak",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Mithatpaşa", "Meşrutiyet", "Terakki"]},
+        {"name": "Çaycuma", "neighborhoods": ["Merkez"]},
+        {"name": "Devrek", "neighborhoods": ["Merkez"]},
+        {"name": "Ereğli", "neighborhoods": ["Merkez"]},
+        {"name": "Alaplı", "neighborhoods": ["Merkez"]},
+        {"name": "Gökçebey", "neighborhoods": ["Merkez"]},
+        {"name": "Kilimli", "neighborhoods": ["Merkez"]},
+        {"name": "Kozlu", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Aksaray",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Zafer", "Taşpazar", "Fatih"]},
+        {"name": "Ağaçören", "neighborhoods": ["Merkez"]},
+        {"name": "Eskil", "neighborhoods": ["Merkez"]},
+        {"name": "Gülağaç", "neighborhoods": ["Merkez"]},
+        {"name": "Güzelyurt", "neighborhoods": ["Merkez"]},
+        {"name": "Ortaköy", "neighborhoods": ["Merkez"]},
+        {"name": "Sarıyahşi", "neighborhoods": ["Merkez"]},
+        {"name": "Sultanhanı", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Bayburt",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Şingah", "Tuzcuzade", "Zahit"]},
+        {"name": "Aydıntepe", "neighborhoods": ["Merkez"]},
+        {"name": "Demirözü", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Karaman",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Tahsin Ünal", "İsmet Paşa", "Hamidiye"]},
+        {"name": "Ayrancı", "neighborhoods": ["Merkez"]},
+        {"name": "Başyayla", "neighborhoods": ["Merkez"]},
+        {"name": "Ermenek", "neighborhoods": ["Merkez"]},
+        {"name": "Kazımkarabekir", "neighborhoods": ["Merkez"]},
+        {"name": "Sarıveliler", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kırıkkale",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Fabrika", "Sanayi", "Bağlarbaşı"]},
+        {"name": "Bahşili", "neighborhoods": ["Merkez"]},
+        {"name": "Balışeyh", "neighborhoods": ["Merkez"]},
+        {"name": "Çelebi", "neighborhoods": ["Merkez"]},
+        {"name": "Delice", "neighborhoods": ["Merkez"]},
+        {"name": "Karakeçili", "neighborhoods": ["Merkez"]},
+        {"name": "Keskin", "neighborhoods": ["Merkez"]},
+        {"name": "Sulakyurt", "neighborhoods": ["Merkez"]},
+        {"name": "Yahşihan", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Batman",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Yenişehir", "Belde"]},
+        {"name": "Beşiri", "neighborhoods": ["Merkez"]},
+        {"name": "Gercüş", "neighborhoods": ["Merkez"]},
+        {"name": "Hasankeyf", "neighborhoods": ["Merkez"]},
+        {"name": "Kozluk", "neighborhoods": ["Merkez"]},
+        {"name": "Sason", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Şırnak",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Cumhuriyet", "Yeşilyurt"]},
+        {"name": "Beytüşşebap", "neighborhoods": ["Merkez"]},
+        {"name": "Cizre", "neighborhoods": ["Merkez"]},
+        {"name": "Güçlükonak", "neighborhoods": ["Merkez"]},
+        {"name": "İdil", "neighborhoods": ["Merkez"]},
+        {"name": "Silopi", "neighborhoods": ["Merkez"]},
+        {"name": "Uludere", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Bartın",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Kemerköprü", "Orduyeri", "Tuna"]},
+        {"name": "Amasra", "neighborhoods": ["Merkez"]},
+        {"name": "Kurucaşile", "neighborhoods": ["Merkez"]},
+        {"name": "Ulus", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Ardahan",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Karagöl", "Atatürk"]},
+        {"name": "Çıldır", "neighborhoods": ["Merkez"]},
+        {"name": "Damal", "neighborhoods": ["Merkez"]},
+        {"name": "Göle", "neighborhoods": ["Merkez"]},
+        {"name": "Hanak", "neighborhoods": ["Merkez"]},
+        {"name": "Posof", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Iğdır",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Baharlı", "Özgür", "Söğütlü"]},
+        {"name": "Aralık", "neighborhoods": ["Merkez"]},
+        {"name": "Karakoyunlu", "neighborhoods": ["Merkez"]},
+        {"name": "Tuzluca", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Yalova",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["İstiklal", "Süleymanbey", "Bahçelievler"]},
+        {"name": "Altınova", "neighborhoods": ["Merkez"]},
+        {"name": "Armutlu", "neighborhoods": ["Merkez"]},
+        {"name": "Çınarcık", "neighborhoods": ["Merkez"]},
+        {"name": "Çiftlikköy", "neighborhoods": ["Merkez"]},
+        {"name": "Termal", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Karabük",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Yenişehir", "Cumhuriyet", "Bayır"]},
+        {"name": "Eflani", "neighborhoods": ["Merkez"]},
+        {"name": "Eskipazar", "neighborhoods": ["Merkez"]},
+        {"name": "Ovacık", "neighborhoods": ["Merkez"]},
+        {"name": "Safranbolu", "neighborhoods": ["Merkez", "Kıranköy", "Bağlar"]},
+        {"name": "Yenice", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Kilis",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Kazım Karabekir", "Ekrem Çetin"]},
+        {"name": "Elbeyli", "neighborhoods": ["Merkez"]},
+        {"name": "Musabeyli", "neighborhoods": ["Merkez"]},
+        {"name": "Polateli", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Osmaniye",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Alibeyli", "Raufbey", "Fakıuşağı"]},
+        {"name": "Bahçe", "neighborhoods": ["Merkez"]},
+        {"name": "Düziçi", "neighborhoods": ["Merkez"]},
+        {"name": "Hasanbeyli", "neighborhoods": ["Merkez"]},
+        {"name": "Kadirli", "neighborhoods": ["Merkez"]},
+        {"name": "Sumbas", "neighborhoods": ["Merkez"]},
+        {"name": "Toprakkale", "neighborhoods": ["Merkez"]}
+      ]
+    },
+    {
+      "name": "Düzce",
+      "districts": [
+        {"name": "Merkez", "neighborhoods": ["Aziziye", "Cedidiye", "Fevzi Çakmak"]},
+        {"name": "Akçakoca", "neighborhoods": ["Merkez"]},
+        {"name": "Cumayeri", "neighborhoods": ["Merkez"]},
+        {"name": "Çilimli", "neighborhoods": ["Merkez"]},
+        {"name": "Gölyaka", "neighborhoods": ["Merkez"]},
+        {"name": "Gümüşova", "neighborhoods": ["Merkez"]},
+        {"name": "Kaynaşlı", "neighborhoods": ["Merkez"]},
+        {"name": "Yığılca", "neighborhoods": ["Merkez"]}
+      ]
+    }
+  ]
+}
