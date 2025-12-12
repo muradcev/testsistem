@@ -24,10 +24,10 @@ class VehicleProvider extends ChangeNotifier {
     try {
       final response = await _apiService.getVehicles();
       _vehicles = List<Map<String, dynamic>>.from(response.data['vehicles'] ?? []);
-      _isLoading = false;
-      notifyListeners();
     } catch (e) {
+      debugPrint('Failed to load vehicles: $e');
       _error = _parseError(e);
+    } finally {
       _isLoading = false;
       notifyListeners();
     }

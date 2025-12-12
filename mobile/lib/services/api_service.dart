@@ -5,6 +5,7 @@ import '../config/constants.dart';
 class ApiService {
   late final Dio _dio;
   String? _accessToken;
+  bool _tokenLoaded = false;
 
   ApiService() {
     _dio = Dio(BaseOptions(
@@ -19,6 +20,8 @@ class ApiService {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
+        // Token yüklenene kadar bekle
+        await _ensureTokenLoaded();
         if (_accessToken != null) {
           options.headers['Authorization'] = 'Bearer $_accessToken';
         }
@@ -35,9 +38,18 @@ class ApiService {
     _loadToken();
   }
 
+  Future<void> _ensureTokenLoaded() async {
+    if (!_tokenLoaded) {
+      final prefs = await SharedPreferences.getInstance();
+      _accessToken = prefs.getString(StorageKeys.accessToken);
+      _tokenLoaded = true;
+    }
+  }
+
   Future<void> _loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString(StorageKeys.accessToken);
+    _tokenLoaded = true;
   }
 
   Future<void> setToken(String token) async {
