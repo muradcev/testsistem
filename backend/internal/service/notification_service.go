@@ -3,16 +3,44 @@ package service
 import (
 	"context"
 	"log"
+
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/messaging"
+	"google.golang.org/api/option"
 )
 
 type NotificationService struct {
+	client      *messaging.Client
 	initialized bool
 }
 
-func NewNotificationService(fcmCredentials string) *NotificationService {
-	log.Println("Bildirim servisi başlatıldı (mock mod - Firebase devre dışı)")
+func NewNotificationService(credentialsJSON string) *NotificationService {
+	if credentialsJSON == "" {
+		log.Println("Firebase credentials belirtilmedi - bildirim servisi devre dışı")
+		return &NotificationService{initialized: false}
+	}
+
+	ctx := context.Background()
+
+	// JSON string olarak gelen credentials'ı kullan
+	opt := option.WithCredentialsJSON([]byte(credentialsJSON))
+
+	app, err := firebase.NewApp(ctx, nil, opt)
+	if err != nil {
+		log.Printf("Firebase uygulaması başlatılamadı: %v", err)
+		return &NotificationService{initialized: false}
+	}
+
+	client, err := app.Messaging(ctx)
+	if err != nil {
+		log.Printf("Firebase Messaging client oluşturulamadı: %v", err)
+		return &NotificationService{initialized: false}
+	}
+
+	log.Println("Firebase bildirim servisi başarıyla başlatıldı")
 	return &NotificationService{
-		initialized: false,
+		client:      client,
+		initialized: true,
 	}
 }
 
@@ -28,8 +56,48 @@ func (s *NotificationService) SendToDevice(ctx context.Context, token string, me
 	if token == "" {
 		return nil
 	}
-	log.Printf("[MOCK] Bildirim gönderildi - Token: %s..., Başlık: %s, İçerik: %s",
-		token[:min(20, len(token))], message.Title, message.Body)
+
+	if !s.initialized || s.client == nil {
+		log.Printf("[MOCK] Bildirim gönderildi - Token: %s..., Başlık: %s, İçerik: %s",
+			token[:min(20, len(token))], message.Title, message.Body)
+		return nil
+	}
+
+	fcmMessage := &messaging.Message{
+		Token: token,
+		Notification: &messaging.Notification{
+			Title: message.Title,
+			Body:  message.Body,
+		},
+		Data: message.Data,
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+			Notification: &messaging.AndroidNotification{
+				Sound:       "default",
+				ClickAction: "FLUTTER_NOTIFICATION_CLICK",
+			},
+		},
+		APNS: &messaging.APNSConfig{
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					Sound: "default",
+					Badge: intPtr(1),
+				},
+			},
+		},
+	}
+
+	if message.ImageURL != "" {
+		fcmMessage.Notification.ImageURL = message.ImageURL
+	}
+
+	response, err := s.client.Send(ctx, fcmMessage)
+	if err != nil {
+		log.Printf("Bildirim gönderilemedi - Token: %s..., Hata: %v", token[:min(20, len(token))], err)
+		return err
+	}
+
+	log.Printf("Bildirim gönderildi - Response: %s, Başlık: %s", response, message.Title)
 	return nil
 }
 
@@ -38,7 +106,49 @@ func (s *NotificationService) SendToDevices(ctx context.Context, tokens []string
 	if len(tokens) == 0 {
 		return nil
 	}
-	log.Printf("[MOCK] Toplu bildirim gönderildi - %d cihaz, Başlık: %s", len(tokens), message.Title)
+
+	if !s.initialized || s.client == nil {
+		log.Printf("[MOCK] Toplu bildirim gönderildi - %d cihaz, Başlık: %s", len(tokens), message.Title)
+		return nil
+	}
+
+	// FCM v1 API'de multicast mesaj gönderimi
+	fcmMessage := &messaging.MulticastMessage{
+		Tokens: tokens,
+		Notification: &messaging.Notification{
+			Title: message.Title,
+			Body:  message.Body,
+		},
+		Data: message.Data,
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+			Notification: &messaging.AndroidNotification{
+				Sound:       "default",
+				ClickAction: "FLUTTER_NOTIFICATION_CLICK",
+			},
+		},
+		APNS: &messaging.APNSConfig{
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					Sound: "default",
+					Badge: intPtr(1),
+				},
+			},
+		},
+	}
+
+	if message.ImageURL != "" {
+		fcmMessage.Notification.ImageURL = message.ImageURL
+	}
+
+	response, err := s.client.SendEachForMulticast(ctx, fcmMessage)
+	if err != nil {
+		log.Printf("Toplu bildirim gönderilemedi - Hata: %v", err)
+		return err
+	}
+
+	log.Printf("Toplu bildirim gönderildi - Başarılı: %d, Başarısız: %d, Başlık: %s",
+		response.SuccessCount, response.FailureCount, message.Title)
 	return nil
 }
 
@@ -123,4 +233,8 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func intPtr(i int) *int {
+	return &i
 }

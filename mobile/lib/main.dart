@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'config/theme.dart';
 import 'config/router.dart';
@@ -12,6 +13,7 @@ import 'providers/questions_provider.dart';
 import 'services/api_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
+import 'services/background_location_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,16 +21,30 @@ void main() async {
   // Hive initialization
   await Hive.initFlutter();
 
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+    // Continue without Firebase - it may not be configured yet
+  }
+
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
+  // Initialize background location service
+  await BackgroundLocationService.initialize();
+
   // Initialize services
   final apiService = ApiService();
   final locationService = LocationService();
   final notificationService = NotificationService();
+
+  // Connect notification service to API service for FCM token sending
+  notificationService.setApiService(apiService);
 
   await notificationService.initialize();
 

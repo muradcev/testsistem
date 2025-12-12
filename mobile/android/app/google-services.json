@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "291312372208",
+    "project_id": "nakliyeo-mobil-dceca",
+    "storage_bucket": "nakliyeo-mobil-dceca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:291312372208:android:024aca559837adae45f535",
+        "android_client_info": {
+          "package_name": "com.nakliyeo.nakliyeo_mobil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbrlMzXnMq0J7xHxCZSwWSQjoK8XYN7u0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

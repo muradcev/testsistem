@@ -74,9 +74,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kayıt başarılı! Giriş yapabilirsiniz.')),
+        const SnackBar(content: Text('Kayit basarili! Hos geldiniz.')),
       );
-      context.goNamed('login');
+      context.goNamed('home');
     } else if (mounted && authProvider.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(authProvider.error!)),

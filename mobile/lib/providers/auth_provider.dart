@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import '../services/api_service.dart';
+import '../services/background_location_service.dart';
 import '../config/constants.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -36,6 +38,12 @@ class AuthProvider extends ChangeNotifier {
     if (_isLoggedIn) {
       await loadProfile();
       await _sendDeviceInfo();
+      // Arka plan servisini başlat
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(StorageKeys.accessToken);
+      if (token != null) {
+        await _startBackgroundLocationService(token);
+      }
     }
 
     notifyListeners();
@@ -66,6 +74,9 @@ class AuthProvider extends ChangeNotifier {
       // Cihaz bilgisini gonder
       await _sendDeviceInfo();
 
+      // Arka plan konum servisini başlat ve token gönder
+      await _startBackgroundLocationService(data['auth']['access_token']);
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -84,9 +95,13 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await _apiService.register(data);
-      _isLoading = false;
-      notifyListeners();
-      return true;
+
+      // Kayit basarili, simdi otomatik giris yap
+      final phone = data['phone'] as String;
+      final password = data['password'] as String;
+
+      final loginResult = await login(phone, password);
+      return loginResult;
     } catch (e) {
       _error = _parseError(e);
       _isLoading = false;
@@ -161,6 +176,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Arka plan servisini durdur
+    await BackgroundLocationService.stopService();
+
     await _apiService.clearToken();
 
     final prefs = await SharedPreferences.getInstance();
@@ -176,6 +194,21 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
 
     notifyListeners();
+  }
+
+  Future<void> _startBackgroundLocationService(String token) async {
+    try {
+      // Servisi başlat
+      await BackgroundLocationService.startService();
+
+      // Token'ı servise gönder
+      final service = FlutterBackgroundService();
+      service.invoke('updateToken', {'token': token});
+
+      debugPrint('Background location service started');
+    } catch (e) {
+      debugPrint('Failed to start background location service: $e');
+    }
   }
 
   Future<void> _sendDeviceInfo() async {

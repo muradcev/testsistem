@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/questions_provider.dart';
 import '../../services/location_service.dart';
+import '../../services/notification_service.dart';
 import '../../config/theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _initLocation();
     _loadQuestions();
+    _sendFcmToken();
   }
 
   Future<void> _initLocation() async {
@@ -32,6 +34,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadQuestions() async {
     await context.read<QuestionsProvider>().loadPendingQuestions();
+  }
+
+  Future<void> _sendFcmToken() async {
+    // Send FCM token to server after login
+    try {
+      final notificationService = context.read<NotificationService>();
+      await notificationService.sendFcmTokenToServer();
+    } catch (e) {
+      debugPrint('Failed to send FCM token: $e');
+    }
   }
 
   @override
