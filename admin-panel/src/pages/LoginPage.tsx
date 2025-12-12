@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
-import { TruckIcon } from '@heroicons/react/24/outline'
+import { TruckIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@testsistem.com')
@@ -83,6 +83,24 @@ export default function LoginPage() {
         <p className="text-center text-sm text-gray-500">
           Varsayılan: admin@testsistem.com / admin123
         </p>
+
+        {/* APK Download */}
+        <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-800">Şoför Uygulaması</p>
+              <p className="text-xs text-green-600">Android APK İndir</p>
+            </div>
+            <a
+              href="/downloads/nakliyeo-driver.apk"
+              download
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              APK İndir
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   )
