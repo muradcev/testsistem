@@ -48,7 +48,7 @@ type DriverRegisterRequest struct {
 	Password     string `json:"password" binding:"required,min=6"`
 	Province     string `json:"province" binding:"required"`
 	District     string `json:"district" binding:"required"`
-	Neighborhood string `json:"neighborhood" binding:"required"`
+	Neighborhood string `json:"neighborhood"` // Optional - removed from app
 }
 
 type DriverLoginRequest struct {

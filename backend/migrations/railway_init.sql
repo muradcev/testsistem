@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS drivers (
     password_hash VARCHAR(255) NOT NULL,
     province VARCHAR(100) NOT NULL,
     district VARCHAR(100) NOT NULL,
-    neighborhood VARCHAR(200) NOT NULL,
+    neighborhood VARCHAR(200),
     home_latitude DOUBLE PRECISION,
     home_longitude DOUBLE PRECISION,
     fcm_token TEXT,
