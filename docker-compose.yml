@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with PostGIS
+  postgres:
+    image: postgis/postgis:15-3.3
+    platform: linux/amd64
+    container_name: nakliyeo-mobil-postgres
+    environment:
+      POSTGRES_USER: nakliyeo
+      POSTGRES_PASSWORD: nakliyeo123
+      POSTGRES_DB: nakliyeo_mobil
+    ports:
+      - "5433:5432"
+    volumes:
+      - nakliyeo_mobil_postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nakliyeo -d nakliyeo_mobil"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: nakliyeo-mobil-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - nakliyeo_mobil_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Go Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nakliyeo-mobil-backend
+    environment:
+      DATABASE_URL: postgres://nakliyeo:nakliyeo123@postgres:5432/nakliyeo_mobil?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-nakliyeo-jwt-secret-change-in-production}
+      PORT: 8080
+      GIN_MODE: release
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Admin Panel (React)
+  admin-panel:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
+    container_name: nakliyeo-mobil-admin
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  nakliyeo_mobil_postgres_data:
+  nakliyeo_mobil_redis_data:
+
+networks:
+  default:
+    name: nakliyeo-mobil-network

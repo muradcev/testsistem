@@ -1,0 +1,126 @@
+package api
+
+import (
+	"net/http"
+
+	"nakliyeo-mobil/internal/middleware"
+	"nakliyeo-mobil/internal/models"
+	"nakliyeo-mobil/internal/service"
+	"nakliyeo-mobil/internal/websocket"
+
+	"github.com/gin-gonic/gin"
+)
+
+type LocationHandler struct {
+	locationService *service.LocationService
+	tripService     *service.TripService
+	driverService   *service.DriverService
+	wsHub           *websocket.Hub
+}
+
+func NewLocationHandler(locationService *service.LocationService, tripService *service.TripService, driverService *service.DriverService, wsHub *websocket.Hub) *LocationHandler {
+	return &LocationHandler{
+		locationService: locationService,
+		tripService:     tripService,
+		driverService:   driverService,
+		wsHub:           wsHub,
+	}
+}
+
+func (h *LocationHandler) SaveLocation(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
+		return
+	}
+
+	var req models.LocationCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.locationService.SaveLocation(c.Request.Context(), userID, &req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// WebSocket üzerinden konum güncellemesi yayınla
+	if h.wsHub != nil {
+		driver, _ := h.driverService.GetByID(c.Request.Context(), userID)
+		driverName := ""
+		status := "unknown"
+		if driver != nil {
+			driverName = driver.Name + " " + driver.Surname
+			status = driver.CurrentStatus
+		}
+
+		speed := float64(0)
+		if req.Speed != nil {
+			speed = *req.Speed
+		}
+
+		h.wsHub.BroadcastLocationUpdate(&websocket.LocationUpdate{
+			DriverID:  userID.String(),
+			Name:      driverName,
+			Latitude:  req.Latitude,
+			Longitude: req.Longitude,
+			Speed:     speed,
+			IsMoving:  req.IsMoving,
+			Status:    status,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Konum kaydedildi"})
+}
+
+func (h *LocationHandler) SaveBatchLocations(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
+		return
+	}
+
+	var req models.BatchLocationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.locationService.SaveBatchLocations(c.Request.Context(), userID, req.Locations); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Toplu konumlardan en son olanı WebSocket üzerinden yayınla
+	if h.wsHub != nil && len(req.Locations) > 0 {
+		lastLoc := req.Locations[len(req.Locations)-1]
+		driver, _ := h.driverService.GetByID(c.Request.Context(), userID)
+		driverName := ""
+		status := "unknown"
+		if driver != nil {
+			driverName = driver.Name + " " + driver.Surname
+			status = driver.CurrentStatus
+		}
+
+		speed := float64(0)
+		if lastLoc.Speed != nil {
+			speed = *lastLoc.Speed
+		}
+
+		h.wsHub.BroadcastLocationUpdate(&websocket.LocationUpdate{
+			DriverID:  userID.String(),
+			Name:      driverName,
+			Latitude:  lastLoc.Latitude,
+			Longitude: lastLoc.Longitude,
+			Speed:     speed,
+			IsMoving:  lastLoc.IsMoving,
+			Status:    status,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Konumlar kaydedildi",
+		"count":   len(req.Locations),
+	})
+}
