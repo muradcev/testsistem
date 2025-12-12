@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
+import '../../providers/questions_provider.dart';
 import '../../services/location_service.dart';
 import '../../config/theme.dart';
 
@@ -17,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _initLocation();
+    _loadQuestions();
   }
 
   Future<void> _initLocation() async {
@@ -27,16 +30,51 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadQuestions() async {
+    await context.read<QuestionsProvider>().loadPendingQuestions();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nakliyeo Mobil'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // TODO: Notifications
+          Consumer<QuestionsProvider>(
+            builder: (context, questions, _) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.quiz_outlined),
+                    onPressed: () => context.goNamed('questions'),
+                  ),
+                  if (questions.pendingCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          '${questions.pendingCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
             },
           ),
         ],
@@ -167,9 +205,71 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Pending questions card
+              Consumer<QuestionsProvider>(
+                builder: (context, questions, _) {
+                  if (questions.pendingCount > 0) {
+                    return Card(
+                      color: Colors.orange.shade50,
+                      child: InkWell(
+                        onTap: () => context.goNamed('questions'),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade100,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.quiz,
+                                  color: Colors.orange.shade700,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${questions.pendingCount} Bekleyen Soru',
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Sorulari cevaplayarak katkida bulunun',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: Colors.orange.shade700,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+              const SizedBox(height: 16),
+
               // Quick actions
               Text(
-                'Hızlı İşlemler',
+                'Hizli Islemler',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -179,17 +279,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _buildQuickAction(
                       context,
                       Icons.local_shipping,
-                      'Araçlarım',
-                      () {},
+                      'Araclarim',
+                      () => context.goNamed('vehicles'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildQuickAction(
+                    child: _buildQuickActionWithBadge(
                       context,
-                      Icons.poll,
-                      'Anketler',
-                      () {},
+                      Icons.quiz,
+                      'Sorular',
+                      () => context.goNamed('questions'),
                     ),
                   ),
                 ],
@@ -200,9 +300,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: _buildQuickAction(
                       context,
-                      Icons.history,
-                      'Geçmiş',
-                      () {},
+                      Icons.person,
+                      'Profil',
+                      () => context.goNamed('profile'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -210,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _buildQuickAction(
                       context,
                       Icons.help_outline,
-                      'Yardım',
+                      'Yardim',
                       () {},
                     ),
                   ),
@@ -279,6 +379,64 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildQuickActionWithBadge(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+  ) {
+    return Consumer<QuestionsProvider>(
+      builder: (context, questions, _) {
+        return Card(
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(icon, size: 32, color: AppColors.primary),
+                      if (questions.pendingCount > 0)
+                        Positioned(
+                          right: -8,
+                          top: -8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            child: Text(
+                              '${questions.pendingCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

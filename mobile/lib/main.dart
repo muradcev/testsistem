@@ -8,6 +8,7 @@ import 'config/router.dart';
 import 'providers/auth_provider.dart';
 import 'providers/location_provider.dart';
 import 'providers/vehicle_provider.dart';
+import 'providers/questions_provider.dart';
 import 'services/api_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
@@ -40,6 +41,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider(apiService)),
         ChangeNotifierProvider(create: (_) => LocationProvider(locationService, apiService)),
         ChangeNotifierProvider(create: (_) => VehicleProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => QuestionsProvider(apiService)),
       ],
       child: const NakliyeoApp(),
     ),

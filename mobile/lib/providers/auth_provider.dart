@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../services/api_service.dart';
 import '../config/constants.dart';
 
@@ -32,6 +35,7 @@ class AuthProvider extends ChangeNotifier {
 
     if (_isLoggedIn) {
       await loadProfile();
+      await _sendDeviceInfo();
     }
 
     notifyListeners();
@@ -58,6 +62,9 @@ class AuthProvider extends ChangeNotifier {
       _userId = data['driver']['id'];
       _phone = data['driver']['phone'];
       _user = data['driver'];
+
+      // Cihaz bilgisini gonder
+      await _sendDeviceInfo();
 
       _isLoading = false;
       notifyListeners();
@@ -169,6 +176,44 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
 
     notifyListeners();
+  }
+
+  Future<void> _sendDeviceInfo() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final deviceInfo = DeviceInfoPlugin();
+
+      String deviceModel = '';
+      String deviceOS = '';
+      String deviceOSVersion = '';
+
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceModel = '${androidInfo.manufacturer} ${androidInfo.model}';
+        deviceOS = 'android';
+        deviceOSVersion = androidInfo.version.release;
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        deviceModel = iosInfo.model;
+        deviceOS = 'ios';
+        deviceOSVersion = iosInfo.systemVersion;
+      }
+
+      await _apiService.sendDeviceInfo({
+        'app_version': packageInfo.version,
+        'app_build_number': int.tryParse(packageInfo.buildNumber) ?? 0,
+        'device_model': deviceModel,
+        'device_os': deviceOS,
+        'device_os_version': deviceOSVersion,
+        'push_enabled': true,
+        'location_permission': 'unknown',
+        'background_location_enabled': false,
+      });
+
+      debugPrint('Device info sent successfully');
+    } catch (e) {
+      debugPrint('Failed to send device info: $e');
+    }
   }
 
   String _parseError(dynamic e) {

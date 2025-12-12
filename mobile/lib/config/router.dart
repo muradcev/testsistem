@@ -9,6 +9,7 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/vehicles/vehicles_screen.dart';
 import '../screens/vehicles/add_vehicle_screen.dart';
 import '../screens/surveys/survey_screen.dart';
+import '../screens/questions/questions_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -58,6 +59,11 @@ final appRouter = GoRouter(
           path: '/profile',
           name: 'profile',
           builder: (context, state) => const ProfileScreen(),
+        ),
+        GoRoute(
+          path: '/questions',
+          name: 'questions',
+          builder: (context, state) => const QuestionsScreen(),
         ),
       ],
     ),

@@ -100,6 +100,10 @@ class ApiService {
     return _dio.put(ApiConstants.fcmToken, data: {'token': token});
   }
 
+  Future<Response> sendDeviceInfo(Map<String, dynamic> data) async {
+    return _dio.post(ApiConstants.deviceInfo, data: data);
+  }
+
   // Vehicles
   Future<Response> getVehicles() async {
     return _dio.get(ApiConstants.vehicles);
@@ -150,6 +154,15 @@ class ApiService {
 
   Future<Response> submitSurveyResponse(String surveyId, Map<String, dynamic> data) async {
     return _dio.post('${ApiConstants.surveys.replaceAll('/pending', '')}/$surveyId/respond', data: data);
+  }
+
+  // Questions (Akıllı Soru Sistemi)
+  Future<Response> getPendingQuestions() async {
+    return _dio.get(ApiConstants.questionsPending);
+  }
+
+  Future<Response> answerQuestion(String questionId, Map<String, dynamic> data) async {
+    return _dio.post(ApiConstants.answerQuestion(questionId), data: data);
   }
 
   // Generic methods

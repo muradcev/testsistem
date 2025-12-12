@@ -11,11 +11,16 @@ class ApiConstants {
 
   static const String profile = '/driver/profile';
   static const String fcmToken = '/driver/fcm-token';
+  static const String deviceInfo = '/driver/device-info';
   static const String vehicles = '/driver/vehicles';
   static const String trailers = '/driver/trailers';
   static const String location = '/driver/location';
   static const String locationBatch = '/driver/location/batch';
   static const String surveys = '/driver/surveys/pending';
+
+  // Questions (Akıllı Soru Sistemi)
+  static const String questionsPending = '/driver/questions/pending';
+  static String answerQuestion(String id) => '/driver/questions/$id/answer';
 
   static const String provinces = '/locations/provinces';
   static String districts(String province) => '/locations/districts/$province';
