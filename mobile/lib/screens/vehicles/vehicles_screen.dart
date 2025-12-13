@@ -68,7 +68,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     TextButton.icon(
-                      onPressed: () => context.goNamed('add-vehicle'),
+                      onPressed: () => context.push('/vehicles/add'),
                       icon: const Icon(Icons.add),
                       label: const Text('Ekle'),
                     ),

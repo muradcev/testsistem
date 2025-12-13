@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
@@ -15,10 +17,17 @@ type NotificationService struct {
 }
 
 func NewNotificationService(credentialsJSON string) *NotificationService {
+	fmt.Println("=== Firebase Notification Service Başlatılıyor ===")
+	os.Stdout.Sync()
+
 	if credentialsJSON == "" {
-		log.Println("Firebase credentials belirtilmedi - bildirim servisi devre dışı")
+		fmt.Println("[FIREBASE] Credentials belirtilmedi - bildirim servisi devre dışı")
+		os.Stdout.Sync()
 		return &NotificationService{initialized: false}
 	}
+
+	fmt.Printf("[FIREBASE] Credentials uzunluğu: %d karakter\n", len(credentialsJSON))
+	os.Stdout.Sync()
 
 	ctx := context.Background()
 
@@ -27,17 +36,22 @@ func NewNotificationService(credentialsJSON string) *NotificationService {
 
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
-		log.Printf("Firebase uygulaması başlatılamadı: %v", err)
+		fmt.Printf("[FIREBASE] Uygulama başlatılamadı: %v\n", err)
+		os.Stdout.Sync()
 		return &NotificationService{initialized: false}
 	}
 
 	client, err := app.Messaging(ctx)
 	if err != nil {
-		log.Printf("Firebase Messaging client oluşturulamadı: %v", err)
+		fmt.Printf("[FIREBASE] Messaging client oluşturulamadı: %v\n", err)
+		os.Stdout.Sync()
 		return &NotificationService{initialized: false}
 	}
 
+	fmt.Println("[FIREBASE] ✓ Bildirim servisi başarıyla başlatıldı!")
+	os.Stdout.Sync()
 	log.Println("Firebase bildirim servisi başarıyla başlatıldı")
+
 	return &NotificationService{
 		client:      client,
 		initialized: true,

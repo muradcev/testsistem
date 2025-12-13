@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/questions_provider.dart';
+import '../../providers/vehicle_provider.dart';
 import '../../services/location_service.dart';
 import '../../services/notification_service.dart';
 import '../../config/theme.dart';
@@ -16,12 +17,59 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _vehicleCheckDone = false;
+
   @override
   void initState() {
     super.initState();
     _initLocation();
     _loadQuestions();
     _sendFcmToken();
+    _checkVehicles();
+  }
+
+  Future<void> _checkVehicles() async {
+    if (_vehicleCheckDone) return;
+    _vehicleCheckDone = true;
+
+    final vehicleProvider = context.read<VehicleProvider>();
+    await vehicleProvider.loadVehicles();
+
+    if (!mounted) return;
+
+    if (vehicleProvider.vehicles.isEmpty) {
+      _showVehicleRequiredDialog();
+    }
+  }
+
+  void _showVehicleRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.local_shipping, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Araç Bilgisi Gerekli'),
+          ],
+        ),
+        content: const Text(
+          'Uygulamayı kullanabilmek için en az bir araç eklemeniz gerekmektedir.\n\n'
+          'Lütfen araç bilgilerinizi ekleyin.',
+        ),
+        actions: [
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              context.push('/vehicles/add');
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Araç Ekle'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _initLocation() async {
@@ -281,8 +329,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Quick actions
               Text(
-                'Hizli Islemler',
-                style: Theme.of(context).textTheme.titleMedium,
+                'Hızlı İşlemler',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -291,7 +341,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _buildQuickAction(
                       context,
                       Icons.local_shipping,
-                      'Araclarim',
+                      'Araçlarım',
+                      Colors.blue,
                       () => context.goNamed('vehicles'),
                     ),
                   ),
@@ -301,29 +352,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       Icons.quiz,
                       'Sorular',
+                      Colors.orange,
                       () => context.goNamed('questions'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildQuickAction(
-                      context,
-                      Icons.person,
-                      'Profil',
-                      () => context.goNamed('profile'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildQuickAction(
                       context,
-                      Icons.help_outline,
-                      'Yardim',
-                      () {},
+                      Icons.person,
+                      'Profil',
+                      Colors.purple,
+                      () => context.goNamed('profile'),
                     ),
                   ),
                 ],
@@ -374,19 +414,37 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     IconData icon,
     String label,
+    Color color,
     VoidCallback onTap,
   ) {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
           child: Column(
             children: [
-              Icon(icon, size: 32, color: AppColors.primary),
-              const SizedBox(height: 8),
-              Text(label, style: Theme.of(context).textTheme.bodyMedium),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 28, color: color),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
@@ -398,41 +456,53 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     IconData icon,
     String label,
+    Color color,
     VoidCallback onTap,
   ) {
     return Consumer<QuestionsProvider>(
       builder: (context, questions, _) {
         return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
               child: Column(
                 children: [
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Icon(icon, size: 32, color: AppColors.primary),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon, size: 28, color: color),
+                      ),
                       if (questions.pendingCount > 0)
                         Positioned(
-                          right: -8,
-                          top: -8,
+                          right: -4,
+                          top: -4,
                           child: Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(6),
                             decoration: const BoxDecoration(
                               color: Colors.red,
                               shape: BoxShape.circle,
                             ),
                             constraints: const BoxConstraints(
-                              minWidth: 18,
-                              minHeight: 18,
+                              minWidth: 22,
+                              minHeight: 22,
                             ),
                             child: Text(
                               '${questions.pendingCount}',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                               textAlign: TextAlign.center,
@@ -441,8 +511,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 10),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             ),

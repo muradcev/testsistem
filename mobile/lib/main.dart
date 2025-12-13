@@ -50,6 +50,11 @@ void main() async {
   // Connect notification service to API service for FCM token sending
   notificationService.setApiService(apiService);
 
+  // Set navigation callback for notification taps
+  notificationService.setNavigationCallback((route) {
+    appRouter.go(route);
+  });
+
   try {
     await notificationService.initialize();
   } catch (e) {

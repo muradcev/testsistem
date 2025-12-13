@@ -15,8 +15,6 @@ import '../config/constants.dart';
 // Uygulama kapatıldığında bile çalışmaya devam eder
 
 class BackgroundLocationService {
-  static const String _pendingLocationsKey = 'bg_pending_locations';
-
   static Future<void> initialize() async {
     try {
       final service = FlutterBackgroundService();

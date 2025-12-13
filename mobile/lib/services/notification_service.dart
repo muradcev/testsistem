@@ -159,18 +159,38 @@ class NotificationService {
     }
   }
 
+  // Navigation callback
+  Function(String route)? onNavigate;
+
+  void setNavigationCallback(Function(String route) callback) {
+    onNavigate = callback;
+  }
+
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('Notification tapped: ${message.data}');
-    // TODO: Navigate to appropriate screen based on message.data['type']
-    // For questions: navigate to questions screen
-    // For surveys: navigate to surveys screen
+    final type = message.data['type'];
+
+    if (type == 'question') {
+      onNavigate?.call('/questions');
+    } else if (type == 'survey') {
+      final surveyId = message.data['survey_id'];
+      if (surveyId != null) {
+        onNavigate?.call('/survey/$surveyId');
+      }
+    }
   }
 
   void _onNotificationTap(NotificationResponse response) {
     final payload = response.payload;
     if (payload != null) {
       debugPrint('Local notification tapped: $payload');
-      // TODO: Navigate based on payload
+
+      if (payload.startsWith('question:')) {
+        onNavigate?.call('/questions');
+      } else if (payload.startsWith('survey:')) {
+        final surveyId = payload.replaceFirst('survey:', '');
+        onNavigate?.call('/survey/$surveyId');
+      }
     }
   }
 

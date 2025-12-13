@@ -12,6 +12,7 @@ class LocationProvider extends ChangeNotifier {
   StreamSubscription<DriverStatus>? _statusSubscription;
   StreamSubscription<int>? _batterySubscription;
   Timer? _syncTimer;
+  Timer? _singleLocationTimer;
 
   bool _isTracking = false;
   LocationData? _currentLocation;
@@ -55,6 +56,9 @@ class LocationProvider extends ChangeNotifier {
       _pendingCount = _locationService.pendingLocationCount;
       notifyListeners();
 
+      // Konumu hemen sunucuya gönder
+      _sendSingleLocation(location);
+
       // Auto-sync when batch is ready
       if (_pendingCount >= 10) {
         _syncPendingLocations();
@@ -79,10 +83,33 @@ class LocationProvider extends ChangeNotifier {
       (_) => _syncPendingLocations(),
     );
 
+    // Her 30 saniyede tek konum gönder (yedek olarak)
+    _singleLocationTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _sendCurrentLocation(),
+    );
+
     _isTracking = true;
     _isOnline = _locationService.isOnline;
     _batteryLevel = _locationService.batteryLevel;
     notifyListeners();
+
+    // İlk konumu hemen gönder
+    _sendCurrentLocation();
+  }
+
+  Future<void> _sendSingleLocation(LocationData location) async {
+    try {
+      await _apiService.sendLocation(location.toJson());
+      debugPrint('Location sent: ${location.latitude}, ${location.longitude}');
+    } catch (e) {
+      debugPrint('Failed to send single location: $e');
+    }
+  }
+
+  Future<void> _sendCurrentLocation() async {
+    if (_currentLocation == null) return;
+    await _sendSingleLocation(_currentLocation!);
   }
 
   void stopTracking() {
@@ -90,6 +117,7 @@ class LocationProvider extends ChangeNotifier {
     _statusSubscription?.cancel();
     _batterySubscription?.cancel();
     _syncTimer?.cancel();
+    _singleLocationTimer?.cancel();
     _locationService.stopTracking();
 
     // Sync remaining locations

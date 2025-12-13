@@ -11,7 +11,11 @@ import '../screens/vehicles/add_vehicle_screen.dart';
 import '../screens/surveys/survey_screen.dart';
 import '../screens/questions/questions_screen.dart';
 
+// Global navigator key for notification navigation
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final appRouter = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
   routes: [
     // Auth routes
@@ -80,26 +84,29 @@ final appRouter = GoRouter(
   ],
 );
 
-class MainShell extends StatefulWidget {
+class MainShell extends StatelessWidget {
   final Widget child;
 
   const MainShell({super.key, required this.child});
 
-  @override
-  State<MainShell> createState() => _MainShellState();
-}
-
-class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+  int _calculateSelectedIndex(BuildContext context) {
+    final String location = GoRouterState.of(context).uri.path;
+    if (location.startsWith('/home')) return 0;
+    if (location.startsWith('/vehicles')) return 1;
+    if (location.startsWith('/profile')) return 2;
+    if (location.startsWith('/questions')) return 0;
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = _calculateSelectedIndex(context);
+
     return Scaffold(
-      body: widget.child,
+      body: child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
+        selectedIndex: selectedIndex,
         onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
           switch (index) {
             case 0:
               context.goNamed('home');
