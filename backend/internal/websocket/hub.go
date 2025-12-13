@@ -2,8 +2,10 @@ package websocket
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -77,7 +79,8 @@ func (h *Hub) Run() {
 			h.mutex.Lock()
 			h.clients[client] = true
 			h.mutex.Unlock()
-			log.Printf("Client connected: %s", client.clientID)
+			fmt.Printf("[WS] Client connected: %s\n", client.clientID)
+			os.Stdout.Sync()
 
 		case client := <-h.unregister:
 			h.mutex.Lock()
@@ -86,7 +89,8 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 			h.mutex.Unlock()
-			log.Printf("Client disconnected: %s", client.clientID)
+			fmt.Printf("[WS] Client disconnected: %s\n", client.clientID)
+			os.Stdout.Sync()
 
 		case message := <-h.broadcast:
 			h.mutex.RLock()
@@ -214,7 +218,8 @@ func (c *Client) readPump() {
 		}
 
 		// Handle incoming messages if needed
-		log.Printf("Received message from %s: %s", c.clientID, string(message))
+		fmt.Printf("[WS] Received message from %s: %s\n", c.clientID, string(message))
+		os.Stdout.Sync()
 	}
 }
 

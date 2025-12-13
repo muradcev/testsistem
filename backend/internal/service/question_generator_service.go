@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -47,7 +49,8 @@ func (s *QuestionGeneratorService) Start(checkInterval time.Duration) {
 	s.mutex.Unlock()
 
 	go s.run(checkInterval)
-	log.Println("Otomatik soru üretme servisi başlatıldı")
+	fmt.Println("[AUTO-QUESTION] Otomatik soru üretme servisi başlatıldı")
+	os.Stdout.Sync()
 }
 
 // Stop - Servisi durdur
@@ -61,7 +64,8 @@ func (s *QuestionGeneratorService) Stop() {
 
 	close(s.stopChan)
 	s.isRunning = false
-	log.Println("Otomatik soru üretme servisi durduruldu")
+	fmt.Println("[AUTO-QUESTION] Otomatik soru üretme servisi durduruldu")
+	os.Stdout.Sync()
 }
 
 // run - Ana döngü
@@ -404,8 +408,9 @@ func (s *QuestionGeneratorService) generateQuestionFromRule(
 		s.sendQuestionNotification(ctx, driverID, question)
 	}
 
-	log.Printf("Otomatik soru oluşturuldu: Kural=%s, Şoför=%s, Soru=%s",
-		rule.Name, driverID.String(), question.ID.String())
+	fmt.Printf("[AUTO-QUESTION] Soru oluşturuldu: Kural=%s, Şoför=%s\n",
+		rule.Name, driverID.String()[:8])
+	os.Stdout.Sync()
 }
 
 // sendQuestionNotification - Soru bildirimini gönder

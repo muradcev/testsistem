@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -49,7 +50,8 @@ func (s *NotificationSchedulerService) Start(checkInterval time.Duration) {
 	s.mutex.Unlock()
 
 	go s.run(checkInterval)
-	log.Println("Bildirim zamanlayıcı servisi başlatıldı")
+	fmt.Println("[SCHEDULER] Bildirim zamanlayıcı servisi başlatıldı")
+	os.Stdout.Sync()
 }
 
 // Stop - Servisi durdur
@@ -63,7 +65,8 @@ func (s *NotificationSchedulerService) Stop() {
 
 	close(s.stopChan)
 	s.isRunning = false
-	log.Println("Bildirim zamanlayıcı servisi durduruldu")
+	fmt.Println("[SCHEDULER] Bildirim zamanlayıcı servisi durduruldu")
+	os.Stdout.Sync()
 }
 
 // run - Ana döngü
@@ -338,7 +341,8 @@ func (s *NotificationSchedulerService) sendTemplateNotification(ctx context.Cont
 	// Gönderim sayısını güncelle
 	s.questionsRepo.IncrementNotificationSentCount(ctx, template.ID, len(tokens))
 
-	log.Printf("Şablon bildirimi gönderildi: %s, %d alıcı", template.Name, len(tokens))
+	fmt.Printf("[SCHEDULER] Şablon bildirimi gönderildi: %s, %d alıcı\n", template.Name, len(tokens))
+	os.Stdout.Sync()
 }
 
 // sendNotificationToDriver - Tek bir şoföre bildirim gönder

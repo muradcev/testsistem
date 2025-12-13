@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -22,7 +23,8 @@ import (
 func main() {
 	// .env dosyasını yükle
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using environment variables")
+		fmt.Println("[INFO] No .env file found, using environment variables")
+		os.Stdout.Sync()
 	}
 
 	// Veritabanı bağlantısı
@@ -316,7 +318,8 @@ func main() {
 
 	// Graceful shutdown
 	go func() {
-		log.Printf("Server starting on port %s", port)
+		fmt.Printf("=== Server starting on port %s ===\n", port)
+		os.Stdout.Sync()
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}
@@ -326,7 +329,8 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	fmt.Println("Shutting down server...")
+	os.Stdout.Sync()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -335,5 +339,6 @@ func main() {
 		log.Fatal("Server forced to shutdown:", err)
 	}
 
-	log.Println("Server exited properly")
+	fmt.Println("Server exited properly")
+	os.Stdout.Sync()
 }
