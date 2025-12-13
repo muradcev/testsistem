@@ -1,7 +1,10 @@
 # Build stage
-FROM node:20-alpine as builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
+
+# Cache buster - forces rebuild
+ARG CACHEBUST=1
 
 # Build arguments for environment variables
 ARG VITE_API_URL
@@ -17,11 +20,11 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
+# Copy source code - cache busted by timestamp
 COPY . .
 
-# Build the application
-RUN npm run build
+# Force rebuild with cache bust arg
+RUN echo "Build timestamp: $(date)" && npm run build
 
 # Production stage
 FROM nginx:alpine
