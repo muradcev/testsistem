@@ -1,7 +1,6 @@
 class AppConstants {
-  // Sentry DSN - Get this from your Sentry project settings
-  // Create a project at https://sentry.io and paste your DSN here
-  static const String sentryDsn = 'https://your-dsn@sentry.io/project-id';
+  // Sentry DSN for error tracking
+  static const String sentryDsn = 'https://75eaaac549d4287125159008e64ba183@o4510527205670912.ingest.de.sentry.io/4510527277301840';
 
   // App info
   static const String appName = 'Nakliyeo Mobil';
