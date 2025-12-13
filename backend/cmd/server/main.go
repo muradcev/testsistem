@@ -20,6 +20,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+func init() {
+	// Initialize Sentry early
+	if err := middleware.InitSentry(); err != nil {
+		log.Printf("[WARN] Failed to initialize Sentry: %v", err)
+	}
+}
+
 func main() {
 	// .env dosyasını yükle
 	if err := godotenv.Load(); err != nil {
@@ -86,6 +93,10 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	router := gin.Default()
+
+	// Sentry middleware (must be first)
+	router.Use(middleware.SentryMiddleware())
+	router.Use(middleware.SentryRecoveryMiddleware())
 
 	// CORS middleware
 	router.Use(middleware.CORSMiddleware())
@@ -341,6 +352,9 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal("Server forced to shutdown:", err)
 	}
+
+	// Flush Sentry events before exit
+	middleware.FlushSentry()
 
 	fmt.Println("Server exited properly")
 	os.Stdout.Sync()
