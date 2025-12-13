@@ -35,31 +35,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProvinces();
+    // Use addPostFrameCallback to ensure context is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProvinces();
+    });
   }
 
   Future<void> _loadProvinces() async {
+    if (!mounted) return;
     try {
       final apiService = context.read<ApiService>();
       final response = await apiService.getProvinces();
-      setState(() {
-        _provinces = List<String>.from(response.data['provinces'] ?? []);
-        _isLoadingProvinces = false;
-      });
+      if (mounted) {
+        setState(() {
+          _provinces = List<String>.from(response.data['provinces'] ?? []);
+          _isLoadingProvinces = false;
+        });
+      }
     } catch (e) {
       debugPrint('Failed to load provinces: $e');
-      setState(() => _isLoadingProvinces = false);
+      if (mounted) {
+        setState(() => _isLoadingProvinces = false);
+      }
     }
   }
 
   Future<void> _loadDistricts(String province) async {
+    if (!mounted) return;
     try {
       final apiService = context.read<ApiService>();
       final response = await apiService.getDistricts(province);
-      setState(() {
-        _districts = List<String>.from(response.data['districts'] ?? []);
-        _selectedDistrict = null;
-      });
+      if (mounted) {
+        setState(() {
+          _districts = List<String>.from(response.data['districts'] ?? []);
+          _selectedDistrict = null;
+        });
+      }
     } catch (e) {
       debugPrint('Failed to load districts: $e');
     }
