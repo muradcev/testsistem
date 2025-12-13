@@ -203,7 +203,7 @@ class LocationService {
 
     // Accelerometer monitoring for movement detection
     if (_config.activityRecognitionEnabled) {
-      _accelerometerSubscription = accelerometerEvents.listen((event) {
+      _accelerometerSubscription = accelerometerEventStream().listen((event) {
         _currentAcceleration = _calculateAcceleration(event);
         _detectMovement();
       });

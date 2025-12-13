@@ -12,13 +12,11 @@ import (
 
 type AuthHandler struct {
 	authService *service.AuthService
-	smsService  *service.SMSService
 }
 
-func NewAuthHandler(authService *service.AuthService, smsService *service.SMSService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
-		smsService:  smsService,
 	}
 }
 
@@ -95,41 +93,14 @@ func (h *AuthHandler) AdminLogin(c *gin.Context) {
 	})
 }
 
+// SendOTP - SMS servisi devre dışı
 func (h *AuthHandler) SendOTP(c *gin.Context) {
-	var req models.OTPRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	code, err := h.authService.GenerateOTP(c.Request.Context(), req.Phone)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// SMS gönder
-	if err := h.smsService.SendOTP(req.Phone, code); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "SMS gönderilemedi"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Doğrulama kodu gönderildi"})
+	c.JSON(http.StatusOK, gin.H{"message": "SMS servisi devre dışı"})
 }
 
+// VerifyOTP - SMS servisi devre dışı
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
-	var req models.OTPVerifyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.authService.VerifyOTP(c.Request.Context(), req.Phone, req.Code); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Telefon numarası doğrulandı"})
+	c.JSON(http.StatusOK, gin.H{"message": "SMS servisi devre dışı"})
 }
 
 func (h *AuthHandler) RefreshToken(c *gin.Context) {

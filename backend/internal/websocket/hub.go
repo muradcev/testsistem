@@ -6,8 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
+
+	"nakliyeo-mobil/internal/middleware"
 
 	"github.com/gorilla/websocket"
 )
@@ -16,7 +19,8 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // CORS için tüm originlere izin ver
+		// Production'da origin kontrolü yapılmalı
+		return true
 	},
 }
 
@@ -26,6 +30,8 @@ type Client struct {
 	send     chan []byte
 	clientID string
 	isAdmin  bool
+	closed   bool
+	mu       sync.Mutex
 }
 
 type Hub struct {
@@ -79,31 +85,44 @@ func (h *Hub) Run() {
 			h.mutex.Lock()
 			h.clients[client] = true
 			h.mutex.Unlock()
-			fmt.Printf("[WS] Client connected: %s\n", client.clientID)
+			fmt.Printf("[WS] Client connected: %s (admin: %v)\n", client.clientID, client.isAdmin)
 			os.Stdout.Sync()
 
 		case client := <-h.unregister:
 			h.mutex.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				close(client.send)
+				client.safeClose()
 			}
 			h.mutex.Unlock()
 			fmt.Printf("[WS] Client disconnected: %s\n", client.clientID)
 			os.Stdout.Sync()
 
 		case message := <-h.broadcast:
-			h.mutex.RLock()
+			h.mutex.Lock()
 			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
+				// Sadece admin istemcilere konum güncellemesi gönder
+				if client.isAdmin {
+					select {
+					case client.send <- message:
+					default:
+						delete(h.clients, client)
+						client.safeClose()
+					}
 				}
 			}
-			h.mutex.RUnlock()
+			h.mutex.Unlock()
 		}
+	}
+}
+
+// safeClose kanal zaten kapalıysa panic olmadan kapatır
+func (c *Client) safeClose() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.closed {
+		c.closed = true
+		close(c.send)
 	}
 }
 
@@ -128,18 +147,19 @@ func (h *Hub) BroadcastToAdmins(message interface{}) {
 		return
 	}
 
-	h.mutex.RLock()
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
 	for client := range h.clients {
 		if client.isAdmin {
 			select {
 			case client.send <- data:
 			default:
-				close(client.send)
 				delete(h.clients, client)
+				client.safeClose()
 			}
 		}
 	}
-	h.mutex.RUnlock()
 }
 
 // BroadcastDriverStatus şoför durum değişikliği yayınlar
@@ -174,19 +194,60 @@ func (h *Hub) GetAdminClientsCount() int {
 	return count
 }
 
+// HandleWebSocket WebSocket bağlantısını işler - JWT doğrulaması ile
 func HandleWebSocket(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	// Token'ı query parametresinden veya header'dan al
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		// Authorization header'dan dene
+		authHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+
+	// Admin bağlantısı için token zorunlu
+	clientType := r.URL.Query().Get("type")
+	isAdmin := clientType == "admin"
+
+	if isAdmin && token == "" {
+		http.Error(w, "Yetkilendirme gerekli", http.StatusUnauthorized)
+		return
+	}
+
+	// Admin için token doğrula
+	if isAdmin {
+		claims, err := middleware.ValidateToken(token)
+		if err != nil {
+			http.Error(w, "Geçersiz token", http.StatusUnauthorized)
+			return
+		}
+
+		// Admin rolünü kontrol et
+		if claims.Role != "admin" && claims.Role != "super_admin" {
+			http.Error(w, "Admin yetkisi gerekli", http.StatusForbidden)
+			return
+		}
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)
 		return
 	}
 
+	clientID := r.URL.Query().Get("client_id")
+	if clientID == "" {
+		clientID = fmt.Sprintf("client-%d", time.Now().UnixNano())
+	}
+
 	client := &Client{
 		hub:      hub,
 		conn:     conn,
 		send:     make(chan []byte, 256),
-		clientID: r.URL.Query().Get("client_id"),
-		isAdmin:  r.URL.Query().Get("type") == "admin",
+		clientID: clientID,
+		isAdmin:  isAdmin,
+		closed:   false,
 	}
 
 	hub.register <- client
@@ -217,8 +278,21 @@ func (c *Client) readPump() {
 			break
 		}
 
-		// Handle incoming messages if needed
-		fmt.Printf("[WS] Received message from %s: %s\n", c.clientID, string(message))
+		// Ping mesajlarını işle
+		var msg map[string]interface{}
+		if err := json.Unmarshal(message, &msg); err == nil {
+			if msg["type"] == "ping" {
+				// Pong yanıtı gönder
+				pong, _ := json.Marshal(map[string]string{"type": "pong"})
+				select {
+				case c.send <- pong:
+				default:
+				}
+				continue
+			}
+		}
+
+		fmt.Printf("[WS] Message from %s: %s\n", c.clientID, string(message))
 		os.Stdout.Sync()
 	}
 }

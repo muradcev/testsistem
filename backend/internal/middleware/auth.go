@@ -135,11 +135,42 @@ func GetClaims(c *gin.Context) (*models.TokenClaims, bool) {
 	return claims.(*models.TokenClaims), true
 }
 
+// ValidateToken - Access token'ı doğrula ve claims döndür
+func ValidateToken(tokenString string) (*models.TokenClaims, error) {
+	jwtCl := &jwtClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, jwtCl, func(token *jwt.Token) (interface{}, error) {
+		// Algorithm doğrulaması
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return jwtSecret, nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil, err
+	}
+
+	claims := &models.TokenClaims{
+		UserID: jwtCl.UserID,
+		Type:   jwtCl.Type,
+		Phone:  jwtCl.Phone,
+		Email:  jwtCl.Email,
+		Role:   jwtCl.Role,
+	}
+
+	return claims, nil
+}
+
 // ValidateRefreshToken - Refresh token'ı doğrula ve claims döndür
 func ValidateRefreshToken(tokenString string) (*models.TokenClaims, error) {
 	jwtCl := &jwtClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, jwtCl, func(token *jwt.Token) (interface{}, error) {
+		// Algorithm doğrulaması
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
 		return jwtSecret, nil
 	})
 

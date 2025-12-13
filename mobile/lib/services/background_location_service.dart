@@ -76,6 +76,8 @@ void onStart(ServiceInstance service) async {
   String? accessToken;
   Timer? locationTimer;
   Timer? syncTimer;
+  Timer? notificationTimer;
+  StreamSubscription<ConnectivityResult>? connectivitySubscription;
   List<Map<String, dynamic>> pendingLocations = [];
   int batteryLevel = 100;
   bool isOnline = true;
@@ -127,7 +129,7 @@ void onStart(ServiceInstance service) async {
     isOnline = true;
   }
 
-  connectivity.onConnectivityChanged.listen((result) {
+  connectivitySubscription = connectivity.onConnectivityChanged.listen((result) {
     isOnline = result != ConnectivityResult.none;
     if (isOnline && pendingLocations.isNotEmpty && dio != null) {
       _syncLocations(dio!, pendingLocations, prefs);
@@ -222,6 +224,8 @@ void onStart(ServiceInstance service) async {
     service.on('stop').listen((event) {
       locationTimer?.cancel();
       syncTimer?.cancel();
+      notificationTimer?.cancel();
+      connectivitySubscription?.cancel();
       savePendingLocations();
       service.stopSelf();
     });
@@ -274,7 +278,7 @@ void onStart(ServiceInstance service) async {
   fetchAndSendLocation();
 
   // Update notification periodically
-  Timer.periodic(const Duration(minutes: 1), (timer) async {
+  notificationTimer = Timer.periodic(const Duration(minutes: 1), (timer) async {
     if (service is AndroidServiceInstance) {
       if (await service.isForegroundService()) {
         String statusText = isOnline ? 'Aktif' : 'Çevrimdışı';

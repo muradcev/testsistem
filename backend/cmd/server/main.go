@@ -65,7 +65,7 @@ func main() {
 	surveyService := service.NewSurveyService(surveyRepo)
 	adminService := service.NewAdminService(adminRepo, settingsRepo)
 	notificationService := service.NewNotificationService(os.Getenv("FCM_CREDENTIALS"))
-	smsService := service.NewSMSService(os.Getenv("NETGSM_USERCODE"), os.Getenv("NETGSM_PASSWORD"), os.Getenv("NETGSM_MSGHEADER"))
+	// SMS servisi kaldırıldı
 
 	// WebSocket hub
 	wsHub := websocket.NewHub()
@@ -99,7 +99,7 @@ func main() {
 	apiGroup := router.Group("/api/v1")
 	{
 		// Public routes (auth)
-		authHandler := api.NewAuthHandler(authService, smsService)
+		authHandler := api.NewAuthHandler(authService)
 		apiGroup.POST("/auth/register", authHandler.Register)
 		apiGroup.POST("/auth/login", authHandler.Login)
 		apiGroup.POST("/auth/send-otp", authHandler.SendOTP)
