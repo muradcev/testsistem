@@ -48,11 +48,17 @@ func (s *SMSService) sendSMS(phone, message string) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("SMS yanıtı okunamadı: %w", err)
+	}
 	log.Printf("Netgsm response: %s", string(body))
 
 	// Netgsm yanıt kodlarını kontrol et
 	// 00, 01, 02 başarılı
+	if len(body) < 2 {
+		return fmt.Errorf("SMS geçersiz yanıt: %s", string(body))
+	}
 	responseCode := string(body[:2])
 	if responseCode != "00" && responseCode != "01" && responseCode != "02" {
 		return fmt.Errorf("SMS gönderimi başarısız: %s", string(body))
