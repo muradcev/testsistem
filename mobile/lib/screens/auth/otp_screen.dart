@@ -93,9 +93,10 @@ class _OTPScreenState extends State<OTPScreen> {
             TextButton(
               onPressed: () async {
                 final authProvider = context.read<AuthProvider>();
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
                 await authProvider.sendOtp(widget.phone);
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     const SnackBar(content: Text('Kod tekrar gönderildi')),
                   );
                 }

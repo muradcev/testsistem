@@ -1,0 +1,25 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="90" fill="white"/>
+
+  <!-- Truck Body -->
+  <rect x="35" y="85" width="90" height="50" rx="8" fill="#000000"/>
+
+  <!-- Truck Cabin -->
+  <path d="M125 85 L155 85 C160 85 165 90 165 95 L165 125 C165 130 160 135 155 135 L125 135 Z" fill="#000000"/>
+
+  <!-- Window -->
+  <rect x="130" y="92" width="28" height="20" rx="4" fill="white"/>
+
+  <!-- Wheels -->
+  <circle cx="65" cy="140" r="18" fill="#000000"/>
+  <circle cx="65" cy="140" r="10" fill="white"/>
+  <circle cx="145" cy="140" r="18" fill="#000000"/>
+  <circle cx="145" cy="140" r="10" fill="white"/>
+
+  <!-- Accent Line -->
+  <rect x="35" y="105" width="90" height="4" fill="#06C167"/>
+
+  <!-- N Letter on truck -->
+  <path d="M55 95 L55 115 L60 115 L75 100 L75 115 L80 115 L80 95 L75 95 L60 110 L60 95 Z" fill="white"/>
+</svg>

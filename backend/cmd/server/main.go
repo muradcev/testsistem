@@ -95,6 +95,9 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy", "time": time.Now()})
 	})
 
+	// Static files for APK download
+	router.Static("/downloads", "./static/downloads")
+
 	// API routes
 	apiGroup := router.Group("/api/v1")
 	{

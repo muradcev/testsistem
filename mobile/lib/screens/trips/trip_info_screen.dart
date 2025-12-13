@@ -11,12 +11,12 @@ class TripInfoScreen extends StatefulWidget {
   final double? distanceKm;
 
   const TripInfoScreen({
-    Key? key,
+    super.key,
     this.tripId,
     this.fromProvince,
     this.toProvince,
     this.distanceKm,
-  }) : super(key: key);
+  });
 
   @override
   State<TripInfoScreen> createState() => _TripInfoScreenState();

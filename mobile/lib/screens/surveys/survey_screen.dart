@@ -42,19 +42,25 @@ class _SurveyScreenState extends State<SurveyScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: RadioListTile<String>(
+                                child: ListTile(
                                   title: const Text('Evet'),
-                                  value: 'yes',
-                                  groupValue: _responses['q1'],
-                                  onChanged: (v) => setState(() => _responses['q1'] = v),
+                                  leading: Radio<String>(
+                                    value: 'yes',
+                                    groupValue: _responses['q1'] as String?,
+                                    onChanged: (v) => setState(() => _responses['q1'] = v),
+                                  ),
+                                  onTap: () => setState(() => _responses['q1'] = 'yes'),
                                 ),
                               ),
                               Expanded(
-                                child: RadioListTile<String>(
+                                child: ListTile(
                                   title: const Text('Hayır'),
-                                  value: 'no',
-                                  groupValue: _responses['q1'],
-                                  onChanged: (v) => setState(() => _responses['q1'] = v),
+                                  leading: Radio<String>(
+                                    value: 'no',
+                                    groupValue: _responses['q1'] as String?,
+                                    onChanged: (v) => setState(() => _responses['q1'] = v),
+                                  ),
+                                  onTap: () => setState(() => _responses['q1'] = 'no'),
                                 ),
                               ),
                             ],

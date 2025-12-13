@@ -30,6 +30,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _selectedProvince;
   String? _selectedDistrict;
 
+  int _currentStep = 0;
+
   @override
   void initState() {
     super.initState();
@@ -81,14 +83,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         SnackBar(
           content: const Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
+              Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
               SizedBox(width: 12),
               Text('Kayit basarili! Hos geldiniz.'),
             ],
           ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
         ),
       );
       context.goNamed('home');
@@ -97,14 +100,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.error_outline, color: Colors.white),
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
               const SizedBox(width: 12),
               Expanded(child: Text(authProvider.error!)),
             ],
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
         ),
       );
     }
@@ -123,365 +127,416 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primary,
-              AppColors.primaryDark,
-            ],
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => context.goNamed('login'),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+        ),
+        title: const Text(
+          'Hesap Oluştur',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header with back button
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        onPressed: () => context.goNamed('login'),
-                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-                        tooltip: 'Geri',
-                      ),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Yeni Hesap Oluştur',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Progress Indicator
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildProgressBar(0),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildProgressBar(1),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildProgressBar(2),
+                  ),
+                ],
+              ),
+            ),
+
+            // Form Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 24),
+
+                      // Step Title
+                      Text(
+                        _getStepTitle(),
+                        style: const TextStyle(
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _getStepSubtitle(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Step Content
+                      if (_currentStep == 0) _buildPersonalInfoStep(),
+                      if (_currentStep == 1) _buildLocationStep(),
+                      if (_currentStep == 2) _buildPasswordStep(),
+
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Bottom Buttons
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  if (_currentStep > 0)
+                    Expanded(
+                      child: SizedBox(
+                        height: 56,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() => _currentStep--);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Geri',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 48), // Balance the back button
-                  ],
-                ),
-              ),
-
-              // Logo/Icon
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.local_shipping,
-                  size: 50,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Nakliyeo\'ya Katıl',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Form Card
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Section: Kişisel Bilgiler
-                          _buildSectionHeader('Kişisel Bilgiler', Icons.person),
-                          const SizedBox(height: 16),
-
-                          // Name & Surname Row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildTextField(
-                                  controller: _nameController,
-                                  label: 'Ad',
-                                  icon: Icons.badge_outlined,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Ad gerekli';
-                                    }
-                                    return null;
-                                  },
-                                  textCapitalization: TextCapitalization.words,
-                                ),
+                  if (_currentStep > 0) const SizedBox(width: 16),
+                  Expanded(
+                    flex: _currentStep == 0 ? 1 : 1,
+                    child: Consumer<AuthProvider>(
+                      builder: (context, auth, _) {
+                        return SizedBox(
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: auth.isLoading ? null : _onNextPressed,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildTextField(
-                                  controller: _surnameController,
-                                  label: 'Soyad',
-                                  icon: Icons.badge,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Soyad gerekli';
-                                    }
-                                    return null;
-                                  },
-                                  textCapitalization: TextCapitalization.words,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Phone
-                          _buildTextField(
-                            controller: _phoneController,
-                            label: 'Telefon Numarası',
-                            icon: Icons.phone_android,
-                            keyboardType: TextInputType.phone,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Telefon numarası gerekli';
-                              }
-                              if (value.length < 10) {
-                                return 'Geçerli bir telefon numarası girin';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Section: Konum Bilgileri
-                          _buildSectionHeader('Konum Bilgileri', Icons.location_on),
-                          const SizedBox(height: 16),
-
-                          // Province & District
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildDropdown(
-                                  value: _selectedProvince,
-                                  label: 'İl',
-                                  icon: Icons.location_city,
-                                  items: _provinces,
-                                  isLoading: _isLoadingProvinces,
-                                  onChanged: (value) {
-                                    setState(() => _selectedProvince = value);
-                                    if (value != null) _loadDistricts(value);
-                                  },
-                                  validator: (value) => value == null ? 'İl seçin' : null,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildDropdown(
-                                  value: _selectedDistrict,
-                                  label: 'İlçe',
-                                  icon: Icons.location_on_outlined,
-                                  items: _districts,
-                                  onChanged: (value) {
-                                    setState(() => _selectedDistrict = value);
-                                  },
-                                  validator: (value) => value == null ? 'İlçe seçin' : null,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Section: Güvenlik
-                          _buildSectionHeader('Güvenlik', Icons.lock),
-                          const SizedBox(height: 16),
-
-                          // Password
-                          _buildTextField(
-                            controller: _passwordController,
-                            label: 'Şifre',
-                            icon: Icons.lock_outline,
-                            obscureText: _obscurePassword,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                                color: Colors.grey,
-                              ),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Şifre gerekli';
-                              }
-                              if (value.length < 6) {
-                                return 'En az 6 karakter';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Confirm Password
-                          _buildTextField(
-                            controller: _confirmPasswordController,
-                            label: 'Şifre Tekrar',
-                            icon: Icons.lock,
-                            obscureText: _obscureConfirmPassword,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                                color: Colors.grey,
-                              ),
-                              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                            ),
-                            validator: (value) {
-                              if (value != _passwordController.text) {
-                                return 'Şifreler eşleşmiyor';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 32),
-
-                          // Register Button
-                          Consumer<AuthProvider>(
-                            builder: (context, auth, _) {
-                              return Container(
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [AppColors.primary, AppColors.primaryDark],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.4),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 6),
+                            child: auth.isLoading
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
                                     ),
-                                  ],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: auth.isLoading ? null : _register,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                                  )
+                                : Text(
+                                    _currentStep == 2 ? 'Kayıt Ol' : 'Devam Et',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  child: auth.isLoading
-                                      ? const SizedBox(
-                                          height: 24,
-                                          width: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(Icons.person_add, color: Colors.white),
-                                            SizedBox(width: 12),
-                                            Text(
-                                              'Kayıt Ol',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                ),
-                              );
-                            },
                           ),
-                          const SizedBox(height: 24),
-
-                          // Login Link
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Zaten hesabınız var mı? ',
-                                style: TextStyle(color: Colors.grey.shade600),
-                              ),
-                              TextButton(
-                                onPressed: () => context.goNamed('login'),
-                                child: const Text(
-                                  'Giriş Yap',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Row(
+  Widget _buildProgressBar(int step) {
+    return Container(
+      height: 4,
+      decoration: BoxDecoration(
+        color: _currentStep >= step ? AppColors.primary : Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  String _getStepTitle() {
+    switch (_currentStep) {
+      case 0:
+        return 'Kişisel Bilgiler';
+      case 1:
+        return 'Konum Bilgileri';
+      case 2:
+        return 'Şifre Oluştur';
+      default:
+        return '';
+    }
+  }
+
+  String _getStepSubtitle() {
+    switch (_currentStep) {
+      case 0:
+        return 'Ad, soyad ve telefon bilgilerinizi girin';
+      case 1:
+        return 'Bulunduğunuz ili ve ilçeyi seçin';
+      case 2:
+        return 'Güvenli bir şifre belirleyin';
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildPersonalInfoStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: AppColors.primary, size: 20),
+        // Name Field
+        _buildFieldLabel('Ad'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _nameController,
+          hintText: 'Adınızı girin',
+          prefixIcon: Icons.person_outline,
+          textCapitalization: TextCapitalization.words,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Ad gerekli';
+            }
+            return null;
+          },
         ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+        const SizedBox(height: 20),
+
+        // Surname Field
+        _buildFieldLabel('Soyad'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _surnameController,
+          hintText: 'Soyadınızı girin',
+          prefixIcon: Icons.person_outline,
+          textCapitalization: TextCapitalization.words,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Soyad gerekli';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 20),
+
+        // Phone Field
+        _buildFieldLabel('Telefon Numarası'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _phoneController,
+          hintText: '5XX XXX XX XX',
+          prefixIcon: Icons.phone_outlined,
+          keyboardType: TextInputType.phone,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Telefon numarası gerekli';
+            }
+            if (value.length < 10) {
+              return 'Geçerli bir telefon numarası girin';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Province Field
+        _buildFieldLabel('İl'),
+        const SizedBox(height: 8),
+        _buildDropdown(
+          value: _selectedProvince,
+          hintText: 'İl seçin',
+          items: _provinces,
+          isLoading: _isLoadingProvinces,
+          onChanged: (value) {
+            setState(() => _selectedProvince = value);
+            if (value != null) _loadDistricts(value);
+          },
+          validator: (value) => value == null ? 'İl seçin' : null,
+        ),
+        const SizedBox(height: 20),
+
+        // District Field
+        _buildFieldLabel('İlçe'),
+        const SizedBox(height: 8),
+        _buildDropdown(
+          value: _selectedDistrict,
+          hintText: 'İlçe seçin',
+          items: _districts,
+          enabled: _selectedProvince != null,
+          onChanged: (value) {
+            setState(() => _selectedDistrict = value);
+          },
+          validator: (value) => value == null ? 'İlçe seçin' : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Password Field
+        _buildFieldLabel('Şifre'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _passwordController,
+          hintText: 'En az 6 karakter',
+          prefixIcon: Icons.lock_outline,
+          obscureText: _obscurePassword,
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              color: Colors.grey.shade600,
+            ),
+            onPressed: () {
+              setState(() => _obscurePassword = !_obscurePassword);
+            },
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Şifre gerekli';
+            }
+            if (value.length < 6) {
+              return 'Şifre en az 6 karakter olmalı';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 20),
+
+        // Confirm Password Field
+        _buildFieldLabel('Şifre Tekrar'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _confirmPasswordController,
+          hintText: 'Şifrenizi tekrar girin',
+          prefixIcon: Icons.lock_outline,
+          obscureText: _obscureConfirmPassword,
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              color: Colors.grey.shade600,
+            ),
+            onPressed: () {
+              setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+            },
+          ),
+          validator: (value) {
+            if (value != _passwordController.text) {
+              return 'Şifreler eşleşmiyor';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 24),
+
+        // Terms
+        RichText(
+          text: TextSpan(
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+            children: const [
+              TextSpan(text: 'Kayıt olarak '),
+              TextSpan(
+                text: 'Kullanım Koşullarını',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              TextSpan(text: ' ve '),
+              TextSpan(
+                text: 'Gizlilik Politikasını',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              TextSpan(text: ' kabul etmiş olursunuz.'),
+            ],
           ),
         ),
       ],
     );
   }
 
+  Widget _buildFieldLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
+      ),
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
-    required String label,
-    required IconData icon,
+    required String hintText,
+    required IconData prefixIcon,
     String? Function(String?)? validator,
     TextInputType? keyboardType,
     bool obscureText = false,
@@ -494,19 +549,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       keyboardType: keyboardType,
       obscureText: obscureText,
       textCapitalization: textCapitalization,
+      style: const TextStyle(
+        fontSize: 16,
+        color: AppColors.textPrimary,
+      ),
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: AppColors.primary),
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey.shade400),
+        prefixIcon: Icon(prefixIcon, color: Colors.grey.shade600),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -514,7 +570,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -526,50 +582,87 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildDropdown({
     required String? value,
-    required String label,
-    required IconData icon,
+    required String hintText,
     required List<String> items,
     required void Function(String?) onChanged,
     String? Function(String?)? validator,
     bool isLoading = false,
+    bool enabled = true,
   }) {
     return DropdownButtonFormField<String>(
       value: value,
       validator: validator,
       decoration: InputDecoration(
-        labelText: label,
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey.shade400),
         prefixIcon: isLoading
-            ? const Padding(
-                padding: EdgeInsets.all(12),
+            ? Padding(
+                padding: const EdgeInsets.all(12),
                 child: SizedBox(
                   width: 24,
                   height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.grey.shade400,
+                  ),
                 ),
               )
-            : Icon(icon, color: AppColors.primary),
+            : Icon(Icons.location_on_outlined, color: Colors.grey.shade600),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: enabled ? AppColors.surface : Colors.grey.shade100,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
       ),
       items: items.map((item) => DropdownMenuItem(
         value: item,
         child: Text(item),
       )).toList(),
-      onChanged: onChanged,
+      onChanged: enabled ? onChanged : null,
       isExpanded: true,
-      icon: const Icon(Icons.keyboard_arrow_down),
+      icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
+      dropdownColor: AppColors.background,
     );
+  }
+
+  void _onNextPressed() {
+    // Validate current step
+    bool isValid = true;
+
+    if (_currentStep == 0) {
+      if (_nameController.text.isEmpty ||
+          _surnameController.text.isEmpty ||
+          _phoneController.text.isEmpty ||
+          _phoneController.text.length < 10) {
+        isValid = false;
+        _formKey.currentState!.validate();
+      }
+    } else if (_currentStep == 1) {
+      if (_selectedProvince == null || _selectedDistrict == null) {
+        isValid = false;
+        _formKey.currentState!.validate();
+      }
+    } else if (_currentStep == 2) {
+      if (!_formKey.currentState!.validate()) {
+        isValid = false;
+      }
+    }
+
+    if (isValid) {
+      if (_currentStep < 2) {
+        setState(() => _currentStep++);
+      } else {
+        _register();
+      }
+    }
   }
 }

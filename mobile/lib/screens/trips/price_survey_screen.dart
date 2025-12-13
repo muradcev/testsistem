@@ -5,7 +5,7 @@ import '../../providers/config_provider.dart';
 import '../../services/api_service.dart';
 
 class PriceSurveyScreen extends StatefulWidget {
-  const PriceSurveyScreen({Key? key}) : super(key: key);
+  const PriceSurveyScreen({super.key});
 
   @override
   State<PriceSurveyScreen> createState() => _PriceSurveyScreenState();
