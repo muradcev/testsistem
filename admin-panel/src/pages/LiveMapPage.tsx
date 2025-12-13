@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { locationsApi } from '../services/api'
+import { useAuthStore } from '../store/authStore'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import { Link } from 'react-router-dom'
 import L from 'leaflet'
@@ -123,6 +124,7 @@ export default function LiveMapPage() {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null)
   const [wsConnected, setWsConnected] = useState(false)
   const [liveLocations, setLiveLocations] = useState<LiveLocation[]>([])
+  const token = useAuthStore((state) => state.token)
 
   // Initial fetch
   const { data, isLoading } = useQuery({
@@ -133,17 +135,22 @@ export default function LiveMapPage() {
 
   // WebSocket connection for real-time updates
   useEffect(() => {
+    if (!token) {
+      console.log('No auth token, skipping WebSocket connection')
+      return
+    }
+
     // Backend WebSocket endpoint - Railway'de VITE_WS_URL kullanılır
     let wsUrl: string
     const wsEnvUrl = import.meta.env.VITE_WS_URL
     if (wsEnvUrl) {
       // VITE_WS_URL'e /ws path'ini ekle (eğer yoksa)
       const baseUrl = wsEnvUrl.endsWith('/ws') ? wsEnvUrl : `${wsEnvUrl}/ws`
-      wsUrl = `${baseUrl}?type=admin&client_id=admin-panel-${Date.now()}`
+      wsUrl = `${baseUrl}?type=admin&client_id=admin-panel-${Date.now()}&token=${encodeURIComponent(token)}`
     } else {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host
-      wsUrl = `${protocol}//${host}/ws?type=admin&client_id=admin-panel-${Date.now()}`
+      wsUrl = `${protocol}//${host}/ws?type=admin&client_id=admin-panel-${Date.now()}&token=${encodeURIComponent(token)}`
     }
 
     let ws: WebSocket | null = null
@@ -232,7 +239,7 @@ export default function LiveMapPage() {
       clearInterval(pingInterval)
       ws?.close()
     }
-  }, [])
+  }, [token])
 
   // Merge API data with WebSocket updates
   useEffect(() => {
