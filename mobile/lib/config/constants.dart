@@ -1,3 +1,13 @@
+class AppConstants {
+  // Sentry DSN - Get this from your Sentry project settings
+  // Create a project at https://sentry.io and paste your DSN here
+  static const String sentryDsn = 'https://your-dsn@sentry.io/project-id';
+
+  // App info
+  static const String appName = 'Nakliyeo Mobil';
+  static const String appVersion = '1.0.0';
+}
+
 class ApiConstants {
   static const String baseUrl = 'https://testsistem-production.up.railway.app/api/v1';
   static const String wsUrl = 'wss://testsistem-production.up.railway.app/ws';
