@@ -16,4 +16,25 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // UI libraries
+          'ui-vendor': ['@headlessui/react', '@heroicons/react'],
+          // Data fetching
+          'data-vendor': ['@tanstack/react-query', 'axios', 'zustand'],
+          // Map library
+          'map-vendor': ['leaflet', 'react-leaflet'],
+          // Charts
+          'chart-vendor': ['recharts'],
+          // Date utilities
+          'date-vendor': ['date-fns'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 500,
+  },
 })
