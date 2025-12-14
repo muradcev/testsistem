@@ -61,6 +61,7 @@ func main() {
 	cargoRepo := repository.NewCargoRepository(db)
 	analyticsRepo := repository.NewAnalyticsRepository(db)
 	questionsRepo := repository.NewQuestionsRepository(db)
+	driverHomeRepo := repository.NewDriverHomeRepository(db)
 
 	// Service'ler
 	authService := service.NewAuthService(driverRepo, adminRepo, settingsRepo)
@@ -271,6 +272,14 @@ func main() {
 			adminGroup.GET("/stops/location-types", stopHandler.GetLocationTypes)
 			adminGroup.POST("/stops/detect/:driver_id", stopHandler.DetectStopsForDriver)
 			adminGroup.POST("/stops/detect-all", stopHandler.DetectStopsForAllDrivers)
+
+			// Driver Homes (Şoför Ev Adresleri)
+			driverHomeHandler := api.NewDriverHomeHandler(driverHomeRepo, driverRepo)
+			adminGroup.GET("/driver-homes", driverHomeHandler.GetAllDriverHomes)
+			adminGroup.GET("/drivers/:driver_id/homes", driverHomeHandler.GetDriverHomes)
+			adminGroup.POST("/drivers/:driver_id/homes", driverHomeHandler.CreateDriverHome)
+			adminGroup.PUT("/driver-homes/:id", driverHomeHandler.UpdateDriverHome)
+			adminGroup.DELETE("/driver-homes/:id", driverHomeHandler.DeleteDriverHome)
 
 			// Questions (Akıllı Soru Sistemi)
 			questionsHandler := api.NewQuestionsHandler(questionsRepo, driverRepo, notificationService)

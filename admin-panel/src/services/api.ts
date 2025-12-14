@@ -264,3 +264,46 @@ export const notificationTemplatesApi = {
 export const triggerTypesApi = {
   getAll: () => api.get('/admin/trigger-types'),
 }
+
+// Driver Homes (Şoför Ev Adresleri)
+export const driverHomesApi = {
+  getAll: (params?: { limit?: number; offset?: number }) =>
+    api.get('/admin/driver-homes', { params }),
+  getByDriver: (driverId: string) =>
+    api.get(`/admin/drivers/${driverId}/homes`),
+  create: (driverId: string, data: {
+    name: string
+    latitude: number
+    longitude: number
+    address?: string
+    province?: string
+    district?: string
+    radius?: number
+  }) => api.post(`/admin/drivers/${driverId}/homes`, data),
+  update: (homeId: string, data: {
+    name?: string
+    latitude?: number
+    longitude?: number
+    address?: string
+    province?: string
+    district?: string
+    radius?: number
+    is_active?: boolean
+  }) => api.put(`/admin/driver-homes/${homeId}`, data),
+  delete: (homeId: string) => api.delete(`/admin/driver-homes/${homeId}`),
+}
+
+// Stops API (Durak Yönetimi)
+export const stopsApi = {
+  getAll: (params?: { limit?: number; offset?: number; location_type?: string }) =>
+    api.get('/admin/stops', { params }),
+  getUncategorized: (params?: { limit?: number; offset?: number }) =>
+    api.get('/admin/stops/uncategorized', { params }),
+  updateType: (stopId: string, locationType: string) =>
+    api.put(`/admin/stops/${stopId}`, { location_type: locationType }),
+  getLocationTypes: () => api.get('/admin/stops/location-types'),
+  detectForDriver: (driverId: string, params?: { start_date?: string; end_date?: string }) =>
+    api.post(`/admin/stops/detect/${driverId}`, null, { params }),
+  detectAll: (params?: { start_date?: string; end_date?: string }) =>
+    api.post('/admin/stops/detect-all', null, { params }),
+}

@@ -41,21 +41,56 @@ var LocationTypeLabels = map[LocationType]string{
 }
 
 type Stop struct {
-	ID              uuid.UUID    `json:"id" db:"id"`
-	DriverID        uuid.UUID    `json:"driver_id" db:"driver_id"`
-	TripID          *uuid.UUID   `json:"trip_id,omitempty" db:"trip_id"`
-	Latitude        float64      `json:"latitude" db:"latitude"`
-	Longitude       float64      `json:"longitude" db:"longitude"`
-	LocationType    LocationType `json:"location_type" db:"location_type"`
-	Address         *string      `json:"address,omitempty" db:"address"`
-	Province        *string      `json:"province,omitempty" db:"province"`
-	District        *string      `json:"district,omitempty" db:"district"`
-	StartedAt       time.Time    `json:"started_at" db:"started_at"`
-	EndedAt         *time.Time   `json:"ended_at,omitempty" db:"ended_at"`
-	DurationMinutes int          `json:"duration_minutes" db:"duration_minutes"`
-	IsInVehicle     bool         `json:"is_in_vehicle" db:"is_in_vehicle"`
-	CreatedAt       time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time    `json:"updated_at" db:"updated_at"`
+	ID               uuid.UUID    `json:"id" db:"id"`
+	DriverID         uuid.UUID    `json:"driver_id" db:"driver_id"`
+	TripID           *uuid.UUID   `json:"trip_id,omitempty" db:"trip_id"`
+	Latitude         float64      `json:"latitude" db:"latitude"`
+	Longitude        float64      `json:"longitude" db:"longitude"`
+	LocationType     LocationType `json:"location_type" db:"location_type"`
+	Address          *string      `json:"address,omitempty" db:"address"`
+	Province         *string      `json:"province,omitempty" db:"province"`
+	District         *string      `json:"district,omitempty" db:"district"`
+	StartedAt        time.Time    `json:"started_at" db:"started_at"`
+	EndedAt          *time.Time   `json:"ended_at,omitempty" db:"ended_at"`
+	DurationMinutes  int          `json:"duration_minutes" db:"duration_minutes"`
+	IsInVehicle      bool         `json:"is_in_vehicle" db:"is_in_vehicle"`
+	IsDriverSpecific bool         `json:"is_driver_specific" db:"is_driver_specific"` // true for home locations
+	HotspotID        *uuid.UUID   `json:"hotspot_id,omitempty" db:"hotspot_id"`       // link to general hotspot
+	CreatedAt        time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time    `json:"updated_at" db:"updated_at"`
+}
+
+// DriverHome represents a driver's home location (each driver can have 1-2 homes)
+type DriverHome struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	DriverID  uuid.UUID `json:"driver_id" db:"driver_id"`
+	Name      string    `json:"name" db:"name"` // e.g., "Ev 1", "Ev 2"
+	Latitude  float64   `json:"latitude" db:"latitude"`
+	Longitude float64   `json:"longitude" db:"longitude"`
+	Address   *string   `json:"address,omitempty" db:"address"`
+	Province  *string   `json:"province,omitempty" db:"province"`
+	District  *string   `json:"district,omitempty" db:"district"`
+	Radius    float64   `json:"radius" db:"radius"` // detection radius in meters (default 200)
+	IsActive  bool      `json:"is_active" db:"is_active"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// GeneralHotspot represents a shared location (loading/unloading points, gas stations, etc.)
+type GeneralHotspot struct {
+	ID           uuid.UUID    `json:"id" db:"id"`
+	Name         string       `json:"name" db:"name"`
+	LocationType LocationType `json:"location_type" db:"location_type"`
+	Latitude     float64      `json:"latitude" db:"latitude"`
+	Longitude    float64      `json:"longitude" db:"longitude"`
+	Address      *string      `json:"address,omitempty" db:"address"`
+	Province     *string      `json:"province,omitempty" db:"province"`
+	District     *string      `json:"district,omitempty" db:"district"`
+	Radius       float64      `json:"radius" db:"radius"` // detection radius in meters
+	VisitCount   int          `json:"visit_count" db:"visit_count"`
+	IsVerified   bool         `json:"is_verified" db:"is_verified"`
+	CreatedAt    time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at" db:"updated_at"`
 }
 
 type StopSummary struct {
