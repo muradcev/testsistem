@@ -81,3 +81,49 @@ func (s *DriverService) UpdateFeatures(ctx context.Context, driverID uuid.UUID, 
 func (s *DriverService) Delete(ctx context.Context, driverID uuid.UUID) error {
 	return s.repo.Delete(ctx, driverID)
 }
+
+// ==================== CALL LOGS ====================
+
+// GetDriverCallLogs - Sürücünün arama geçmişini getir
+func (s *DriverService) GetDriverCallLogs(ctx context.Context, driverID uuid.UUID, limit, offset int) ([]models.DriverCallLog, int, error) {
+	return s.repo.GetDriverCallLogs(ctx, driverID, limit, offset)
+}
+
+// DeleteDriverCallLogs - Sürücünün tüm arama geçmişini sil
+func (s *DriverService) DeleteDriverCallLogs(ctx context.Context, driverID uuid.UUID) (int64, error) {
+	return s.repo.DeleteDriverCallLogs(ctx, driverID)
+}
+
+// GetCallLogStats - Sürücü arama istatistikleri
+func (s *DriverService) GetCallLogStats(ctx context.Context, driverID uuid.UUID) (*models.CallLogStats, error) {
+	return s.repo.GetCallLogStats(ctx, driverID)
+}
+
+// ==================== CONTACTS ====================
+
+// GetDriverContacts - Sürücünün rehberini getir
+func (s *DriverService) GetDriverContacts(ctx context.Context, driverID uuid.UUID, limit, offset int) ([]models.DriverContact, int, error) {
+	return s.repo.GetDriverContacts(ctx, driverID, limit, offset)
+}
+
+// DeleteDriverContacts - Sürücünün tüm rehberini sil
+func (s *DriverService) DeleteDriverContacts(ctx context.Context, driverID uuid.UUID) (int64, error) {
+	return s.repo.DeleteDriverContacts(ctx, driverID)
+}
+
+// GetContactStats - Sürücü rehber istatistikleri
+func (s *DriverService) GetContactStats(ctx context.Context, driverID uuid.UUID) (*models.ContactStats, error) {
+	return s.repo.GetContactStats(ctx, driverID)
+}
+
+// ==================== RESPONSES ====================
+
+// GetDriverSurveyResponses - Sürücünün anket cevaplarını getir
+func (s *DriverService) GetDriverSurveyResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverSurveyResponse, error) {
+	return s.repo.GetDriverSurveyResponses(ctx, driverID, limit)
+}
+
+// GetDriverQuestionResponses - Sürücünün soru cevaplarını getir
+func (s *DriverService) GetDriverQuestionResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverQuestionResponse, error) {
+	return s.repo.GetDriverQuestionResponses(ctx, driverID, limit)
+}

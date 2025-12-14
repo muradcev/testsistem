@@ -16,6 +16,9 @@ import {
   PencilIcon,
   Cog6ToothIcon,
   ExclamationTriangleIcon,
+  PhoneIcon,
+  UserGroupIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import 'leaflet/dist/leaflet.css'
@@ -113,6 +116,41 @@ interface Stop {
   duration_minutes: number
 }
 
+interface CallLog {
+  id: string
+  phone_number: string
+  contact_name?: string
+  call_type: string
+  duration_seconds: number
+  call_timestamp: string
+}
+
+interface Contact {
+  id: string
+  name: string
+  phone_numbers: string[]
+  contact_type?: string
+  synced_at: string
+}
+
+interface SurveyResponse {
+  id: string
+  survey_title: string
+  survey_type: string
+  answer: string
+  created_at: string
+}
+
+interface QuestionResponse {
+  id: string
+  question_text: string
+  question_type: string
+  answer_text?: string
+  status: string
+  answered_at?: string
+  created_at: string
+}
+
 export default function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -124,6 +162,9 @@ export default function DriverDetailPage() {
   const [editingHome, setEditingHome] = useState<DriverHome | null>(null)
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [activeDataTab, setActiveDataTab] = useState<'callLogs' | 'contacts' | 'responses'>('callLogs')
+  const [showDeleteCallLogsConfirm, setShowDeleteCallLogsConfirm] = useState(false)
+  const [showDeleteContactsConfirm, setShowDeleteContactsConfirm] = useState(false)
   const [homeForm, setHomeForm] = useState({
     name: '',
     latitude: 0,
@@ -160,6 +201,27 @@ export default function DriverDetailPage() {
   const { data: stopsData } = useQuery({
     queryKey: ['driver-stops', id],
     queryFn: () => driversApi.getStops(id!),
+    enabled: !!id,
+  })
+
+  // Call logs query
+  const { data: callLogsData, isLoading: callLogsLoading } = useQuery({
+    queryKey: ['driver-call-logs', id],
+    queryFn: () => driversApi.getCallLogs(id!, { limit: 100 }),
+    enabled: !!id,
+  })
+
+  // Contacts query
+  const { data: contactsData, isLoading: contactsLoading } = useQuery({
+    queryKey: ['driver-contacts', id],
+    queryFn: () => driversApi.getContacts(id!, { limit: 100 }),
+    enabled: !!id,
+  })
+
+  // Responses query
+  const { data: responsesData, isLoading: responsesLoading } = useQuery({
+    queryKey: ['driver-responses', id],
+    queryFn: () => driversApi.getResponses(id!),
     enabled: !!id,
   })
 
@@ -246,12 +308,42 @@ export default function DriverDetailPage() {
     },
   })
 
+  // Delete call logs mutation
+  const deleteCallLogsMutation = useMutation({
+    mutationFn: () => driversApi.deleteCallLogs(id!),
+    onSuccess: () => {
+      toast.success('Arama geçmişi silindi')
+      queryClient.invalidateQueries({ queryKey: ['driver-call-logs', id] })
+      setShowDeleteCallLogsConfirm(false)
+    },
+    onError: () => {
+      toast.error('Arama geçmişi silinemedi')
+    },
+  })
+
+  // Delete contacts mutation
+  const deleteContactsMutation = useMutation({
+    mutationFn: () => driversApi.deleteContacts(id!),
+    onSuccess: () => {
+      toast.success('Rehber silindi')
+      queryClient.invalidateQueries({ queryKey: ['driver-contacts', id] })
+      setShowDeleteContactsConfirm(false)
+    },
+    onError: () => {
+      toast.error('Rehber silinemedi')
+    },
+  })
+
   const driver: Driver | null = driverData?.data || null
   const locations: Location[] = locationsData?.data?.locations || []
   const trips: Trip[] = tripsData?.data?.trips || []
   const homes: DriverHome[] = homesData?.data?.homes || []
   const canAddHome = homesData?.data?.can_add ?? true
   const stops: Stop[] = stopsData?.data?.stops || []
+  const callLogs: CallLog[] = callLogsData?.data?.call_logs || []
+  const contacts: Contact[] = contactsData?.data?.contacts || []
+  const surveyResponses: SurveyResponse[] = responsesData?.data?.survey_responses || []
+  const questionResponses: QuestionResponse[] = responsesData?.data?.question_responses || []
 
   // Get frequently visited stops (unknown type, sorted by duration)
   const frequentStops = stops
@@ -705,6 +797,234 @@ export default function DriverDetailPage() {
         </div>
       </div>
 
+      {/* Driver Data Tabs - Call Logs, Contacts, Responses */}
+      <div className="bg-white rounded-lg shadow">
+        {/* Tab Headers */}
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveDataTab('callLogs')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 flex items-center gap-2 ${
+                activeDataTab === 'callLogs'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <PhoneIcon className="h-5 w-5" />
+              Arama Geçmişi
+              <span className="ml-1 px-2 py-0.5 text-xs bg-gray-100 rounded-full">{callLogs.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveDataTab('contacts')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 flex items-center gap-2 ${
+                activeDataTab === 'contacts'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <UserGroupIcon className="h-5 w-5" />
+              Rehber
+              <span className="ml-1 px-2 py-0.5 text-xs bg-gray-100 rounded-full">{contacts.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveDataTab('responses')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 flex items-center gap-2 ${
+                activeDataTab === 'responses'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <ChatBubbleLeftRightIcon className="h-5 w-5" />
+              Cevaplar
+              <span className="ml-1 px-2 py-0.5 text-xs bg-gray-100 rounded-full">
+                {surveyResponses.length + questionResponses.length}
+              </span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {/* Call Logs Tab */}
+          {activeDataTab === 'callLogs' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Arama Geçmişi</h3>
+                {callLogs.length > 0 && (
+                  <button
+                    onClick={() => setShowDeleteCallLogsConfirm(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                    Tümünü Sil
+                  </button>
+                )}
+              </div>
+              {callLogsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : callLogs.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Numara</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kişi</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tip</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Süre</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {callLogs.map((log) => (
+                        <tr key={log.id}>
+                          <td className="px-4 py-3 text-sm font-medium">{log.phone_number}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500">{log.contact_name || '-'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              log.call_type === 'incoming' ? 'bg-green-100 text-green-800' :
+                              log.call_type === 'outgoing' ? 'bg-blue-100 text-blue-800' :
+                              log.call_type === 'missed' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {log.call_type === 'incoming' ? 'Gelen' :
+                               log.call_type === 'outgoing' ? 'Giden' :
+                               log.call_type === 'missed' ? 'Cevapsız' : log.call_type}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {Math.floor(log.duration_seconds / 60)}:{(log.duration_seconds % 60).toString().padStart(2, '0')}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500">
+                            {new Date(log.call_timestamp).toLocaleString('tr-TR')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">Arama geçmişi yok</p>
+              )}
+            </div>
+          )}
+
+          {/* Contacts Tab */}
+          {activeDataTab === 'contacts' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Rehber</h3>
+                {contacts.length > 0 && (
+                  <button
+                    onClick={() => setShowDeleteContactsConfirm(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                    Tümünü Sil
+                  </button>
+                )}
+              </div>
+              {contactsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : contacts.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {contacts.map((contact) => (
+                    <div key={contact.id} className="p-4 bg-gray-50 rounded-lg">
+                      <p className="font-medium text-gray-900">{contact.name}</p>
+                      <div className="mt-1 space-y-1">
+                        {Array.isArray(contact.phone_numbers) && contact.phone_numbers.map((phone, i) => (
+                          <p key={i} className="text-sm text-gray-600">{phone}</p>
+                        ))}
+                      </div>
+                      {contact.contact_type && (
+                        <span className="mt-2 inline-block px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                          {contact.contact_type}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">Rehber verisi yok</p>
+              )}
+            </div>
+          )}
+
+          {/* Responses Tab */}
+          {activeDataTab === 'responses' && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Anket ve Soru Cevapları</h3>
+              {responsesLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Survey Responses */}
+                  {surveyResponses.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-700 mb-3">Anket Cevapları</h4>
+                      <div className="space-y-3">
+                        {surveyResponses.map((response) => (
+                          <div key={response.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="font-medium text-blue-800">{response.survey_title}</p>
+                              <span className="text-xs text-blue-600">
+                                {new Date(response.created_at).toLocaleDateString('tr-TR')}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">{response.answer}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Question Responses */}
+                  {questionResponses.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-700 mb-3">Soru Cevapları</h4>
+                      <div className="space-y-3">
+                        {questionResponses.map((response) => (
+                          <div key={response.id} className="p-4 bg-green-50 rounded-lg border border-green-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="font-medium text-green-800">{response.question_text}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded ${
+                                response.status === 'answered' ? 'bg-green-200 text-green-800' :
+                                response.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
+                                'bg-gray-200 text-gray-800'
+                              }`}>
+                                {response.status === 'answered' ? 'Cevaplandı' :
+                                 response.status === 'pending' ? 'Bekliyor' : response.status}
+                              </span>
+                            </div>
+                            {response.answer_text && (
+                              <p className="text-sm text-gray-700">{response.answer_text}</p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-2">
+                              {response.answered_at
+                                ? `Cevap: ${new Date(response.answered_at).toLocaleString('tr-TR')}`
+                                : `Oluşturulma: ${new Date(response.created_at).toLocaleString('tr-TR')}`}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {surveyResponses.length === 0 && questionResponses.length === 0 && (
+                    <p className="text-gray-500 text-center py-8">Henüz cevap yok</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Send Notification & Trips Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Send Notification */}
@@ -997,6 +1317,86 @@ export default function DriverDetailPage() {
               >
                 <TrashIcon className="h-4 w-4" />
                 {deleteDriverMutation.isPending ? 'Siliniyor...' : 'Evet, Sil'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Call Logs Confirmation Modal */}
+      {showDeleteCallLogsConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <PhoneIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Arama Geçmişini Sil</h3>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-600 mb-2">
+                <strong>{driver?.name} {driver?.surname}</strong> adlı sürücünün tüm arama geçmişini silmek istediğinize emin misiniz?
+              </p>
+              <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg">
+                Bu işlem geri alınamaz! Toplam {callLogs.length} arama kaydı silinecektir.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteCallLogsConfirm(false)}
+                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => deleteCallLogsMutation.mutate()}
+                disabled={deleteCallLogsMutation.isPending}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <TrashIcon className="h-4 w-4" />
+                {deleteCallLogsMutation.isPending ? 'Siliniyor...' : 'Evet, Sil'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Contacts Confirmation Modal */}
+      {showDeleteContactsConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <UserGroupIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Rehberi Sil</h3>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-600 mb-2">
+                <strong>{driver?.name} {driver?.surname}</strong> adlı sürücünün tüm rehber verilerini silmek istediğinize emin misiniz?
+              </p>
+              <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg">
+                Bu işlem geri alınamaz! Toplam {contacts.length} kişi silinecektir.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteContactsConfirm(false)}
+                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => deleteContactsMutation.mutate()}
+                disabled={deleteContactsMutation.isPending}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <TrashIcon className="h-4 w-4" />
+                {deleteContactsMutation.isPending ? 'Siliniyor...' : 'Evet, Sil'}
               </button>
             </div>
           </div>

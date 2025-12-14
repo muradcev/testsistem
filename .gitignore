@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.exe
+server
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Mobile
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+mobile/*.iml
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+
+# Backend
+backend/server
+backend/*.exe
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

@@ -177,3 +177,75 @@ func MapDriverStatus(currentStatus string, isActive bool) string {
 		return "active"
 	}
 }
+
+// ==================== CALL LOGS ====================
+
+type DriverCallLog struct {
+	ID              uuid.UUID  `json:"id" db:"id"`
+	DriverID        uuid.UUID  `json:"driver_id" db:"driver_id"`
+	PhoneNumber     string     `json:"phone_number" db:"phone_number"`
+	ContactName     *string    `json:"contact_name,omitempty" db:"contact_name"`
+	CallType        string     `json:"call_type" db:"call_type"` // incoming, outgoing, missed, rejected
+	DurationSeconds int        `json:"duration_seconds" db:"duration_seconds"`
+	CallTimestamp   time.Time  `json:"call_timestamp" db:"call_timestamp"`
+	DeliveryID      *uuid.UUID `json:"delivery_id,omitempty" db:"delivery_id"`
+	SyncedAt        time.Time  `json:"synced_at" db:"synced_at"`
+	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
+}
+
+type CallLogStats struct {
+	TotalCalls           int        `json:"total_calls"`
+	OutgoingCalls        int        `json:"outgoing_calls"`
+	IncomingCalls        int        `json:"incoming_calls"`
+	MissedCalls          int        `json:"missed_calls"`
+	TotalDurationSeconds int        `json:"total_duration_seconds"`
+	UniqueContacts       int        `json:"unique_contacts"`
+	LastCallAt           *time.Time `json:"last_call_at,omitempty"`
+}
+
+// ==================== CONTACTS ====================
+
+type DriverContact struct {
+	ID           uuid.UUID `json:"id" db:"id"`
+	DriverID     uuid.UUID `json:"driver_id" db:"driver_id"`
+	ContactID    *string   `json:"contact_id,omitempty" db:"contact_id"`
+	Name         string    `json:"name" db:"name"`
+	PhoneNumbers []byte    `json:"phone_numbers" db:"phone_numbers"` // JSONB
+	ContactType  *string   `json:"contact_type,omitempty" db:"contact_type"`
+	SyncedAt     time.Time `json:"synced_at" db:"synced_at"`
+	IsDeleted    bool      `json:"is_deleted" db:"is_deleted"`
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type ContactStats struct {
+	TotalContacts     int        `json:"total_contacts"`
+	CustomerContacts  int        `json:"customer_contacts"`
+	BrokerContacts    int        `json:"broker_contacts"`
+	ColleagueContacts int        `json:"colleague_contacts"`
+	FamilyContacts    int        `json:"family_contacts"`
+	LastSyncAt        *time.Time `json:"last_sync_at,omitempty"`
+}
+
+// ==================== SURVEY/QUESTION RESPONSES ====================
+
+type DriverSurveyResponse struct {
+	ID          uuid.UUID `json:"id"`
+	SurveyID    uuid.UUID `json:"survey_id"`
+	SurveyTitle string    `json:"survey_title"`
+	SurveyType  string    `json:"survey_type"`
+	Answer      string    `json:"answer"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type DriverQuestionResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	QuestionText  string     `json:"question_text"`
+	QuestionType  string     `json:"question_type"`
+	AnswerText    *string    `json:"answer_text,omitempty"`
+	AnswerOptions []byte     `json:"answer_options,omitempty"` // JSONB
+	AnswerData    []byte     `json:"answer_data,omitempty"`    // JSONB
+	Status        string     `json:"status"`
+	AnsweredAt    *time.Time `json:"answered_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+}

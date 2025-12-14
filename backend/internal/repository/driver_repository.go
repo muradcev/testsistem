@@ -433,3 +433,251 @@ func (r *DriverRepository) Delete(ctx context.Context, driverID uuid.UUID) error
 	_, err := r.db.Pool.Exec(ctx, query, driverID)
 	return err
 }
+
+// ==================== CALL LOGS ====================
+
+// GetDriverCallLogs - Sürücünün arama geçmişini getir
+func (r *DriverRepository) GetDriverCallLogs(ctx context.Context, driverID uuid.UUID, limit, offset int) ([]models.DriverCallLog, int, error) {
+	// Toplam sayı
+	var total int
+	countQuery := `SELECT COUNT(*) FROM driver_call_logs WHERE driver_id = $1`
+	err := r.db.Pool.QueryRow(ctx, countQuery, driverID).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count call logs: %w", err)
+	}
+
+	query := `
+		SELECT id, driver_id, phone_number, contact_name, call_type,
+		       duration_seconds, call_timestamp, delivery_id, synced_at, created_at
+		FROM driver_call_logs
+		WHERE driver_id = $1
+		ORDER BY call_timestamp DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query, driverID, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get call logs: %w", err)
+	}
+	defer rows.Close()
+
+	var logs []models.DriverCallLog
+	for rows.Next() {
+		var log models.DriverCallLog
+		err := rows.Scan(
+			&log.ID, &log.DriverID, &log.PhoneNumber, &log.ContactName, &log.CallType,
+			&log.DurationSeconds, &log.CallTimestamp, &log.DeliveryID, &log.SyncedAt, &log.CreatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan call log: %w", err)
+		}
+		logs = append(logs, log)
+	}
+
+	return logs, total, nil
+}
+
+// DeleteDriverCallLogs - Sürücünün tüm arama geçmişini sil
+func (r *DriverRepository) DeleteDriverCallLogs(ctx context.Context, driverID uuid.UUID) (int64, error) {
+	query := `DELETE FROM driver_call_logs WHERE driver_id = $1`
+	result, err := r.db.Pool.Exec(ctx, query, driverID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete call logs: %w", err)
+	}
+	return result.RowsAffected(), nil
+}
+
+// DeleteCallLog - Tek bir arama kaydını sil
+func (r *DriverRepository) DeleteCallLog(ctx context.Context, logID uuid.UUID) error {
+	query := `DELETE FROM driver_call_logs WHERE id = $1`
+	_, err := r.db.Pool.Exec(ctx, query, logID)
+	return err
+}
+
+// GetCallLogStats - Sürücü arama istatistikleri
+func (r *DriverRepository) GetCallLogStats(ctx context.Context, driverID uuid.UUID) (*models.CallLogStats, error) {
+	query := `
+		SELECT
+			COUNT(*) as total_calls,
+			COUNT(CASE WHEN call_type = 'outgoing' THEN 1 END) as outgoing_calls,
+			COUNT(CASE WHEN call_type = 'incoming' THEN 1 END) as incoming_calls,
+			COUNT(CASE WHEN call_type = 'missed' THEN 1 END) as missed_calls,
+			COALESCE(SUM(duration_seconds), 0) as total_duration_seconds,
+			COUNT(DISTINCT phone_number) as unique_contacts,
+			MAX(call_timestamp) as last_call_at
+		FROM driver_call_logs
+		WHERE driver_id = $1
+	`
+
+	var stats models.CallLogStats
+	err := r.db.Pool.QueryRow(ctx, query, driverID).Scan(
+		&stats.TotalCalls,
+		&stats.OutgoingCalls,
+		&stats.IncomingCalls,
+		&stats.MissedCalls,
+		&stats.TotalDurationSeconds,
+		&stats.UniqueContacts,
+		&stats.LastCallAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get call log stats: %w", err)
+	}
+
+	return &stats, nil
+}
+
+// ==================== CONTACTS ====================
+
+// GetDriverContacts - Sürücünün rehberini getir
+func (r *DriverRepository) GetDriverContacts(ctx context.Context, driverID uuid.UUID, limit, offset int) ([]models.DriverContact, int, error) {
+	// Toplam sayı
+	var total int
+	countQuery := `SELECT COUNT(*) FROM driver_contacts WHERE driver_id = $1 AND is_deleted = false`
+	err := r.db.Pool.QueryRow(ctx, countQuery, driverID).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count contacts: %w", err)
+	}
+
+	query := `
+		SELECT id, driver_id, contact_id, name, phone_numbers, contact_type,
+		       synced_at, is_deleted, created_at, updated_at
+		FROM driver_contacts
+		WHERE driver_id = $1 AND is_deleted = false
+		ORDER BY name ASC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query, driverID, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get contacts: %w", err)
+	}
+	defer rows.Close()
+
+	var contacts []models.DriverContact
+	for rows.Next() {
+		var contact models.DriverContact
+		err := rows.Scan(
+			&contact.ID, &contact.DriverID, &contact.ContactID, &contact.Name, &contact.PhoneNumbers,
+			&contact.ContactType, &contact.SyncedAt, &contact.IsDeleted, &contact.CreatedAt, &contact.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan contact: %w", err)
+		}
+		contacts = append(contacts, contact)
+	}
+
+	return contacts, total, nil
+}
+
+// DeleteDriverContacts - Sürücünün tüm rehberini sil
+func (r *DriverRepository) DeleteDriverContacts(ctx context.Context, driverID uuid.UUID) (int64, error) {
+	query := `DELETE FROM driver_contacts WHERE driver_id = $1`
+	result, err := r.db.Pool.Exec(ctx, query, driverID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete contacts: %w", err)
+	}
+	return result.RowsAffected(), nil
+}
+
+// DeleteContact - Tek bir kişiyi sil
+func (r *DriverRepository) DeleteContact(ctx context.Context, contactID uuid.UUID) error {
+	query := `DELETE FROM driver_contacts WHERE id = $1`
+	_, err := r.db.Pool.Exec(ctx, query, contactID)
+	return err
+}
+
+// GetContactStats - Sürücü rehber istatistikleri
+func (r *DriverRepository) GetContactStats(ctx context.Context, driverID uuid.UUID) (*models.ContactStats, error) {
+	query := `
+		SELECT
+			COUNT(*) as total_contacts,
+			COUNT(CASE WHEN contact_type = 'customer' THEN 1 END) as customer_contacts,
+			COUNT(CASE WHEN contact_type = 'broker' THEN 1 END) as broker_contacts,
+			COUNT(CASE WHEN contact_type = 'colleague' THEN 1 END) as colleague_contacts,
+			COUNT(CASE WHEN contact_type = 'family' THEN 1 END) as family_contacts,
+			MAX(synced_at) as last_sync_at
+		FROM driver_contacts
+		WHERE driver_id = $1 AND is_deleted = false
+	`
+
+	var stats models.ContactStats
+	err := r.db.Pool.QueryRow(ctx, query, driverID).Scan(
+		&stats.TotalContacts,
+		&stats.CustomerContacts,
+		&stats.BrokerContacts,
+		&stats.ColleagueContacts,
+		&stats.FamilyContacts,
+		&stats.LastSyncAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get contact stats: %w", err)
+	}
+
+	return &stats, nil
+}
+
+// ==================== SURVEY/QUESTION RESPONSES ====================
+
+// GetDriverSurveyResponses - Sürücünün anket cevaplarını getir
+func (r *DriverRepository) GetDriverSurveyResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverSurveyResponse, error) {
+	query := `
+		SELECT sr.id, sr.survey_id, s.title as survey_title, s.type as survey_type,
+		       sr.answer, sr.created_at
+		FROM survey_responses sr
+		JOIN surveys s ON sr.survey_id = s.id
+		WHERE sr.driver_id = $1
+		ORDER BY sr.created_at DESC
+		LIMIT $2
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query, driverID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get survey responses: %w", err)
+	}
+	defer rows.Close()
+
+	var responses []models.DriverSurveyResponse
+	for rows.Next() {
+		var resp models.DriverSurveyResponse
+		err := rows.Scan(&resp.ID, &resp.SurveyID, &resp.SurveyTitle, &resp.SurveyType, &resp.Answer, &resp.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan survey response: %w", err)
+		}
+		responses = append(responses, resp)
+	}
+
+	return responses, nil
+}
+
+// GetDriverQuestionResponses - Sürücünün soru cevaplarını getir
+func (r *DriverRepository) GetDriverQuestionResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverQuestionResponse, error) {
+	query := `
+		SELECT dq.id, dq.question_text, dq.question_type, dq.answer_text,
+		       dq.answer_options, dq.answer_data, dq.status, dq.answered_at, dq.created_at
+		FROM driver_questions dq
+		WHERE dq.driver_id = $1 AND dq.status IN ('answered', 'sent')
+		ORDER BY COALESCE(dq.answered_at, dq.created_at) DESC
+		LIMIT $2
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query, driverID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get question responses: %w", err)
+	}
+	defer rows.Close()
+
+	var responses []models.DriverQuestionResponse
+	for rows.Next() {
+		var resp models.DriverQuestionResponse
+		err := rows.Scan(
+			&resp.ID, &resp.QuestionText, &resp.QuestionType, &resp.AnswerText,
+			&resp.AnswerOptions, &resp.AnswerData, &resp.Status, &resp.AnsweredAt, &resp.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan question response: %w", err)
+		}
+		responses = append(responses, resp)
+	}
+
+	return responses, nil
+}

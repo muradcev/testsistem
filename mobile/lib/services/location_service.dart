@@ -72,7 +72,7 @@ class LocationService {
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<BatteryState>? _batterySubscription;
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Timer? _locationTimer;
   Timer? _syncTimer;
 
@@ -271,9 +271,9 @@ class LocationService {
     }
   }
 
-  void _updateConnectivity(ConnectivityResult result) {
-    _isOnline = result != ConnectivityResult.none;
-    _isWifi = result == ConnectivityResult.wifi;
+  void _updateConnectivity(List<ConnectivityResult> result) {
+    _isOnline = result.isNotEmpty && !result.contains(ConnectivityResult.none);
+    _isWifi = result.contains(ConnectivityResult.wifi);
 
     // Sync when back online
     if (_isOnline && _pendingLocations.isNotEmpty) {

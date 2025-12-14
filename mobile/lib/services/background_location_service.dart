@@ -77,7 +77,7 @@ void onStart(ServiceInstance service) async {
   Timer? locationTimer;
   Timer? syncTimer;
   Timer? notificationTimer;
-  StreamSubscription<ConnectivityResult>? connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? connectivitySubscription;
   List<Map<String, dynamic>> pendingLocations = [];
   int batteryLevel = 100;
   bool isOnline = true;
@@ -124,13 +124,13 @@ void onStart(ServiceInstance service) async {
   final connectivity = Connectivity();
   try {
     final result = await connectivity.checkConnectivity();
-    isOnline = result != ConnectivityResult.none;
+    isOnline = result.isNotEmpty && !result.contains(ConnectivityResult.none);
   } catch (e) {
     isOnline = true;
   }
 
   connectivitySubscription = connectivity.onConnectivityChanged.listen((result) {
-    isOnline = result != ConnectivityResult.none;
+    isOnline = result.isNotEmpty && !result.contains(ConnectivityResult.none);
     if (isOnline && pendingLocations.isNotEmpty && dio != null) {
       _syncLocations(dio!, pendingLocations, prefs);
     }

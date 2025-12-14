@@ -368,6 +368,142 @@ func (h *AdminHandler) DeleteDriver(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Sürücü ve ilişkili tüm veriler silindi", "driver_id": driverID})
 }
 
+// ==================== DRIVER CALL LOGS ====================
+
+// GetDriverCallLogs - Sürücünün arama geçmişini getir
+func (h *AdminHandler) GetDriverCallLogs(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	ctx := c.Request.Context()
+	logs, total, err := h.driverService.GetDriverCallLogs(ctx, driverID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// İstatistikleri de getir
+	stats, _ := h.driverService.GetCallLogStats(ctx, driverID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"call_logs": logs,
+		"total":     total,
+		"limit":     limit,
+		"offset":    offset,
+		"stats":     stats,
+	})
+}
+
+// DeleteDriverCallLogs - Sürücünün tüm arama geçmişini sil
+func (h *AdminHandler) DeleteDriverCallLogs(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	count, err := h.driverService.DeleteDriverCallLogs(ctx, driverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Arama geçmişi silindi",
+		"deleted_count": count,
+	})
+}
+
+// ==================== DRIVER CONTACTS ====================
+
+// GetDriverContacts - Sürücünün rehberini getir
+func (h *AdminHandler) GetDriverContacts(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	ctx := c.Request.Context()
+	contacts, total, err := h.driverService.GetDriverContacts(ctx, driverID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// İstatistikleri de getir
+	stats, _ := h.driverService.GetContactStats(ctx, driverID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"contacts": contacts,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
+		"stats":    stats,
+	})
+}
+
+// DeleteDriverContacts - Sürücünün tüm rehberini sil
+func (h *AdminHandler) DeleteDriverContacts(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	count, err := h.driverService.DeleteDriverContacts(ctx, driverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Rehber silindi",
+		"deleted_count": count,
+	})
+}
+
+// ==================== DRIVER RESPONSES ====================
+
+// GetDriverResponses - Sürücünün anket ve soru cevaplarını getir
+func (h *AdminHandler) GetDriverResponses(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+
+	ctx := c.Request.Context()
+
+	surveyResponses, err := h.driverService.GetDriverSurveyResponses(ctx, driverID, limit)
+	if err != nil {
+		surveyResponses = []models.DriverSurveyResponse{}
+	}
+
+	questionResponses, err := h.driverService.GetDriverQuestionResponses(ctx, driverID, limit)
+	if err != nil {
+		questionResponses = []models.DriverQuestionResponse{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"survey_responses":   surveyResponses,
+		"question_responses": questionResponses,
+	})
+}
+
 // Notification Handler
 type NotificationHandler struct {
 	notificationService *service.NotificationService

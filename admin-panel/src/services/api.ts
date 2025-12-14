@@ -54,6 +54,16 @@ export const driversApi = {
     call_log_enabled?: boolean;
   }) => api.put(`/admin/drivers/${id}/features`, features),
   delete: (id: string) => api.delete(`/admin/drivers/${id}`),
+  // Call Logs
+  getCallLogs: (id: string, params?: { limit?: number; offset?: number }) =>
+    api.get(`/admin/drivers/${id}/call-logs`, { params }),
+  deleteCallLogs: (id: string) => api.delete(`/admin/drivers/${id}/call-logs`),
+  // Contacts
+  getContacts: (id: string, params?: { limit?: number; offset?: number }) =>
+    api.get(`/admin/drivers/${id}/contacts`, { params }),
+  deleteContacts: (id: string) => api.delete(`/admin/drivers/${id}/contacts`),
+  // Responses (Survey & Question)
+  getResponses: (id: string) => api.get(`/admin/drivers/${id}/responses`),
 }
 
 export const locationsApi = {

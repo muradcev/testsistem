@@ -190,6 +190,17 @@ func main() {
 			adminGroup.PUT("/drivers/:id/features", adminHandler.UpdateDriverFeatures)
 			adminGroup.DELETE("/drivers/:id", adminHandler.DeleteDriver)
 
+			// Driver Call Logs
+			adminGroup.GET("/drivers/:id/call-logs", adminHandler.GetDriverCallLogs)
+			adminGroup.DELETE("/drivers/:id/call-logs", adminHandler.DeleteDriverCallLogs)
+
+			// Driver Contacts
+			adminGroup.GET("/drivers/:id/contacts", adminHandler.GetDriverContacts)
+			adminGroup.DELETE("/drivers/:id/contacts", adminHandler.DeleteDriverContacts)
+
+			// Driver Responses (Survey & Question)
+			adminGroup.GET("/drivers/:id/responses", adminHandler.GetDriverResponses)
+
 			// Real-time locations
 			adminGroup.GET("/locations/live", adminHandler.GetLiveLocations)
 

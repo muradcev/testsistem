@@ -2,6 +2,7 @@ import 'package:call_log/call_log.dart' as call_log_pkg;
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'api_service.dart';
 
@@ -9,7 +10,6 @@ import 'api_service.dart';
 class CallTrackingService {
   final ApiService _apiService;
   Timer? _syncTimer;
-  DateTime? _lastSyncTime;
 
   CallTrackingService(this._apiService);
 
@@ -50,7 +50,7 @@ class CallTrackingService {
         phones: c.phones.map((p) => p.number).toList(),
       )).toList();
     } catch (e) {
-      print('Rehber okuma hatası: $e');
+      debugPrint('Rehber okuma hatası: $e');
       return [];
     }
   }
@@ -110,7 +110,7 @@ class CallTrackingService {
 
       return logs;
     } catch (e) {
-      print('Arama geçmişi okuma hatası: $e');
+      debugPrint('Arama geçmişi okuma hatası: $e');
       return [];
     }
   }
@@ -169,9 +169,8 @@ class CallTrackingService {
       }).toList();
 
       await _apiService.post('/driver/call-logs', data: {'calls': callData});
-      _lastSyncTime = DateTime.now();
     } catch (e) {
-      print('Arama verisi senkronizasyon hatası: $e');
+      debugPrint('Arama verisi senkronizasyon hatası: $e');
     }
   }
 
