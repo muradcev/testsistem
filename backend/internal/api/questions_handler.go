@@ -240,8 +240,13 @@ func (h *QuestionsHandler) GetPendingQuestionsForDriver(c *gin.Context) {
 			return
 		}
 	} else {
-		// Get from auth context (driver's own request)
-		driverID = c.MustGet("driver_id").(uuid.UUID)
+		// Get from auth context (driver's own request) - middleware sets "userID"
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı kimliği bulunamadı"})
+			return
+		}
+		driverID = userID.(uuid.UUID)
 	}
 
 	questions, err := h.repo.GetPendingQuestions(c.Request.Context(), driverID)
@@ -278,8 +283,13 @@ func (h *QuestionsHandler) ApproveQuestion(c *gin.Context) {
 		return
 	}
 
-	// Get admin ID from context (set by auth middleware)
-	adminID := c.MustGet("admin_id").(uuid.UUID)
+	// Get admin ID from context (set by auth middleware as "userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Admin kimliği bulunamadı"})
+		return
+	}
+	adminID := userID.(uuid.UUID)
 
 	if req.Approved {
 		if err := h.repo.ApproveQuestion(c.Request.Context(), id, adminID); err != nil {
@@ -310,8 +320,13 @@ func (h *QuestionsHandler) AnswerQuestion(c *gin.Context) {
 		return
 	}
 
-	// Get driver ID from context (set by auth middleware)
-	driverID := c.MustGet("driver_id").(uuid.UUID)
+	// Get driver ID from context (set by auth middleware as "userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı kimliği bulunamadı"})
+		return
+	}
+	driverID := userID.(uuid.UUID)
 
 	// Determine answer type
 	answerType := "text"

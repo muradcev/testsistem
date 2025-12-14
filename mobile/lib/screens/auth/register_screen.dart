@@ -23,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoadingProvinces = true;
+  String? _provincesError;
 
   List<String> _provinces = [];
   List<String> _districts = [];
@@ -43,19 +44,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _loadProvinces() async {
     if (!mounted) return;
+    setState(() {
+      _isLoadingProvinces = true;
+      _provincesError = null;
+    });
     try {
+      debugPrint('Loading provinces...');
       final apiService = context.read<ApiService>();
+      debugPrint('ApiService obtained');
       final response = await apiService.getProvinces();
+      debugPrint('Response received: ${response.statusCode}');
+      debugPrint('Response data: ${response.data}');
       if (mounted) {
+        final provinces = response.data['provinces'];
+        debugPrint('Provinces count: ${provinces?.length ?? 0}');
         setState(() {
-          _provinces = List<String>.from(response.data['provinces'] ?? []);
+          _provinces = List<String>.from(provinces ?? []);
           _isLoadingProvinces = false;
         });
+        debugPrint('Provinces loaded successfully: ${_provinces.length}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Failed to load provinces: $e');
+      debugPrint('Stack trace: $stackTrace');
       if (mounted) {
-        setState(() => _isLoadingProvinces = false);
+        setState(() {
+          _isLoadingProvinces = false;
+          _provincesError = 'İller yüklenemedi: $e';
+        });
       }
     }
   }
@@ -409,12 +425,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Error message with retry button
+        if (_provincesError != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _provincesError!,
+                    style: const TextStyle(color: AppColors.error, fontSize: 14),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _loadProvinces,
+                  child: const Text('Tekrar Dene'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // Province Field
         _buildFieldLabel('İl'),
         const SizedBox(height: 8),
         _buildDropdown(
           value: _selectedProvince,
-          hintText: 'İl seçin',
+          hintText: _isLoadingProvinces ? 'Yükleniyor...' : 'İl seçin',
           items: _provinces,
           isLoading: _isLoadingProvinces,
           onChanged: (value) {
@@ -671,6 +715,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (isValid) {
       if (_currentStep < 2) {
         setState(() => _currentStep++);
+        // If moving to location step and provinces aren't loaded, try again
+        if (_currentStep == 1 && _provinces.isEmpty && !_isLoadingProvinces) {
+          _loadProvinces();
+        }
       } else {
         _register();
       }
