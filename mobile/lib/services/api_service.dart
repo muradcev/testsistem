@@ -2,11 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
+import '../config/router.dart';
 
 class ApiService {
   late final Dio _dio;
   String? _accessToken;
+  String? _refreshToken;
   bool _tokenLoaded = false;
+  bool _isRefreshing = false;
 
   ApiService() {
     _dio = Dio(BaseOptions(
@@ -36,10 +39,46 @@ class ApiService {
       onError: (error, handler) async {
         debugPrint('[API] Error ${error.response?.statusCode}: ${error.requestOptions.path}');
         debugPrint('[API] Error message: ${error.message}');
+
         if (error.response?.statusCode == 401) {
-          // Token geçersiz veya süresi dolmuş - token'ı temizle
-          debugPrint('[API] 401 Unauthorized - clearing token');
-          await clearToken();
+          // Token geçersiz veya süresi dolmuş
+          debugPrint('[API] 401 Unauthorized - attempting token refresh');
+
+          // Refresh endpoint'ine giden isteklerde tekrar deneme yapma
+          if (error.requestOptions.path.contains('/auth/refresh')) {
+            debugPrint('[API] Refresh token also expired - logging out');
+            await _handleLogout();
+            return handler.next(error);
+          }
+
+          // Token yenilemeyi dene
+          final refreshed = await _tryRefreshToken();
+          if (refreshed) {
+            // Token yenilendi, isteği tekrar dene
+            debugPrint('[API] Token refreshed - retrying request');
+            try {
+              final opts = Options(
+                method: error.requestOptions.method,
+                headers: {
+                  ...error.requestOptions.headers,
+                  'Authorization': 'Bearer $_accessToken',
+                },
+              );
+              final response = await _dio.request(
+                error.requestOptions.path,
+                data: error.requestOptions.data,
+                queryParameters: error.requestOptions.queryParameters,
+                options: opts,
+              );
+              return handler.resolve(response);
+            } catch (e) {
+              debugPrint('[API] Retry failed: $e');
+              return handler.next(error);
+            }
+          } else {
+            // Token yenilenemedi, logout yap
+            await _handleLogout();
+          }
         }
         return handler.next(error);
       },
@@ -48,10 +87,72 @@ class ApiService {
     _loadToken();
   }
 
+  Future<bool> _tryRefreshToken() async {
+    if (_isRefreshing) return false;
+    if (_refreshToken == null) return false;
+
+    _isRefreshing = true;
+    try {
+      debugPrint('[API] Refreshing token...');
+      final response = await _dio.post(
+        ApiConstants.refreshToken,
+        data: {'refresh_token': _refreshToken},
+        options: Options(headers: {}), // Authorization header olmadan
+      );
+
+      if (response.statusCode == 200) {
+        final newAccessToken = response.data['access_token'];
+        final newRefreshToken = response.data['refresh_token'];
+
+        await setToken(newAccessToken);
+        if (newRefreshToken != null) {
+          await _setRefreshToken(newRefreshToken);
+        }
+
+        debugPrint('[API] Token refreshed successfully');
+        _isRefreshing = false;
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[API] Token refresh failed: $e');
+    }
+
+    _isRefreshing = false;
+    return false;
+  }
+
+  Future<void> _handleLogout() async {
+    debugPrint('[API] Handling logout - clearing tokens and redirecting');
+    await clearToken();
+    await _clearRefreshToken();
+
+    // SharedPreferences'dan login durumunu temizle
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(StorageKeys.isLoggedIn);
+    await prefs.remove(StorageKeys.userId);
+    await prefs.remove(StorageKeys.userPhone);
+
+    // Router'ı bilgilendir ve login'e yönlendir
+    authNotifier.setLoggedIn(false);
+  }
+
+  Future<void> _setRefreshToken(String token) async {
+    _refreshToken = token;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(StorageKeys.refreshToken, token);
+  }
+
+  Future<void> _clearRefreshToken() async {
+    _refreshToken = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(StorageKeys.refreshToken);
+  }
+
   Future<void> _ensureTokenLoaded() async {
     if (!_tokenLoaded) {
       final prefs = await SharedPreferences.getInstance();
       _accessToken = prefs.getString(StorageKeys.accessToken);
+      _refreshToken = prefs.getString(StorageKeys.refreshToken);
       _tokenLoaded = true;
     }
   }
@@ -59,6 +160,7 @@ class ApiService {
   Future<void> _loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString(StorageKeys.accessToken);
+    _refreshToken = prefs.getString(StorageKeys.refreshToken);
     _tokenLoaded = true;
   }
 
