@@ -18,7 +18,6 @@ import {
 import toast from 'react-hot-toast'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import api from '../services/api'
 
 // Fix for default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl

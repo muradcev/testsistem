@@ -276,8 +276,8 @@ func main() {
 			// Driver Homes (Şoför Ev Adresleri)
 			driverHomeHandler := api.NewDriverHomeHandler(driverHomeRepo, driverRepo)
 			adminGroup.GET("/driver-homes", driverHomeHandler.GetAllDriverHomes)
-			adminGroup.GET("/drivers/:driver_id/homes", driverHomeHandler.GetDriverHomes)
-			adminGroup.POST("/drivers/:driver_id/homes", driverHomeHandler.CreateDriverHome)
+			adminGroup.GET("/drivers/:id/homes", driverHomeHandler.GetDriverHomes)
+			adminGroup.POST("/drivers/:id/homes", driverHomeHandler.CreateDriverHome)
 			adminGroup.PUT("/driver-homes/:id", driverHomeHandler.UpdateDriverHome)
 			adminGroup.DELETE("/driver-homes/:id", driverHomeHandler.DeleteDriverHome)
 

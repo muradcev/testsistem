@@ -29,7 +29,7 @@ func NewDriverHomeHandler(
 // GetDriverHomes returns all home locations for a driver
 func (h *DriverHomeHandler) GetDriverHomes(c *gin.Context) {
 	ctx := c.Request.Context()
-	driverID := c.Param("driver_id")
+	driverID := c.Param("id")
 
 	id, err := uuid.Parse(driverID)
 	if err != nil {
@@ -62,7 +62,7 @@ func (h *DriverHomeHandler) GetDriverHomes(c *gin.Context) {
 // CreateDriverHome creates a new home location for a driver
 func (h *DriverHomeHandler) CreateDriverHome(c *gin.Context) {
 	ctx := c.Request.Context()
-	driverID := c.Param("driver_id")
+	driverID := c.Param("id")
 
 	id, err := uuid.Parse(driverID)
 	if err != nil {
