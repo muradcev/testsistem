@@ -418,7 +418,7 @@ ON CONFLICT (key) DO NOTHING;
 
 -- Default admin user (password: admin123)
 INSERT INTO admin_users (email, password_hash, name, role) VALUES
-    ('admin@testsistem.com', '$2a$10$N9qo8uLOickgx2ZMRZoMy.MqrqvqwNvE7FgVhKRNFKYbhHWNGLCFO', 'Admin', 'super_admin')
+    ('admin@nakliyeo.com', '$2a$10$8cZ3qxpZpdRGjWS3QJNPteD4UMgEVCMF178zX3UK1y/0UF/Qx/.9q', 'Admin', 'super_admin')
 ON CONFLICT (email) DO NOTHING;
 
 -- Success message
