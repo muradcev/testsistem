@@ -61,20 +61,32 @@ class QuestionsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('[QuestionsProvider] Loading pending questions...');
       final response = await _apiService.getPendingQuestions();
-      final questionsData = response.data['questions'] as List? ?? [];
-      _questions = questionsData
-          .map((q) => Question.fromJson(q as Map<String, dynamic>))
-          .toList();
+      debugPrint('[QuestionsProvider] Response: ${response.statusCode}');
 
-      // Sort by priority (higher first)
-      _questions.sort((a, b) => b.priority.compareTo(a.priority));
+      if (response.data == null) {
+        debugPrint('[QuestionsProvider] Response data is null');
+        _questions = [];
+        _error = 'Sunucudan veri alınamadı';
+      } else {
+        final questionsData = response.data['questions'] as List? ?? [];
+        debugPrint('[QuestionsProvider] Questions count: ${questionsData.length}');
+        _questions = questionsData
+            .map((q) => Question.fromJson(q as Map<String, dynamic>))
+            .toList();
+
+        // Sort by priority (higher first)
+        _questions.sort((a, b) => b.priority.compareTo(a.priority));
+      }
     } catch (e) {
-      debugPrint('Failed to load questions: $e');
+      debugPrint('[QuestionsProvider] Failed to load questions: $e');
       _error = _parseError(e);
+      _questions = []; // Clear on error
     } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('[QuestionsProvider] Loading completed, isLoading: $_isLoading');
     }
   }
 

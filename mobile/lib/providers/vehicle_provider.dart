@@ -26,12 +26,19 @@ class VehicleProvider extends ChangeNotifier {
       final response = await _apiService.getVehicles();
       debugPrint('[VehicleProvider] Response: ${response.statusCode}');
       debugPrint('[VehicleProvider] Data: ${response.data}');
-      _vehicles = List<Map<String, dynamic>>.from(response.data['vehicles'] ?? []);
+
+      if (response.data == null) {
+        _error = 'Sunucudan veri alınamadı';
+        _vehicles = [];
+      } else {
+        _vehicles = List<Map<String, dynamic>>.from(response.data['vehicles'] ?? []);
+      }
       debugPrint('[VehicleProvider] Loaded ${_vehicles.length} vehicles');
     } catch (e, stackTrace) {
       debugPrint('[VehicleProvider] Failed to load vehicles: $e');
       debugPrint('[VehicleProvider] Stack: $stackTrace');
       _error = _parseError(e);
+      _vehicles = []; // Clear on error to avoid stale data
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -41,11 +48,21 @@ class VehicleProvider extends ChangeNotifier {
 
   Future<void> loadTrailers() async {
     try {
+      debugPrint('[VehicleProvider] Loading trailers...');
       final response = await _apiService.getTrailers();
-      _trailers = List<Map<String, dynamic>>.from(response.data['trailers'] ?? []);
+
+      if (response.data == null) {
+        debugPrint('[VehicleProvider] Trailers response is null');
+        _trailers = [];
+      } else {
+        _trailers = List<Map<String, dynamic>>.from(response.data['trailers'] ?? []);
+      }
+      debugPrint('[VehicleProvider] Loaded ${_trailers.length} trailers');
       notifyListeners();
     } catch (e) {
-      debugPrint('Failed to load trailers: $e');
+      debugPrint('[VehicleProvider] Failed to load trailers: $e');
+      _trailers = []; // Clear on error
+      notifyListeners();
     }
   }
 

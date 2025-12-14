@@ -15,11 +15,12 @@ class ApiService {
   ApiService() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+      sendTimeout: const Duration(seconds: 15),
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Accept': 'application/json; charset=utf-8',
       },
     ));
 
