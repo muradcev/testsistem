@@ -114,3 +114,54 @@ type DriverAppStats struct {
 	PushEnabledCount   int `json:"push_enabled_count"`
 	BackgroundLocCount int `json:"background_loc_count"`
 }
+
+// DriverDetailResponse - Admin panel için şoför detay yanıtı (araç ve dorse dahil)
+type DriverDetailResponse struct {
+	ID              uuid.UUID  `json:"id"`
+	Phone           string     `json:"phone"`
+	Name            string     `json:"name"`
+	Surname         string     `json:"surname"`
+	Email           string     `json:"email"` // Boş string olabilir
+	Province        string     `json:"province"`
+	District        string     `json:"district"`
+	Neighborhood    string     `json:"neighborhood,omitempty"`
+	HomeLatitude    *float64   `json:"home_latitude,omitempty"`
+	HomeLongitude   *float64   `json:"home_longitude,omitempty"`
+	IsActive        bool       `json:"is_active"`
+	IsPhoneVerified bool       `json:"is_phone_verified"`
+	Status          string     `json:"status"` // Mapped status: active, on_trip, at_home, passive
+	CurrentStatus   string     `json:"current_status"`
+	LastLocationAt  *time.Time `json:"last_location_at,omitempty"`
+	LastLatitude    *float64   `json:"last_latitude,omitempty"`
+	LastLongitude   *float64   `json:"last_longitude,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+
+	// Uygulama bilgileri
+	AppVersion                *string    `json:"app_version,omitempty"`
+	DeviceModel               *string    `json:"device_model,omitempty"`
+	DeviceOS                  *string    `json:"device_os,omitempty"`
+	LastActiveAt              *time.Time `json:"last_active_at,omitempty"`
+	BackgroundLocationEnabled bool       `json:"background_location_enabled"`
+
+	// İlişkili veriler
+	Vehicles []Vehicle `json:"vehicles"`
+	Trailers []Trailer `json:"trailers"`
+}
+
+// MapDriverStatus - Backend current_status'u frontend status'a dönüştürür
+func MapDriverStatus(currentStatus string, isActive bool) string {
+	if !isActive {
+		return "passive"
+	}
+	switch currentStatus {
+	case "driving":
+		return "on_trip"
+	case "home":
+		return "at_home"
+	case "stopped":
+		return "active"
+	default:
+		return "active"
+	}
+}

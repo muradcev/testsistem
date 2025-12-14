@@ -127,9 +127,40 @@ class VehicleProvider extends ChangeNotifier {
   }
 
   String _parseError(dynamic e) {
-    if (e.response?.data != null && e.response.data['error'] != null) {
-      return e.response.data['error'];
+    try {
+      debugPrint('[VehicleProvider] Parsing error: $e');
+      debugPrint('[VehicleProvider] Error type: ${e.runtimeType}');
+
+      // DioException kontrolü
+      if (e.toString().contains('DioException')) {
+        final response = e.response;
+        if (response != null) {
+          debugPrint('[VehicleProvider] Response status: ${response.statusCode}');
+          debugPrint('[VehicleProvider] Response data: ${response.data}');
+
+          if (response.statusCode == 401) {
+            return 'Oturum süresi doldu. Lütfen tekrar giriş yapın.';
+          }
+
+          if (response.data != null && response.data is Map && response.data['error'] != null) {
+            return response.data['error'].toString();
+          }
+        }
+
+        // Connection errors
+        if (e.toString().contains('SocketException') || e.toString().contains('connection')) {
+          return 'Bağlantı hatası. İnternet bağlantınızı kontrol edin.';
+        }
+
+        if (e.toString().contains('timeout')) {
+          return 'Bağlantı zaman aşımına uğradı. Tekrar deneyin.';
+        }
+      }
+
+      return 'Bir hata oluştu. Lütfen tekrar deneyin.';
+    } catch (parseErr) {
+      debugPrint('[VehicleProvider] Error parsing error: $parseErr');
+      return 'Bir hata oluştu. Lütfen tekrar deneyin.';
     }
-    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
   }
 }

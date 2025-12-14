@@ -175,7 +175,7 @@ func main() {
 		adminGroup.Use(middleware.AuthMiddleware("admin"))
 		{
 			// Dashboard
-			adminHandler := api.NewAdminHandler(adminService, driverService, locationService, tripService, surveyService)
+			adminHandler := api.NewAdminHandler(adminService, driverService, locationService, tripService, surveyService, vehicleService, trailerService)
 			adminGroup.GET("/dashboard", adminHandler.GetDashboard)
 			adminGroup.GET("/app-stats", adminHandler.GetDriverAppStats)
 

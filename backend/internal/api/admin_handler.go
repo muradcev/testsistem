@@ -18,6 +18,8 @@ type AdminHandler struct {
 	locationService *service.LocationService
 	tripService     *service.TripService
 	surveyService   *service.SurveyService
+	vehicleService  *service.VehicleService
+	trailerService  *service.TrailerService
 }
 
 func NewAdminHandler(
@@ -26,6 +28,8 @@ func NewAdminHandler(
 	locationService *service.LocationService,
 	tripService *service.TripService,
 	surveyService *service.SurveyService,
+	vehicleService *service.VehicleService,
+	trailerService *service.TrailerService,
 ) *AdminHandler {
 	return &AdminHandler{
 		adminService:    adminService,
@@ -33,6 +37,8 @@ func NewAdminHandler(
 		locationService: locationService,
 		tripService:     tripService,
 		surveyService:   surveyService,
+		vehicleService:  vehicleService,
+		trailerService:  trailerService,
 	}
 }
 
@@ -94,7 +100,9 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		return
 	}
 
-	driver, err := h.driverService.GetByID(c.Request.Context(), driverID)
+	ctx := c.Request.Context()
+
+	driver, err := h.driverService.GetByID(ctx, driverID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -104,7 +112,49 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, driver)
+	// Araçları getir
+	vehicles, err := h.vehicleService.GetByDriverID(ctx, driverID)
+	if err != nil {
+		vehicles = []models.Vehicle{} // Hata durumunda boş liste
+	}
+
+	// Dorseleri getir
+	trailers, err := h.trailerService.GetByDriverID(ctx, driverID)
+	if err != nil {
+		trailers = []models.Trailer{} // Hata durumunda boş liste
+	}
+
+	// Detay yanıtı oluştur
+	response := models.DriverDetailResponse{
+		ID:                        driver.ID,
+		Phone:                     driver.Phone,
+		Name:                      driver.Name,
+		Surname:                   driver.Surname,
+		Email:                     "", // Email field yoksa boş
+		Province:                  driver.Province,
+		District:                  driver.District,
+		Neighborhood:              driver.Neighborhood,
+		HomeLatitude:              driver.HomeLatitude,
+		HomeLongitude:             driver.HomeLongitude,
+		IsActive:                  driver.IsActive,
+		IsPhoneVerified:           driver.IsPhoneVerified,
+		Status:                    models.MapDriverStatus(driver.CurrentStatus, driver.IsActive),
+		CurrentStatus:             driver.CurrentStatus,
+		LastLocationAt:            driver.LastLocationAt,
+		LastLatitude:              driver.LastLatitude,
+		LastLongitude:             driver.LastLongitude,
+		CreatedAt:                 driver.CreatedAt,
+		UpdatedAt:                 driver.UpdatedAt,
+		AppVersion:                driver.AppVersion,
+		DeviceModel:               driver.DeviceModel,
+		DeviceOS:                  driver.DeviceOS,
+		LastActiveAt:              driver.LastActiveAt,
+		BackgroundLocationEnabled: driver.BackgroundLocationEnabled,
+		Vehicles:                  vehicles,
+		Trailers:                  trailers,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *AdminHandler) GetDriverLocations(c *gin.Context) {

@@ -30,20 +30,25 @@ interface Driver {
   phone: string
   email: string
   status: string
+  current_status: string
   province: string
   district: string
   neighborhood?: string
   created_at: string
+  is_active: boolean
   vehicles: Array<{
     id: string
     brand: string
     model: string
     plate: string
+    year?: number
+    vehicle_type?: string
+    tonnage?: number
     is_active: boolean
   }>
   trailers: Array<{
     id: string
-    type: string
+    trailer_type: string
     plate: string
     is_active: boolean
   }>
@@ -228,7 +233,7 @@ export default function DriverDetailPage() {
               {driver.trailers.map((trailer) => (
                 <li key={trailer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
-                    <p className="font-medium">{trailer.type}</p>
+                    <p className="font-medium">{trailer.trailer_type}</p>
                     <p className="text-sm text-gray-500">{trailer.plate}</p>
                   </div>
                   {trailer.is_active && (

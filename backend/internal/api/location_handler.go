@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"nakliyeo-mobil/internal/middleware"
@@ -28,22 +29,33 @@ func NewLocationHandler(locationService *service.LocationService, tripService *s
 }
 
 func (h *LocationHandler) SaveLocation(c *gin.Context) {
+	fmt.Printf("[LocationHandler] SaveLocation called\n")
+
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
+		fmt.Printf("[LocationHandler] SaveLocation - Unauthorized\n")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
 		return
 	}
 
+	fmt.Printf("[LocationHandler] SaveLocation - User ID: %s\n", userID)
+
 	var req models.LocationCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("[LocationHandler] SaveLocation - Bad request: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	fmt.Printf("[LocationHandler] SaveLocation - Lat: %f, Lng: %f, IsMoving: %v\n", req.Latitude, req.Longitude, req.IsMoving)
+
 	if err := h.locationService.SaveLocation(c.Request.Context(), userID, &req); err != nil {
+		fmt.Printf("[LocationHandler] SaveLocation - Error saving: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	fmt.Printf("[LocationHandler] SaveLocation - Saved successfully\n")
 
 	// WebSocket üzerinden konum güncellemesi yayınla
 	if h.wsHub != nil {
