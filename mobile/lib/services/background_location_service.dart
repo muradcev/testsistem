@@ -307,18 +307,29 @@ Future<void> _syncLocations(
     // Take a batch (max 50 at a time)
     final batch = pendingLocations.take(50).toList();
 
-    await dio.post(
+    final response = await dio.post(
       ApiConstants.locationBatch,
       data: {'locations': batch},
     );
 
-    // Remove synced locations
-    pendingLocations.removeRange(0, batch.length);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      // Remove synced locations
+      pendingLocations.removeRange(0, batch.length);
 
-    // Save updated pending list
-    await prefs.setString('bg_pending_locations', json.encode(pendingLocations));
+      // Save updated pending list
+      await prefs.setString('bg_pending_locations', json.encode(pendingLocations));
 
-    debugPrint('Background: Synced ${batch.length} locations');
+      debugPrint('Background: Synced ${batch.length} locations');
+    } else {
+      debugPrint('Background: Sync returned status ${response.statusCode}');
+    }
+  } on DioException catch (e) {
+    debugPrint('Background: Sync failed - ${e.type}: ${e.message}');
+    if (e.response?.statusCode == 401) {
+      debugPrint('Background: Token expired, waiting for refresh...');
+      // Token expired - clear the dio and wait for new token
+      // The main app should refresh the token and send it to us
+    }
   } catch (e) {
     debugPrint('Background: Sync failed - $e');
     // Keep locations in queue for next sync

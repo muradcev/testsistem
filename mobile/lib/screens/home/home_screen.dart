@@ -18,14 +18,67 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _vehicleCheckDone = false;
+  bool _questionsDialogShown = false;
 
   @override
   void initState() {
     super.initState();
     _initLocation();
-    _loadQuestions();
+    _loadQuestionsAndShowDialog();
     _sendFcmToken();
     _checkVehicles();
+  }
+
+  Future<void> _loadQuestionsAndShowDialog() async {
+    await _loadQuestions();
+
+    if (!mounted) return;
+
+    // Show dialog if there are pending questions and dialog hasn't been shown
+    final questionsProvider = context.read<QuestionsProvider>();
+    if (questionsProvider.pendingCount > 0 && !_questionsDialogShown) {
+      _questionsDialogShown = true;
+      _showPendingQuestionsDialog(questionsProvider.pendingCount);
+    }
+  }
+
+  void _showPendingQuestionsDialog(int count) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.quiz, color: Colors.orange.shade700),
+            ),
+            const SizedBox(width: 12),
+            const Text('Bekleyen Sorular'),
+          ],
+        ),
+        content: Text(
+          '$count adet cevaplanmamış soru var.\n\nSoruları cevaplamak ister misiniz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Sonra'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              context.goNamed('questions');
+            },
+            icon: const Icon(Icons.arrow_forward),
+            label: const Text('Soruları Cevapla'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _checkVehicles() async {

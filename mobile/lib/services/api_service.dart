@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
 import '../config/router.dart';
@@ -109,6 +110,9 @@ class ApiService {
           await _setRefreshToken(newRefreshToken);
         }
 
+        // Notify background service about new token
+        _updateBackgroundServiceToken(newAccessToken);
+
         debugPrint('[API] Token refreshed successfully');
         _isRefreshing = false;
         return true;
@@ -146,6 +150,16 @@ class ApiService {
     _refreshToken = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(StorageKeys.refreshToken);
+  }
+
+  void _updateBackgroundServiceToken(String token) {
+    try {
+      final service = FlutterBackgroundService();
+      service.invoke('updateToken', {'token': token});
+      debugPrint('[API] Background service token updated');
+    } catch (e) {
+      debugPrint('[API] Failed to update background service token: $e');
+    }
   }
 
   Future<void> _ensureTokenLoaded() async {

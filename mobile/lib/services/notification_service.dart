@@ -129,7 +129,10 @@ class NotificationService {
       // Check if app was opened from a notification
       final initialMessage = await _firebaseMessaging?.getInitialMessage();
       if (initialMessage != null) {
-        _handleNotificationTap(initialMessage);
+        // Delay to ensure navigation callback is set
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          _handleNotificationTap(initialMessage);
+        });
       }
 
     } catch (e) {
@@ -161,20 +164,36 @@ class NotificationService {
 
   // Navigation callback
   Function(String route)? onNavigate;
+  RemoteMessage? _pendingNavigationMessage;
 
   void setNavigationCallback(Function(String route) callback) {
     onNavigate = callback;
+    // If there's a pending message, handle it now
+    if (_pendingNavigationMessage != null) {
+      debugPrint('Processing pending notification message');
+      _handleNotificationTap(_pendingNavigationMessage!);
+      _pendingNavigationMessage = null;
+    }
   }
 
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('Notification tapped: ${message.data}');
     final type = message.data['type'];
 
+    // If navigation callback is not set yet, store the message for later
+    if (onNavigate == null) {
+      debugPrint('Navigation callback not set, storing message for later');
+      _pendingNavigationMessage = message;
+      return;
+    }
+
     if (type == 'question') {
+      debugPrint('Navigating to /questions');
       onNavigate?.call('/questions');
     } else if (type == 'survey') {
       final surveyId = message.data['survey_id'];
       if (surveyId != null) {
+        debugPrint('Navigating to /survey/$surveyId');
         onNavigate?.call('/survey/$surveyId');
       }
     }
@@ -185,12 +204,27 @@ class NotificationService {
     if (payload != null) {
       debugPrint('Local notification tapped: $payload');
 
-      if (payload.startsWith('question:')) {
-        onNavigate?.call('/questions');
-      } else if (payload.startsWith('survey:')) {
-        final surveyId = payload.replaceFirst('survey:', '');
-        onNavigate?.call('/survey/$surveyId');
+      // If navigation callback is not set yet, wait and retry
+      if (onNavigate == null) {
+        debugPrint('Navigation callback not set, waiting...');
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          _processLocalNotificationPayload(payload);
+        });
+        return;
       }
+
+      _processLocalNotificationPayload(payload);
+    }
+  }
+
+  void _processLocalNotificationPayload(String payload) {
+    if (payload.startsWith('question:')) {
+      debugPrint('Navigating to /questions from local notification');
+      onNavigate?.call('/questions');
+    } else if (payload.startsWith('survey:')) {
+      final surveyId = payload.replaceFirst('survey:', '');
+      debugPrint('Navigating to /survey/$surveyId from local notification');
+      onNavigate?.call('/survey/$surveyId');
     }
   }
 
