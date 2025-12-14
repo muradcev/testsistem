@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/vehicle_provider.dart';
 import '../../config/theme.dart';
+import '../../config/constants.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,6 +21,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadAppVersion();
+    _loadVehicles();
+  }
+
+  Future<void> _loadVehicles() async {
+    final vehicleProvider = context.read<VehicleProvider>();
+    await vehicleProvider.loadVehicles();
+    await vehicleProvider.loadTrailers();
   }
 
   Future<void> _loadAppVersion() async {
@@ -154,6 +163,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Araçlarım Bölümü
+              Consumer<VehicleProvider>(
+                builder: (context, vehicleProvider, _) {
+                  return Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Araçlarım',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => context.push('/vehicles/add'),
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text('Ekle'),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (vehicleProvider.isLoading)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (vehicleProvider.vehicles.isEmpty && vehicleProvider.trailers.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.local_shipping_outlined, size: 48, color: Colors.grey.shade400),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Henüz araç eklenmedi',
+                                    style: TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else ...[
+                          // Araçlar
+                          ...vehicleProvider.vehicles.map((vehicle) => ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.local_shipping, color: Colors.blue),
+                            ),
+                            title: Text(vehicle['plate'] ?? ''),
+                            subtitle: Text(
+                              '${vehicle['brand'] ?? ''} ${vehicle['model'] ?? ''} • ${VehicleTypes.types[vehicle['vehicle_type']] ?? ''}',
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.chevron_right),
+                              onPressed: () => context.goNamed('vehicles'),
+                            ),
+                          )),
+                          // Dorseler
+                          ...vehicleProvider.trailers.map((trailer) => ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.rv_hookup, color: Colors.green),
+                            ),
+                            title: Text(trailer['plate'] ?? ''),
+                            subtitle: Text(TrailerTypes.types[trailer['trailer_type']] ?? ''),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.chevron_right),
+                              onPressed: () => context.goNamed('vehicles'),
+                            ),
+                          )),
+                        ],
+                        // Tümünü Gör butonu
+                        if (vehicleProvider.vehicles.isNotEmpty || vehicleProvider.trailers.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => context.goNamed('vehicles'),
+                                child: const Text('Tüm Araçları Yönet'),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 16),
 

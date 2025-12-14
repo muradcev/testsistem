@@ -289,26 +289,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              _buildInfoItem(
-                                context,
-                                Icons.gps_fixed,
-                                'Konum Takibi',
-                                location.isTracking ? 'Aktif' : 'Pasif',
-                                location.isTracking ? AppColors.success : AppColors.error,
-                              ),
-                              const SizedBox(width: 16),
-                              _buildInfoItem(
-                                context,
-                                Icons.speed,
-                                'Hız',
-                                location.currentLocation?.speed != null
-                                    ? '${(location.currentLocation!.speed! * 3.6).toStringAsFixed(0)} km/h'
-                                    : '-- km/h',
-                                AppColors.info,
-                              ),
-                            ],
+                          _buildInfoItem(
+                            context,
+                            Icons.gps_fixed,
+                            'Konum Takibi',
+                            location.isTracking ? 'Aktif' : 'Pasif',
+                            location.isTracking ? AppColors.success : AppColors.error,
                           ),
                         ],
                       ),
@@ -390,16 +376,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(
-                    child: _buildQuickAction(
-                      context,
-                      Icons.local_shipping,
-                      'Araçlarım',
-                      Colors.blue,
-                      () => context.goNamed('vehicles'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: _buildQuickActionWithBadge(
                       context,
