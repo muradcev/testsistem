@@ -22,14 +22,20 @@ class VehicleProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('[VehicleProvider] Loading vehicles...');
       final response = await _apiService.getVehicles();
+      debugPrint('[VehicleProvider] Response: ${response.statusCode}');
+      debugPrint('[VehicleProvider] Data: ${response.data}');
       _vehicles = List<Map<String, dynamic>>.from(response.data['vehicles'] ?? []);
-    } catch (e) {
-      debugPrint('Failed to load vehicles: $e');
+      debugPrint('[VehicleProvider] Loaded ${_vehicles.length} vehicles');
+    } catch (e, stackTrace) {
+      debugPrint('[VehicleProvider] Failed to load vehicles: $e');
+      debugPrint('[VehicleProvider] Stack: $stackTrace');
       _error = _parseError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('[VehicleProvider] Loading completed, isLoading: $_isLoading');
     }
   }
 

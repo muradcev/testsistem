@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
 
@@ -25,11 +26,20 @@ class ApiService {
         if (_accessToken != null) {
           options.headers['Authorization'] = 'Bearer $_accessToken';
         }
+        debugPrint('[API] ${options.method} ${options.path}');
         return handler.next(options);
       },
+      onResponse: (response, handler) {
+        debugPrint('[API] Response ${response.statusCode}: ${response.requestOptions.path}');
+        return handler.next(response);
+      },
       onError: (error, handler) async {
+        debugPrint('[API] Error ${error.response?.statusCode}: ${error.requestOptions.path}');
+        debugPrint('[API] Error message: ${error.message}');
         if (error.response?.statusCode == 401) {
-          // TODO: Token yenileme
+          // Token geçersiz veya süresi dolmuş - token'ı temizle
+          debugPrint('[API] 401 Unauthorized - clearing token');
+          await clearToken();
         }
         return handler.next(error);
       },
