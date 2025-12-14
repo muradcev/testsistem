@@ -1,10 +1,55 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// FlexibleTime - Timezone bilgisi olan veya olmayan timestamp'leri parse edebilir
+type FlexibleTime struct {
+	time.Time
+}
+
+func (ft *FlexibleTime) UnmarshalJSON(data []byte) error {
+	// Remove quotes
+	s := strings.Trim(string(data), "\"")
+	if s == "null" || s == "" {
+		ft.Time = time.Time{}
+		return nil
+	}
+
+	// Try RFC3339 first (with timezone)
+	t, err := time.Parse(time.RFC3339, s)
+	if err == nil {
+		ft.Time = t
+		return nil
+	}
+
+	// Try RFC3339Nano (with timezone and nanoseconds)
+	t, err = time.Parse(time.RFC3339Nano, s)
+	if err == nil {
+		ft.Time = t
+		return nil
+	}
+
+	// Try without timezone (assume UTC)
+	t, err = time.Parse("2006-01-02T15:04:05.999999999", s)
+	if err == nil {
+		ft.Time = t.UTC()
+		return nil
+	}
+
+	// Try without timezone and without nanoseconds
+	t, err = time.Parse("2006-01-02T15:04:05", s)
+	if err == nil {
+		ft.Time = t.UTC()
+		return nil
+	}
+
+	return err
+}
 
 type ActivityType string
 
@@ -43,7 +88,12 @@ type LocationCreateRequest struct {
 	IsMoving     bool         `json:"is_moving"`
 	ActivityType ActivityType `json:"activity_type"`
 	BatteryLevel *int         `json:"battery_level,omitempty"`
-	RecordedAt   time.Time    `json:"recorded_at"`
+	RecordedAt   FlexibleTime `json:"recorded_at"`
+}
+
+// GetRecordedAt - FlexibleTime'dan time.Time döndürür
+func (r *LocationCreateRequest) GetRecordedAt() time.Time {
+	return r.RecordedAt.Time
 }
 
 type BatchLocationRequest struct {

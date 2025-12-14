@@ -35,7 +35,7 @@ func (s *LocationService) SaveLocation(ctx context.Context, driverID uuid.UUID, 
 		IsMoving:     req.IsMoving,
 		ActivityType: req.ActivityType,
 		BatteryLevel: req.BatteryLevel,
-		RecordedAt:   req.RecordedAt,
+		RecordedAt:   req.RecordedAt.Time, // FlexibleTime'dan time.Time'a
 	}
 
 	return s.repo.Create(ctx, location)
@@ -60,7 +60,7 @@ func (s *LocationService) SaveBatchLocations(ctx context.Context, driverID uuid.
 			IsMoving:     req.IsMoving,
 			ActivityType: req.ActivityType,
 			BatteryLevel: req.BatteryLevel,
-			RecordedAt:   req.RecordedAt,
+			RecordedAt:   req.RecordedAt.Time, // FlexibleTime'dan time.Time'a
 		}
 	}
 
