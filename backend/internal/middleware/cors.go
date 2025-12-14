@@ -44,8 +44,8 @@ func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
 
-		// Origin izin verilen listede mi kontrol et
-		if isOriginAllowed(origin) {
+		// Railway production ortamında tüm railway.app domainlerine izin ver
+		if origin != "" && (isOriginAllowed(origin) || strings.Contains(origin, ".up.railway.app")) {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
