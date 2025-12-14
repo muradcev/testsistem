@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { driversApi, notificationsApi, driverHomesApi } from '../services/api'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet'
@@ -14,6 +14,8 @@ import {
   PlusIcon,
   TrashIcon,
   PencilIcon,
+  Cog6ToothIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import 'leaflet/dist/leaflet.css'
@@ -48,6 +50,10 @@ interface Driver {
   neighborhood?: string
   created_at: string
   is_active: boolean
+  contacts_enabled: boolean
+  call_log_enabled: boolean
+  surveys_enabled: boolean
+  questions_enabled: boolean
   vehicles: Array<{
     id: string
     brand: string
@@ -109,6 +115,7 @@ interface Stop {
 
 export default function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [notifTitle, setNotifTitle] = useState('')
   const [notifBody, setNotifBody] = useState('')
@@ -116,6 +123,7 @@ export default function DriverDetailPage() {
   const [showHomeModal, setShowHomeModal] = useState(false)
   const [editingHome, setEditingHome] = useState<DriverHome | null>(null)
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [homeForm, setHomeForm] = useState({
     name: '',
     latitude: 0,
@@ -194,6 +202,47 @@ export default function DriverDetailPage() {
     },
     onError: () => {
       toast.error('Ev adresi silinemedi')
+    },
+  })
+
+  // Update driver status mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: (isActive: boolean) => driversApi.updateStatus(id!, isActive),
+    onSuccess: (_, isActive) => {
+      toast.success(isActive ? 'Sürücü aktifleştirildi' : 'Sürücü pasifleştirildi')
+      queryClient.invalidateQueries({ queryKey: ['driver', id] })
+    },
+    onError: () => {
+      toast.error('Durum güncellenemedi')
+    },
+  })
+
+  // Delete driver mutation
+  const deleteDriverMutation = useMutation({
+    mutationFn: () => driversApi.delete(id!),
+    onSuccess: () => {
+      toast.success('Sürücü silindi')
+      navigate('/drivers')
+    },
+    onError: () => {
+      toast.error('Sürücü silinemedi')
+    },
+  })
+
+  // Update driver features mutation
+  const updateFeaturesMutation = useMutation({
+    mutationFn: (features: {
+      contacts_enabled?: boolean;
+      call_log_enabled?: boolean;
+      surveys_enabled?: boolean;
+      questions_enabled?: boolean;
+    }) => driversApi.updateFeatures(id!, features),
+    onSuccess: () => {
+      toast.success('Özellik güncellendi')
+      queryClient.invalidateQueries({ queryKey: ['driver', id] })
+    },
+    onError: () => {
+      toast.error('Özellik güncellenemedi')
     },
   })
 
@@ -344,6 +393,115 @@ export default function DriverDetailPage() {
               </dd>
             </div>
           </dl>
+
+          {/* Driver Management Section */}
+          <div className="mt-6 pt-4 border-t">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <Cog6ToothIcon className="h-4 w-4" />
+              Sürücü Yönetimi
+            </h3>
+            <div className="space-y-3">
+              {/* Status Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Hesap Durumu</span>
+                <button
+                  onClick={() => updateStatusMutation.mutate(!driver.is_active)}
+                  disabled={updateStatusMutation.isPending}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    driver.is_active
+                      ? 'bg-green-100 text-green-800 hover:bg-red-100 hover:text-red-800'
+                      : 'bg-red-100 text-red-800 hover:bg-green-100 hover:text-green-800'
+                  }`}
+                >
+                  {updateStatusMutation.isPending
+                    ? 'İşleniyor...'
+                    : driver.is_active
+                    ? 'Aktif - Tıkla Devre Dışı Bırak'
+                    : 'Pasif - Tıkla Aktifleştir'}
+                </button>
+              </div>
+
+              {/* Feature Toggles */}
+              <div className="pt-2 border-t space-y-2">
+                <p className="text-xs text-gray-500 font-medium">Özellik Kontrolleri</p>
+
+                {/* Contacts */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Rehber Erişimi</span>
+                  <button
+                    onClick={() => updateFeaturesMutation.mutate({ contacts_enabled: !driver.contacts_enabled })}
+                    disabled={updateFeaturesMutation.isPending}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      driver.contacts_enabled
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {driver.contacts_enabled ? 'Açık' : 'Kapalı'}
+                  </button>
+                </div>
+
+                {/* Call Log */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Arama Geçmişi</span>
+                  <button
+                    onClick={() => updateFeaturesMutation.mutate({ call_log_enabled: !driver.call_log_enabled })}
+                    disabled={updateFeaturesMutation.isPending}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      driver.call_log_enabled
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {driver.call_log_enabled ? 'Açık' : 'Kapalı'}
+                  </button>
+                </div>
+
+                {/* Surveys */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Anketler</span>
+                  <button
+                    onClick={() => updateFeaturesMutation.mutate({ surveys_enabled: !driver.surveys_enabled })}
+                    disabled={updateFeaturesMutation.isPending}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      driver.surveys_enabled
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {driver.surveys_enabled ? 'Açık' : 'Kapalı'}
+                  </button>
+                </div>
+
+                {/* Questions */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Sorular</span>
+                  <button
+                    onClick={() => updateFeaturesMutation.mutate({ questions_enabled: !driver.questions_enabled })}
+                    disabled={updateFeaturesMutation.isPending}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      driver.questions_enabled
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {driver.questions_enabled ? 'Açık' : 'Kapalı'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Delete Driver */}
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                  Sürücüyü Sil
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Driver Homes */}
@@ -796,6 +954,49 @@ export default function DriverDetailPage() {
                 className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
               >
                 {updateHomeMutation.isPending ? 'Kaydediliyor...' : 'Güncelle'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Sürücüyü Sil</h3>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-600 mb-2">
+                <strong>{driver?.name} {driver?.surname}</strong> ({driver?.phone}) adlı sürücüyü silmek istediğinize emin misiniz?
+              </p>
+              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                Bu işlem geri alınamaz! Sürücüye ait tüm veriler (araçlar, dorseler, konum geçmişi, seferler, anket yanıtları) kalıcı olarak silinecektir.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => {
+                  deleteDriverMutation.mutate()
+                  setShowDeleteConfirm(false)
+                }}
+                disabled={deleteDriverMutation.isPending}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <TrashIcon className="h-4 w-4" />
+                {deleteDriverMutation.isPending ? 'Siliniyor...' : 'Evet, Sil'}
               </button>
             </div>
           </div>

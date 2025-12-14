@@ -26,6 +26,11 @@ export default api
 export const dashboardApi = {
   getStats: () => api.get('/admin/dashboard'),
   getAppStats: () => api.get('/admin/app-stats'),
+  getWeeklyStats: () => api.get('/admin/dashboard/weekly'),
+  getRecentActivities: () => api.get('/admin/dashboard/activities'),
+  getSystemStatus: () => api.get('/admin/dashboard/system-status'),
+  getPendingSummary: () => api.get('/admin/dashboard/pending'),
+  getLocationStats: () => api.get('/admin/dashboard/location-stats'),
 }
 
 export const driversApi = {
@@ -37,6 +42,18 @@ export const driversApi = {
   getTrips: (id: string, params?: { limit?: number; offset?: number }) =>
     api.get(`/admin/drivers/${id}/trips`, { params }),
   getStops: (id: string) => api.get(`/admin/drivers/${id}/stops`),
+  updateStatus: (id: string, isActive: boolean) =>
+    api.put(`/admin/drivers/${id}/status`, { is_active: isActive }),
+  updateFeatures: (id: string, features: {
+    location_tracking_enabled?: boolean;
+    background_location_enabled?: boolean;
+    notifications_enabled?: boolean;
+    surveys_enabled?: boolean;
+    questions_enabled?: boolean;
+    contacts_enabled?: boolean;
+    call_log_enabled?: boolean;
+  }) => api.put(`/admin/drivers/${id}/features`, features),
+  delete: (id: string) => api.delete(`/admin/drivers/${id}`),
 }
 
 export const locationsApi = {

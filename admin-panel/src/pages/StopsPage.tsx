@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import {
   MapPinIcon,
   ClockIcon,
@@ -11,6 +11,9 @@ import {
   PlusIcon,
   TrashIcon,
   PencilIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import L from 'leaflet'
@@ -29,6 +32,52 @@ L.Icon.Default.mergeOptions({
 const homeIcon = L.divIcon({
   html: '<div style="font-size: 24px;">🏠</div>',
   className: 'custom-home-icon',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+})
+
+// Create cluster icon
+const createClusterIcon = (count: number, driverCount: number) => L.divIcon({
+  html: `<div style="
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    border: 3px solid white;
+  ">
+    <span>${count}</span>
+    <span style="font-size: 9px; opacity: 0.9;">👥${driverCount}</span>
+  </div>`,
+  className: 'custom-cluster-icon',
+  iconSize: [45, 45],
+  iconAnchor: [22, 22],
+})
+
+// Seçili durak için marker
+const selectedIcon = L.divIcon({
+  html: `<div style="
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 2px 10px rgba(239,68,68,0.5);
+    border: 3px solid white;
+    animation: pulse 1s infinite;
+  ">📍</div>`,
+  className: 'selected-marker-icon',
   iconSize: [30, 30],
   iconAnchor: [15, 15],
 })
@@ -70,6 +119,16 @@ interface DriverHome {
   created_at: string
 }
 
+interface ClusteredStop {
+  lat: number
+  lng: number
+  stops: Stop[]
+  uniqueDrivers: string[]
+  totalDuration: number
+  province?: string
+  district?: string
+}
+
 const locationTypeIcons: Record<string, string> = {
   home: '🏠',
   loading: '📦',
@@ -86,13 +145,63 @@ const locationTypeIcons: Record<string, string> = {
   unknown: '❓',
 }
 
+// Grid boyutu (yaklaşık 500m)
+const CLUSTER_GRID_SIZE = 0.005
+
+function clusterStops(stops: Stop[]): ClusteredStop[] {
+  const grid: Record<string, ClusteredStop> = {}
+
+  stops.forEach((stop) => {
+    const gridLat = Math.floor(stop.latitude / CLUSTER_GRID_SIZE) * CLUSTER_GRID_SIZE
+    const gridLng = Math.floor(stop.longitude / CLUSTER_GRID_SIZE) * CLUSTER_GRID_SIZE
+    const key = `${gridLat.toFixed(4)}_${gridLng.toFixed(4)}`
+
+    if (!grid[key]) {
+      grid[key] = {
+        lat: gridLat + CLUSTER_GRID_SIZE / 2,
+        lng: gridLng + CLUSTER_GRID_SIZE / 2,
+        stops: [],
+        uniqueDrivers: [],
+        totalDuration: 0,
+        province: stop.province,
+        district: stop.district,
+      }
+    }
+
+    grid[key].stops.push(stop)
+    grid[key].totalDuration += stop.duration_minutes
+    if (!grid[key].uniqueDrivers.includes(stop.driver_id)) {
+      grid[key].uniqueDrivers.push(stop.driver_id)
+    }
+  })
+
+  return Object.values(grid).sort((a, b) => b.stops.length - a.stops.length)
+}
+
+// Harita kontrolcüsü - seçili konuma yakınlaşma
+function MapController({ center, zoom }: { center: [number, number] | null; zoom: number }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (center) {
+      map.flyTo(center, zoom, { duration: 0.5 })
+    }
+  }, [center, zoom, map])
+
+  return null
+}
+
 export default function StopsPage() {
   const queryClient = useQueryClient()
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
-  const [filter, setFilter] = useState<'uncategorized' | 'all' | 'homes'>('uncategorized')
+  const [selectedCluster, setSelectedCluster] = useState<ClusteredStop | null>(null)
+  const [filter, setFilter] = useState<'uncategorized' | 'all' | 'homes' | 'clusters'>('clusters')
   const [selectedType, setSelectedType] = useState<string>('')
   const [showHomeModal, setShowHomeModal] = useState(false)
   const [editingHome, setEditingHome] = useState<DriverHome | null>(null)
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null)
+  const [mapZoom, setMapZoom] = useState(6)
+  const [searchTerm, setSearchTerm] = useState('')
   const [homeForm, setHomeForm] = useState({
     name: '',
     radius: 200,
@@ -109,15 +218,15 @@ export default function StopsPage() {
     queryKey: ['stops', filter, selectedType],
     queryFn: () => {
       if (filter === 'uncategorized') {
-        return api.get('/admin/stops/uncategorized?limit=100')
+        return api.get('/admin/stops/uncategorized?limit=500')
       }
       if (filter === 'homes') {
-        return api.get('/admin/stops?location_type=home&limit=100')
+        return api.get('/admin/stops?location_type=home&limit=500')
       }
-      const params = selectedType ? `?location_type=${selectedType}&limit=100` : '?limit=100'
+      const params = selectedType ? `?location_type=${selectedType}&limit=500` : '?limit=500'
       return api.get(`/admin/stops${params}`)
     },
-    enabled: filter !== 'homes' || filter === 'homes',
+    enabled: filter !== 'homes',
   })
 
   // Get all driver homes
@@ -205,15 +314,37 @@ export default function StopsPage() {
 
   const locationTypes: LocationType[] = typesData?.data?.location_types || []
   const stops: Stop[] = stopsData?.data?.stops || []
-  const total = stopsData?.data?.total || 0
   const homes: DriverHome[] = homesData?.data?.homes || []
   const homesTotal = homesData?.data?.total || 0
 
-  const mapCenter: [number, number] = filter === 'homes' && homes.length > 0
-    ? [homes[0].latitude, homes[0].longitude]
-    : stops.length > 0
-      ? [stops[0].latitude, stops[0].longitude]
-      : [39.0, 35.0]
+  // Kümelenmiş duraklar
+  const clusteredStops = useMemo(() => clusterStops(stops), [stops])
+
+  // Filtrelenmiş kümeler (arama)
+  const filteredClusters = useMemo(() => {
+    if (!searchTerm) return clusteredStops
+    const term = searchTerm.toLowerCase()
+    return clusteredStops.filter(c =>
+      c.province?.toLowerCase().includes(term) ||
+      c.district?.toLowerCase().includes(term) ||
+      c.stops.some(s => s.driver_name?.toLowerCase().includes(term))
+    )
+  }, [clusteredStops, searchTerm])
+
+  // İstatistikler
+  const stats = useMemo(() => {
+    const uniqueDrivers = new Set(stops.map(s => s.driver_id))
+    const totalDuration = stops.reduce((sum, s) => sum + s.duration_minutes, 0)
+    const hotSpots = clusteredStops.filter(c => c.uniqueDrivers.length > 1).length
+
+    return {
+      totalStops: stops.length,
+      uniqueDrivers: uniqueDrivers.size,
+      clusters: clusteredStops.length,
+      hotSpots,
+      avgDuration: stops.length > 0 ? Math.round(totalDuration / stops.length) : 0,
+    }
+  }, [stops, clusteredStops])
 
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${minutes} dk`
@@ -244,8 +375,39 @@ export default function StopsPage() {
     })
   }
 
-  // Exclude 'home' from location types when categorizing (should use "Set as Home" instead)
+  // Haritada konuma git
+  const flyToLocation = (lat: number, lng: number, zoom: number = 14) => {
+    setMapCenter([lat, lng])
+    setMapZoom(zoom)
+  }
+
+  // Durak seçildiğinde haritada göster
+  const handleStopSelect = (stop: Stop) => {
+    setSelectedStop(stop)
+    setSelectedCluster(null)
+    flyToLocation(stop.latitude, stop.longitude, 15)
+  }
+
+  // Küme seçildiğinde haritada göster
+  const handleClusterSelect = (cluster: ClusteredStop) => {
+    setSelectedCluster(cluster)
+    setSelectedStop(null)
+    flyToLocation(cluster.lat, cluster.lng, 14)
+  }
+
+  // Ev seçildiğinde haritada göster
+  const handleHomeSelect = (home: DriverHome) => {
+    flyToLocation(home.latitude, home.longitude, 15)
+  }
+
+  // Exclude 'home' from location types when categorizing
   const categorizableTypes = locationTypes.filter(t => t.value !== 'home')
+
+  const defaultCenter: [number, number] = filter === 'homes' && homes.length > 0
+    ? [homes[0].latitude, homes[0].longitude]
+    : clusteredStops.length > 0
+      ? [clusteredStops[0].lat, clusteredStops[0].lng]
+      : [39.0, 35.0]
 
   return (
     <div className="space-y-6">
@@ -253,7 +415,7 @@ export default function StopsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Durak Yönetimi</h1>
-          <p className="text-gray-500">Şoför duraklarını kategorize edin ve ev adreslerini yönetin</p>
+          <p className="text-gray-500">Şoför duraklarını analiz edin ve yönetin</p>
         </div>
         <button
           onClick={() => detectMutation.mutate()}
@@ -265,20 +427,90 @@ export default function StopsPage() {
         </button>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <MapPinIcon className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Toplam Durak</p>
+              <p className="text-xl font-bold text-gray-900">{stats.totalStops}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <UserGroupIcon className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Sürücü Sayısı</p>
+              <p className="text-xl font-bold text-gray-900">{stats.uniqueDrivers}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <ChartBarIcon className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Küme Sayısı</p>
+              <p className="text-xl font-bold text-gray-900">{stats.clusters}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <TruckIcon className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Ortak Noktalar</p>
+              <p className="text-xl font-bold text-gray-900">{stats.hotSpots}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <ClockIcon className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Ort. Bekleme</p>
+              <p className="text-xl font-bold text-gray-900">{formatDuration(stats.avgDuration)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Filter Tabs */}
       <div className="flex items-center gap-4 border-b">
         <button
-          onClick={() => { setFilter('uncategorized'); setSelectedType(''); }}
+          onClick={() => { setFilter('clusters'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
+          className={`pb-2 px-4 font-medium flex items-center gap-1 ${
+            filter === 'clusters'
+              ? 'text-primary-600 border-b-2 border-primary-600'
+              : 'text-gray-500'
+          }`}
+        >
+          <ChartBarIcon className="h-4 w-4" />
+          Kümelenmiş ({clusteredStops.length})
+        </button>
+        <button
+          onClick={() => { setFilter('uncategorized'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
           className={`pb-2 px-4 font-medium ${
             filter === 'uncategorized'
               ? 'text-primary-600 border-b-2 border-primary-600'
               : 'text-gray-500'
           }`}
         >
-          Kategorize Edilmemiş ({total})
+          Kategorize Edilmemiş
         </button>
         <button
-          onClick={() => { setFilter('all'); setSelectedType(''); }}
+          onClick={() => { setFilter('all'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
           className={`pb-2 px-4 font-medium ${
             filter === 'all'
               ? 'text-primary-600 border-b-2 border-primary-600'
@@ -288,7 +520,7 @@ export default function StopsPage() {
           Tüm Duraklar
         </button>
         <button
-          onClick={() => setFilter('homes')}
+          onClick={() => { setFilter('homes'); setSelectedCluster(null); setSelectedStop(null); }}
           className={`pb-2 px-4 font-medium flex items-center gap-1 ${
             filter === 'homes'
               ? 'text-primary-600 border-b-2 border-primary-600'
@@ -316,12 +548,24 @@ export default function StopsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Stops/Homes List */}
+        {/* List Panel */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="p-4 border-b">
-            <h2 className="font-semibold">
-              {filter === 'homes' ? 'Şoför Ev Adresleri' : 'Duraklar'}
+            <h2 className="font-semibold mb-3">
+              {filter === 'homes' ? 'Şoför Ev Adresleri' : filter === 'clusters' ? 'Ortak Durak Noktaları' : 'Duraklar'}
             </h2>
+            {filter === 'clusters' && (
+              <div className="relative">
+                <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="İl, ilçe veya sürücü ara..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+            )}
           </div>
           <div className="max-h-[600px] overflow-y-auto">
             {(isLoading || (filter === 'homes' && homesLoading)) ? (
@@ -333,13 +577,13 @@ export default function StopsPage() {
                 <div className="p-8 text-center text-gray-500">
                   <HomeIcon className="h-12 w-12 mx-auto mb-2 text-gray-400" />
                   <p>Henüz ev adresi eklenmemiş</p>
-                  <p className="text-sm mt-2">Duralardan "Ev Olarak Kaydet" seçeneğini kullanın</p>
                 </div>
               ) : (
                 homes.map((home) => (
-                  <div
+                  <button
                     key={home.id}
-                    className="p-4 border-b hover:bg-gray-50"
+                    onClick={() => handleHomeSelect(home)}
+                    className="w-full text-left p-4 border-b hover:bg-gray-50"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium flex items-center gap-2">
@@ -349,13 +593,14 @@ export default function StopsPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">🏠</span>
                         <button
-                          onClick={() => setEditingHome(home)}
+                          onClick={(e) => { e.stopPropagation(); setEditingHome(home); }}
                           className="p-1 text-gray-400 hover:text-primary-600"
                         >
                           <PencilIcon className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             if (confirm('Bu ev adresini silmek istediğinize emin misiniz?')) {
                               deleteHomeMutation.mutate(home.id)
                             }
@@ -377,7 +622,49 @@ export default function StopsPage() {
                         {!home.is_active && <span className="ml-2 text-red-500">(Pasif)</span>}
                       </p>
                     </div>
-                  </div>
+                  </button>
+                ))
+              )
+            ) : filter === 'clusters' ? (
+              filteredClusters.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  <MapPinIcon className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                  <p>Durak bulunamadı</p>
+                </div>
+              ) : (
+                filteredClusters.map((cluster, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleClusterSelect(cluster)}
+                    className={`w-full text-left p-4 border-b hover:bg-gray-50 ${
+                      selectedCluster === cluster ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium flex items-center gap-2">
+                        <MapPinIcon className="h-4 w-4 text-blue-500" />
+                        {cluster.province || 'Bilinmeyen'}, {cluster.district || ''}
+                      </span>
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                        {cluster.stops.length} durak
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <UserGroupIcon className="h-4 w-4" />
+                        {cluster.uniqueDrivers.length} sürücü
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        {formatDuration(cluster.totalDuration)}
+                      </span>
+                    </div>
+                    {cluster.uniqueDrivers.length > 1 && (
+                      <div className="mt-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded inline-block">
+                        🔥 Ortak Nokta - {cluster.uniqueDrivers.length} farklı sürücü
+                      </div>
+                    )}
+                  </button>
                 ))
               )
             ) : stops.length === 0 ? (
@@ -389,9 +676,9 @@ export default function StopsPage() {
               stops.map((stop) => (
                 <button
                   key={stop.id}
-                  onClick={() => setSelectedStop(stop)}
+                  onClick={() => handleStopSelect(stop)}
                   className={`w-full text-left p-4 border-b hover:bg-gray-50 ${
-                    selectedStop?.id === stop.id ? 'bg-primary-50' : ''
+                    selectedStop?.id === stop.id ? 'bg-primary-50 border-l-4 border-l-primary-500' : ''
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -424,12 +711,20 @@ export default function StopsPage() {
 
         {/* Map */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex items-center justify-between">
             <h2 className="font-semibold">Harita</h2>
+            {(selectedStop || selectedCluster) && (
+              <button
+                onClick={() => { setSelectedStop(null); setSelectedCluster(null); setMapCenter(null); }}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Seçimi Temizle
+              </button>
+            )}
           </div>
           <div className="h-[600px]">
             <MapContainer
-              center={mapCenter}
+              center={defaultCenter}
               zoom={6}
               style={{ height: '100%', width: '100%' }}
             >
@@ -437,6 +732,8 @@ export default function StopsPage() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              <MapController center={mapCenter} zoom={mapZoom} />
+
               {filter === 'homes' ? (
                 homes.map((home) => (
                   <div key={home.id}>
@@ -465,37 +762,158 @@ export default function StopsPage() {
                     />
                   </div>
                 ))
+              ) : filter === 'clusters' ? (
+                <>
+                  {/* Kümeleri göster */}
+                  {filteredClusters.map((cluster, index) => (
+                    <Marker
+                      key={index}
+                      position={[cluster.lat, cluster.lng]}
+                      icon={selectedCluster === cluster
+                        ? selectedIcon
+                        : createClusterIcon(cluster.stops.length, cluster.uniqueDrivers.length)
+                      }
+                      eventHandlers={{
+                        click: () => handleClusterSelect(cluster),
+                      }}
+                    >
+                      <Popup>
+                        <div className="text-sm min-w-[200px]">
+                          <p className="font-semibold mb-2">{cluster.province}, {cluster.district}</p>
+                          <div className="space-y-1">
+                            <p><strong>Toplam Durak:</strong> {cluster.stops.length}</p>
+                            <p><strong>Sürücü Sayısı:</strong> {cluster.uniqueDrivers.length}</p>
+                            <p><strong>Toplam Bekleme:</strong> {formatDuration(cluster.totalDuration)}</p>
+                          </div>
+                          {cluster.uniqueDrivers.length > 1 && (
+                            <p className="mt-2 text-orange-600 text-xs">
+                              🔥 {cluster.uniqueDrivers.length} farklı sürücü bu noktada durdu
+                            </p>
+                          )}
+                          <div className="mt-2 pt-2 border-t max-h-32 overflow-y-auto">
+                            <p className="text-xs text-gray-500 mb-1">Sürücüler:</p>
+                            {Array.from(new Set(cluster.stops.map(s => s.driver_name))).slice(0, 5).map((name, i) => (
+                              <span key={i} className="inline-block bg-gray-100 text-gray-700 rounded px-1 py-0.5 text-xs mr-1 mb-1">
+                                {name}
+                              </span>
+                            ))}
+                            {cluster.uniqueDrivers.length > 5 && (
+                              <span className="text-xs text-gray-500">+{cluster.uniqueDrivers.length - 5} daha</span>
+                            )}
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                  {/* Seçili kümenin duraklarını göster */}
+                  {selectedCluster && selectedCluster.stops.map((stop) => (
+                    <Circle
+                      key={stop.id}
+                      center={[stop.latitude, stop.longitude]}
+                      radius={50}
+                      pathOptions={{
+                        color: '#3b82f6',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.3,
+                      }}
+                    >
+                      <Popup>
+                        <div className="text-sm">
+                          <strong>{stop.driver_name}</strong>
+                          <br />
+                          {formatDuration(stop.duration_minutes)}
+                          <br />
+                          {new Date(stop.started_at).toLocaleString('tr-TR')}
+                        </div>
+                      </Popup>
+                    </Circle>
+                  ))}
+                </>
               ) : (
-                stops.map((stop) => (
-                  <Marker
-                    key={stop.id}
-                    position={[stop.latitude, stop.longitude]}
-                    eventHandlers={{
-                      click: () => setSelectedStop(stop),
-                    }}
-                  >
-                    <Popup>
-                      <div className="text-sm">
-                        <strong>{stop.driver_name}</strong>
-                        <br />
-                        <span className="text-2xl">{locationTypeIcons[stop.location_type]}</span>{' '}
-                        {stop.location_label || 'Belirlenmedi'}
-                        <br />
-                        Süre: {formatDuration(stop.duration_minutes)}
-                        <br />
-                        {new Date(stop.started_at).toLocaleString('tr-TR')}
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))
+                <>
+                  {stops.map((stop) => (
+                    <Marker
+                      key={stop.id}
+                      position={[stop.latitude, stop.longitude]}
+                      icon={selectedStop?.id === stop.id ? selectedIcon : undefined}
+                      eventHandlers={{
+                        click: () => handleStopSelect(stop),
+                      }}
+                    >
+                      <Popup>
+                        <div className="text-sm">
+                          <strong>{stop.driver_name}</strong>
+                          <br />
+                          <span className="text-2xl">{locationTypeIcons[stop.location_type]}</span>{' '}
+                          {stop.location_label || 'Belirlenmedi'}
+                          <br />
+                          Süre: {formatDuration(stop.duration_minutes)}
+                          <br />
+                          {new Date(stop.started_at).toLocaleString('tr-TR')}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </>
               )}
             </MapContainer>
           </div>
         </div>
       </div>
 
+      {/* Cluster Detail Panel */}
+      {selectedCluster && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <MapPinIcon className="h-5 w-5 text-blue-600" />
+            {selectedCluster.province}, {selectedCluster.district} - Detaylı Analiz
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Özet</h4>
+              <ul className="space-y-2 text-sm">
+                <li className="flex justify-between"><span>Toplam Durak:</span> <strong>{selectedCluster.stops.length}</strong></li>
+                <li className="flex justify-between"><span>Farklı Sürücü:</span> <strong>{selectedCluster.uniqueDrivers.length}</strong></li>
+                <li className="flex justify-between"><span>Toplam Bekleme:</span> <strong>{formatDuration(selectedCluster.totalDuration)}</strong></li>
+                <li className="flex justify-between"><span>Ort. Bekleme:</span> <strong>{formatDuration(Math.round(selectedCluster.totalDuration / selectedCluster.stops.length))}</strong></li>
+              </ul>
+            </div>
+            <div className="md:col-span-2">
+              <h4 className="font-medium text-gray-700 mb-2">Bu Noktada Duran Sürücüler</h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Sürücü</th>
+                      <th className="px-3 py-2 text-left">Durak Sayısı</th>
+                      <th className="px-3 py-2 text-left">Toplam Süre</th>
+                      <th className="px-3 py-2 text-left">Son Ziyaret</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from(new Set(selectedCluster.stops.map(s => s.driver_id))).map(driverId => {
+                      const driverStops = selectedCluster.stops.filter(s => s.driver_id === driverId)
+                      const totalDuration = driverStops.reduce((sum, s) => sum + s.duration_minutes, 0)
+                      const lastVisit = new Date(Math.max(...driverStops.map(s => new Date(s.started_at).getTime())))
+                      return (
+                        <tr key={driverId} className="border-b">
+                          <td className="px-3 py-2 font-medium">{driverStops[0].driver_name}</td>
+                          <td className="px-3 py-2">{driverStops.length}</td>
+                          <td className="px-3 py-2">{formatDuration(totalDuration)}</td>
+                          <td className="px-3 py-2 text-gray-500">{lastVisit.toLocaleDateString('tr-TR')}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Categorization Modal */}
-      {selectedStop && !showHomeModal && (
+      {selectedStop && !showHomeModal && filter !== 'clusters' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">Durak Tipini Seçin</h3>
@@ -710,6 +1128,17 @@ export default function StopsPage() {
           </div>
         </div>
       )}
+
+      {/* CSS for pulse animation */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+        .selected-marker-icon div {
+          animation: pulse 1s infinite;
+        }
+      `}</style>
     </div>
   )
 }

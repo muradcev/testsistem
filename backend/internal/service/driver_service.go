@@ -66,3 +66,18 @@ func (s *DriverService) UpdateLastActive(ctx context.Context, driverID uuid.UUID
 func (s *DriverService) GetDriverAppStats(ctx context.Context) (*models.DriverAppStats, error) {
 	return s.repo.GetDriverAppStats(ctx)
 }
+
+// UpdateStatus - Sürücü aktif/pasif durumunu güncelle
+func (s *DriverService) UpdateStatus(ctx context.Context, driverID uuid.UUID, isActive bool) error {
+	return s.repo.UpdateStatus(ctx, driverID, isActive)
+}
+
+// UpdateFeatures - Sürücü özelliklerini güncelle
+func (s *DriverService) UpdateFeatures(ctx context.Context, driverID uuid.UUID, features map[string]bool) error {
+	return s.repo.UpdateFeatures(ctx, driverID, features)
+}
+
+// Delete - Sürücüyü sil
+func (s *DriverService) Delete(ctx context.Context, driverID uuid.UUID) error {
+	return s.repo.Delete(ctx, driverID)
+}

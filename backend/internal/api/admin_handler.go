@@ -150,6 +150,10 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		DeviceOS:                  driver.DeviceOS,
 		LastActiveAt:              driver.LastActiveAt,
 		BackgroundLocationEnabled: driver.BackgroundLocationEnabled,
+		ContactsEnabled:           driver.ContactsEnabled,
+		CallLogEnabled:            driver.CallLogEnabled,
+		SurveysEnabled:            driver.SurveysEnabled,
+		QuestionsEnabled:          driver.QuestionsEnabled,
 		Vehicles:                  vehicles,
 		Trailers:                  trailers,
 	}
@@ -252,6 +256,116 @@ func (h *AdminHandler) GetDriverAppStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// UpdateDriverStatus - Sürücü durumunu güncelle (aktif/pasif)
+func (h *AdminHandler) UpdateDriverStatus(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	var req struct {
+		IsActive bool `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	if err := h.driverService.UpdateStatus(ctx, driverID, req.IsActive); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Sürücü durumu güncellendi", "is_active": req.IsActive})
+}
+
+// UpdateDriverFeatures - Sürücü özelliklerini güncelle
+func (h *AdminHandler) UpdateDriverFeatures(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	var req struct {
+		LocationTrackingEnabled   *bool `json:"location_tracking_enabled"`
+		BackgroundLocationEnabled *bool `json:"background_location_enabled"`
+		NotificationsEnabled      *bool `json:"notifications_enabled"`
+		SurveysEnabled            *bool `json:"surveys_enabled"`
+		QuestionsEnabled          *bool `json:"questions_enabled"`
+		ContactsEnabled           *bool `json:"contacts_enabled"`
+		CallLogEnabled            *bool `json:"call_log_enabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	features := make(map[string]bool)
+
+	if req.LocationTrackingEnabled != nil {
+		features["location_tracking_enabled"] = *req.LocationTrackingEnabled
+	}
+	if req.BackgroundLocationEnabled != nil {
+		features["background_location_enabled"] = *req.BackgroundLocationEnabled
+	}
+	if req.NotificationsEnabled != nil {
+		features["notifications_enabled"] = *req.NotificationsEnabled
+	}
+	if req.SurveysEnabled != nil {
+		features["surveys_enabled"] = *req.SurveysEnabled
+	}
+	if req.QuestionsEnabled != nil {
+		features["questions_enabled"] = *req.QuestionsEnabled
+	}
+	if req.ContactsEnabled != nil {
+		features["contacts_enabled"] = *req.ContactsEnabled
+	}
+	if req.CallLogEnabled != nil {
+		features["call_log_enabled"] = *req.CallLogEnabled
+	}
+
+	if err := h.driverService.UpdateFeatures(ctx, driverID, features); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Sürücü özellikleri güncellendi", "features": features})
+}
+
+// DeleteDriver - Sürücü sil
+func (h *AdminHandler) DeleteDriver(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Önce sürücünün var olup olmadığını kontrol et
+	driver, err := h.driverService.GetByID(ctx, driverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if driver == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Şoför bulunamadı"})
+		return
+	}
+
+	// Sürücüyü sil (cascade ile ilişkili veriler de silinecek)
+	if err := h.driverService.Delete(ctx, driverID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Sürücü ve ilişkili tüm veriler silindi", "driver_id": driverID})
 }
 
 // Notification Handler

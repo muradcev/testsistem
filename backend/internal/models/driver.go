@@ -37,6 +37,12 @@ type Driver struct {
 	LocationPermission        string     `json:"location_permission" db:"location_permission"`
 	BackgroundLocationEnabled bool       `json:"background_location_enabled" db:"background_location_enabled"`
 
+	// Özellik flag'leri (admin tarafından kontrol edilir)
+	ContactsEnabled  bool `json:"contacts_enabled" db:"contacts_enabled"`
+	CallLogEnabled   bool `json:"call_log_enabled" db:"call_log_enabled"`
+	SurveysEnabled   bool `json:"surveys_enabled" db:"surveys_enabled"`
+	QuestionsEnabled bool `json:"questions_enabled" db:"questions_enabled"`
+
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -143,6 +149,12 @@ type DriverDetailResponse struct {
 	DeviceOS                  *string    `json:"device_os,omitempty"`
 	LastActiveAt              *time.Time `json:"last_active_at,omitempty"`
 	BackgroundLocationEnabled bool       `json:"background_location_enabled"`
+
+	// Özellik flag'leri
+	ContactsEnabled  bool `json:"contacts_enabled"`
+	CallLogEnabled   bool `json:"call_log_enabled"`
+	SurveysEnabled   bool `json:"surveys_enabled"`
+	QuestionsEnabled bool `json:"questions_enabled"`
 
 	// İlişkili veriler
 	Vehicles []Vehicle `json:"vehicles"`

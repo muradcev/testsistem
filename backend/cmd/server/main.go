@@ -186,6 +186,9 @@ func main() {
 			adminGroup.GET("/drivers/:id/locations", adminHandler.GetDriverLocations)
 			adminGroup.GET("/drivers/:id/trips", adminHandler.GetDriverTrips)
 			adminGroup.GET("/drivers/:id/stops", adminHandler.GetDriverStops)
+			adminGroup.PUT("/drivers/:id/status", adminHandler.UpdateDriverStatus)
+			adminGroup.PUT("/drivers/:id/features", adminHandler.UpdateDriverFeatures)
+			adminGroup.DELETE("/drivers/:id", adminHandler.DeleteDriver)
 
 			// Real-time locations
 			adminGroup.GET("/locations/live", adminHandler.GetLiveLocations)

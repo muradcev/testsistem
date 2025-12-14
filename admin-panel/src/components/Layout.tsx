@@ -18,6 +18,7 @@ import {
   XMarkIcon,
   BugAntIcon,
   MapPinIcon,
+  FireIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Şoförler', href: '/drivers', icon: UserGroupIcon },
   { name: 'Canlı Harita', href: '/live-map', icon: MapIcon },
+  { name: 'Isı Haritası', href: '/heat-map', icon: FireIcon },
   { name: 'Durak Yönetimi', href: '/stops', icon: MapPinIcon },
   { name: 'Analitik', href: '/analytics', icon: ChartBarIcon },
   { name: 'Raporlar', href: '/reports', icon: DocumentChartBarIcon },

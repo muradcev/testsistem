@@ -7,6 +7,7 @@ import DriversPage from './pages/DriversPage'
 import DriverDetailPage from './pages/DriverDetailPage'
 import DriverRoutesPage from './pages/DriverRoutesPage'
 import LiveMapPage from './pages/LiveMapPage'
+import HeatMapPage from './pages/HeatMapPage'
 import SurveysPage from './pages/SurveysPage'
 import SettingsPage from './pages/SettingsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="drivers/:id" element={<DriverDetailPage />} />
         <Route path="drivers/:id/routes" element={<DriverRoutesPage />} />
         <Route path="live-map" element={<LiveMapPage />} />
+        <Route path="heat-map" element={<HeatMapPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="error-monitoring" element={<ErrorMonitoringPage />} />

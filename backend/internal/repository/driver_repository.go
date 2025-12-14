@@ -50,6 +50,8 @@ func (r *DriverRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.D
 			last_location_at, last_latitude, last_longitude, current_status,
 			app_version, app_build_number, device_model, device_os, device_os_version,
 			last_active_at, app_installed_at, push_enabled, location_permission, background_location_enabled,
+			COALESCE(contacts_enabled, false), COALESCE(call_log_enabled, false),
+			COALESCE(surveys_enabled, true), COALESCE(questions_enabled, true),
 			created_at, updated_at
 		FROM drivers WHERE id = $1
 	`
@@ -64,6 +66,7 @@ func (r *DriverRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.D
 		&driver.CurrentStatus,
 		&driver.AppVersion, &driver.AppBuildNumber, &driver.DeviceModel, &driver.DeviceOS, &driver.DeviceOSVersion,
 		&driver.LastActiveAt, &driver.AppInstalledAt, &driver.PushEnabled, &driver.LocationPermission, &driver.BackgroundLocationEnabled,
+		&driver.ContactsEnabled, &driver.CallLogEnabled, &driver.SurveysEnabled, &driver.QuestionsEnabled,
 		&driver.CreatedAt, &driver.UpdatedAt,
 	)
 
@@ -84,6 +87,8 @@ func (r *DriverRepository) GetByPhone(ctx context.Context, phone string) (*model
 			last_location_at, last_latitude, last_longitude, current_status,
 			app_version, app_build_number, device_model, device_os, device_os_version,
 			last_active_at, app_installed_at, push_enabled, location_permission, background_location_enabled,
+			COALESCE(contacts_enabled, false), COALESCE(call_log_enabled, false),
+			COALESCE(surveys_enabled, true), COALESCE(questions_enabled, true),
 			created_at, updated_at
 		FROM drivers WHERE phone = $1
 	`
@@ -98,6 +103,7 @@ func (r *DriverRepository) GetByPhone(ctx context.Context, phone string) (*model
 		&driver.CurrentStatus,
 		&driver.AppVersion, &driver.AppBuildNumber, &driver.DeviceModel, &driver.DeviceOS, &driver.DeviceOSVersion,
 		&driver.LastActiveAt, &driver.AppInstalledAt, &driver.PushEnabled, &driver.LocationPermission, &driver.BackgroundLocationEnabled,
+		&driver.ContactsEnabled, &driver.CallLogEnabled, &driver.SurveysEnabled, &driver.QuestionsEnabled,
 		&driver.CreatedAt, &driver.UpdatedAt,
 	)
 
@@ -361,4 +367,69 @@ func (r *DriverRepository) GetDriverAppStats(ctx context.Context) (*models.Drive
 	}
 
 	return &stats, nil
+}
+
+// UpdateStatus - Sürücü aktif/pasif durumunu güncelle
+func (r *DriverRepository) UpdateStatus(ctx context.Context, driverID uuid.UUID, isActive bool) error {
+	query := `UPDATE drivers SET is_active = $1, updated_at = $2 WHERE id = $3`
+	_, err := r.db.Pool.Exec(ctx, query, isActive, time.Now(), driverID)
+	return err
+}
+
+// UpdateFeatures - Sürücü özelliklerini güncelle
+func (r *DriverRepository) UpdateFeatures(ctx context.Context, driverID uuid.UUID, features map[string]bool) error {
+	// Dinamik SQL oluştur
+	setClauses := "updated_at = $1"
+	args := []interface{}{time.Now()}
+	argIndex := 2
+
+	for key, value := range features {
+		switch key {
+		case "location_tracking_enabled":
+			setClauses += fmt.Sprintf(", location_permission = $%d", argIndex)
+			if value {
+				args = append(args, "always")
+			} else {
+				args = append(args, "denied")
+			}
+			argIndex++
+		case "background_location_enabled":
+			setClauses += fmt.Sprintf(", background_location_enabled = $%d", argIndex)
+			args = append(args, value)
+			argIndex++
+		case "notifications_enabled":
+			setClauses += fmt.Sprintf(", push_enabled = $%d", argIndex)
+			args = append(args, value)
+			argIndex++
+		case "surveys_enabled":
+			setClauses += fmt.Sprintf(", surveys_enabled = $%d", argIndex)
+			args = append(args, value)
+			argIndex++
+		case "questions_enabled":
+			setClauses += fmt.Sprintf(", questions_enabled = $%d", argIndex)
+			args = append(args, value)
+			argIndex++
+		case "contacts_enabled":
+			setClauses += fmt.Sprintf(", contacts_enabled = $%d", argIndex)
+			args = append(args, value)
+			argIndex++
+		case "call_log_enabled":
+			setClauses += fmt.Sprintf(", call_log_enabled = $%d", argIndex)
+			args = append(args, value)
+			argIndex++
+		}
+	}
+
+	args = append(args, driverID)
+	query := fmt.Sprintf("UPDATE drivers SET %s WHERE id = $%d", setClauses, argIndex)
+
+	_, err := r.db.Pool.Exec(ctx, query, args...)
+	return err
+}
+
+// Delete - Sürücüyü sil (CASCADE ile ilişkili veriler de silinir)
+func (r *DriverRepository) Delete(ctx context.Context, driverID uuid.UUID) error {
+	query := `DELETE FROM drivers WHERE id = $1`
+	_, err := r.db.Pool.Exec(ctx, query, driverID)
+	return err
 }
