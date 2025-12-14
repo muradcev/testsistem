@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
@@ -11,15 +12,83 @@ import '../screens/vehicles/vehicles_screen.dart';
 import '../screens/vehicles/add_vehicle_screen.dart';
 import '../screens/surveys/survey_screen.dart';
 import '../screens/questions/questions_screen.dart';
+import 'constants.dart';
 
 // Global navigator key for notification navigation
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
+// Auth state notifier for router refresh
+class AuthNotifier extends ChangeNotifier {
+  bool _isLoggedIn = false;
+  bool _isInitialized = false;
+
+  bool get isLoggedIn => _isLoggedIn;
+  bool get isInitialized => _isInitialized;
+
+  AuthNotifier() {
+    _checkAuthState();
+  }
+
+  Future<void> _checkAuthState() async {
+    final prefs = await SharedPreferences.getInstance();
+    _isLoggedIn = prefs.getBool(StorageKeys.isLoggedIn) ?? false;
+    final token = prefs.getString(StorageKeys.accessToken);
+    // Token yoksa giriş yapılmamış sayılır
+    if (token == null || token.isEmpty) {
+      _isLoggedIn = false;
+    }
+    _isInitialized = true;
+    notifyListeners();
+  }
+
+  void setLoggedIn(bool value) {
+    _isLoggedIn = value;
+    notifyListeners();
+  }
+}
+
+final authNotifier = AuthNotifier();
+
 final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
-  initialLocation: '/login',
+  initialLocation: '/',
+  refreshListenable: authNotifier,
   observers: [SentryNavigatorObserver()],
+  redirect: (context, state) {
+    final isLoggedIn = authNotifier.isLoggedIn;
+    final isInitialized = authNotifier.isInitialized;
+    final isAuthRoute = state.matchedLocation == '/login' ||
+                        state.matchedLocation == '/register' ||
+                        state.matchedLocation.startsWith('/otp');
+
+    // Henüz başlatılmadıysa bekle
+    if (!isInitialized) {
+      return null;
+    }
+
+    // Giriş yapmış ve auth sayfasındaysa ana sayfaya yönlendir
+    if (isLoggedIn && isAuthRoute) {
+      return '/home';
+    }
+
+    // Giriş yapmamış ve korumalı sayfadaysa logine yönlendir
+    if (!isLoggedIn && !isAuthRoute && state.matchedLocation != '/') {
+      return '/login';
+    }
+
+    // Root path için yönlendirme
+    if (state.matchedLocation == '/') {
+      return isLoggedIn ? '/home' : '/login';
+    }
+
+    return null;
+  },
   routes: [
+    // Splash/Root route
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const _SplashScreen(),
+    ),
     // Auth routes
     GoRoute(
       path: '/login',
@@ -138,6 +207,20 @@ class MainShell extends StatelessWidget {
             label: 'Profil',
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Simple splash screen while checking auth
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
       ),
     );
   }

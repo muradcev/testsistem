@@ -7,6 +7,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import '../services/api_service.dart';
 import '../services/background_location_service.dart';
 import '../config/constants.dart';
+import '../config/router.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService;
@@ -70,6 +71,9 @@ class AuthProvider extends ChangeNotifier {
       _userId = data['driver']['id'];
       _phone = data['driver']['phone'];
       _user = data['driver'];
+
+      // Router'ı bilgilendir
+      authNotifier.setLoggedIn(true);
 
       // Cihaz bilgisini gonder
       await _sendDeviceInfo();
@@ -192,6 +196,9 @@ class AuthProvider extends ChangeNotifier {
     _userId = null;
     _phone = null;
     _user = null;
+
+    // Router'ı bilgilendir
+    authNotifier.setLoggedIn(false);
 
     notifyListeners();
   }
