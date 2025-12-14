@@ -10,26 +10,34 @@ type LocationType string
 
 const (
 	LocationTypeHome        LocationType = "home"
+	LocationTypeLoading     LocationType = "loading"
+	LocationTypeUnloading   LocationType = "unloading"
 	LocationTypeRestArea    LocationType = "rest_area"
-	LocationTypeIndustrial  LocationType = "industrial"
+	LocationTypeSleep       LocationType = "sleep"
 	LocationTypeGasStation  LocationType = "gas_station"
+	LocationTypeTruckGarage LocationType = "truck_garage"
+	LocationTypeParking     LocationType = "parking"
+	LocationTypeIndustrial  LocationType = "industrial"
 	LocationTypePort        LocationType = "port"
 	LocationTypeCustoms     LocationType = "customs"
-	LocationTypeParking     LocationType = "parking"
 	LocationTypeMall        LocationType = "mall"
 	LocationTypeUnknown     LocationType = "unknown"
 )
 
 var LocationTypeLabels = map[LocationType]string{
-	LocationTypeHome:       "Ev",
-	LocationTypeRestArea:   "Dinlenme Tesisi",
-	LocationTypeIndustrial: "Sanayi Bölgesi",
-	LocationTypeGasStation: "Akaryakıt İstasyonu",
-	LocationTypePort:       "Liman",
-	LocationTypeCustoms:    "Gümrük",
-	LocationTypeParking:    "Otopark",
-	LocationTypeMall:       "AVM/Market",
-	LocationTypeUnknown:    "Bilinmeyen",
+	LocationTypeHome:        "Ev",
+	LocationTypeLoading:     "Yükleme",
+	LocationTypeUnloading:   "Boşaltma",
+	LocationTypeRestArea:    "Dinlenme Tesisi",
+	LocationTypeSleep:       "Uyku/Mola",
+	LocationTypeGasStation:  "Akaryakıt İstasyonu",
+	LocationTypeTruckGarage: "TIR Garajı",
+	LocationTypeParking:     "Otopark/Park",
+	LocationTypeIndustrial:  "Sanayi Bölgesi",
+	LocationTypePort:        "Liman",
+	LocationTypeCustoms:     "Gümrük",
+	LocationTypeMall:        "AVM/Market",
+	LocationTypeUnknown:     "Belirlenmedi",
 }
 
 type Stop struct {

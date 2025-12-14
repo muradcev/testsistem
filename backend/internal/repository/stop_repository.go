@@ -172,15 +172,152 @@ func (r *StopRepository) Update(ctx context.Context, stop *models.Stop) error {
 
 	query := `
 		UPDATE stops SET
-			ended_at = $2, duration_minutes = $3, updated_at = $4
+			location_type = $2, ended_at = $3, duration_minutes = $4, updated_at = $5
 		WHERE id = $1
 	`
 
 	_, err := r.db.Pool.Exec(ctx, query,
-		stop.ID, stop.EndedAt, stop.DurationMinutes, stop.UpdatedAt,
+		stop.ID, stop.LocationType, stop.EndedAt, stop.DurationMinutes, stop.UpdatedAt,
 	)
 
 	return err
+}
+
+// ExistsAtLocationAndTime checks if a stop already exists at given location and time
+func (r *StopRepository) ExistsAtLocationAndTime(ctx context.Context, driverID uuid.UUID, lat, lon float64, startedAt time.Time, radiusMeters float64) (bool, error) {
+	// Use PostGIS or simple distance calculation
+	// For simplicity, we check within a small time window and approximate distance
+	query := `
+		SELECT COUNT(*) FROM stops
+		WHERE driver_id = $1
+		AND started_at BETWEEN $2 AND $3
+		AND ABS(latitude - $4) < 0.001
+		AND ABS(longitude - $5) < 0.001
+	`
+
+	timeWindow := 5 * time.Minute
+	startTime := startedAt.Add(-timeWindow)
+	endTime := startedAt.Add(timeWindow)
+
+	var count int
+	err := r.db.Pool.QueryRow(ctx, query, driverID, startTime, endTime, lat, lon).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// GetUncategorized returns stops that haven't been categorized (location_type = 'unknown')
+func (r *StopRepository) GetUncategorized(ctx context.Context, limit, offset int) ([]models.Stop, int, error) {
+	// Get total count
+	countQuery := `SELECT COUNT(*) FROM stops WHERE location_type = 'unknown'`
+	var total int
+	err := r.db.Pool.QueryRow(ctx, countQuery).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get stops with driver info
+	query := `
+		SELECT s.id, s.driver_id, s.trip_id, s.latitude, s.longitude, s.location_type,
+			s.address, s.province, s.district, s.started_at, s.ended_at, s.duration_minutes,
+			s.is_in_vehicle, s.created_at, s.updated_at
+		FROM stops s
+		WHERE s.location_type = 'unknown'
+		ORDER BY s.started_at DESC
+		LIMIT $1 OFFSET $2
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var stops []models.Stop
+	for rows.Next() {
+		var s models.Stop
+		err := rows.Scan(
+			&s.ID, &s.DriverID, &s.TripID, &s.Latitude, &s.Longitude, &s.LocationType,
+			&s.Address, &s.Province, &s.District, &s.StartedAt, &s.EndedAt, &s.DurationMinutes,
+			&s.IsInVehicle, &s.CreatedAt, &s.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		stops = append(stops, s)
+	}
+
+	return stops, total, nil
+}
+
+// GetAllStops returns all stops with pagination
+func (r *StopRepository) GetAllStops(ctx context.Context, limit, offset int, locationType *string) ([]models.Stop, int, error) {
+	// Build count query
+	countQuery := `SELECT COUNT(*) FROM stops WHERE 1=1`
+	args := []interface{}{}
+	argCount := 0
+
+	if locationType != nil && *locationType != "" {
+		argCount++
+		countQuery += fmt.Sprintf(" AND location_type = $%d", argCount)
+		args = append(args, *locationType)
+	}
+
+	var total int
+	err := r.db.Pool.QueryRow(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Build main query
+	query := `
+		SELECT s.id, s.driver_id, s.trip_id, s.latitude, s.longitude, s.location_type,
+			s.address, s.province, s.district, s.started_at, s.ended_at, s.duration_minutes,
+			s.is_in_vehicle, s.created_at, s.updated_at
+		FROM stops s
+		WHERE 1=1
+	`
+
+	args = []interface{}{}
+	argCount = 0
+
+	if locationType != nil && *locationType != "" {
+		argCount++
+		query += fmt.Sprintf(" AND location_type = $%d", argCount)
+		args = append(args, *locationType)
+	}
+
+	argCount++
+	query += fmt.Sprintf(" ORDER BY s.started_at DESC LIMIT $%d", argCount)
+	args = append(args, limit)
+
+	argCount++
+	query += fmt.Sprintf(" OFFSET $%d", argCount)
+	args = append(args, offset)
+
+	rows, err := r.db.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var stops []models.Stop
+	for rows.Next() {
+		var s models.Stop
+		err := rows.Scan(
+			&s.ID, &s.DriverID, &s.TripID, &s.Latitude, &s.Longitude, &s.LocationType,
+			&s.Address, &s.Province, &s.District, &s.StartedAt, &s.EndedAt, &s.DurationMinutes,
+			&s.IsInVehicle, &s.CreatedAt, &s.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		stops = append(stops, s)
+	}
+
+	return stops, total, nil
 }
 
 func (r *StopRepository) GetStopAnalysis(ctx context.Context, startDate, endDate time.Time) ([]models.StopAnalysis, error) {

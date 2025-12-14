@@ -262,6 +262,16 @@ func main() {
 			adminGroup.GET("/analytics/price-surveys", analyticsHandler.GetPriceSurveys)
 			adminGroup.PUT("/analytics/price-surveys/:id/verify", analyticsHandler.VerifyPriceSurvey)
 
+			// Stops (Durak Yönetimi)
+			stopDetectionService := service.NewStopDetectionService(locationRepo, stopRepo, driverRepo)
+			stopHandler := api.NewStopHandler(stopDetectionService, stopRepo, driverRepo)
+			adminGroup.GET("/stops", stopHandler.GetStops)
+			adminGroup.GET("/stops/uncategorized", stopHandler.GetUncategorizedStops)
+			adminGroup.PUT("/stops/:id", stopHandler.UpdateStopType)
+			adminGroup.GET("/stops/location-types", stopHandler.GetLocationTypes)
+			adminGroup.POST("/stops/detect/:driver_id", stopHandler.DetectStopsForDriver)
+			adminGroup.POST("/stops/detect-all", stopHandler.DetectStopsForAllDrivers)
+
 			// Questions (Akıllı Soru Sistemi)
 			questionsHandler := api.NewQuestionsHandler(questionsRepo, driverRepo, notificationService)
 
