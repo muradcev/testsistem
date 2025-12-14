@@ -89,7 +89,7 @@ export default function LoginPage() {
               <p className="text-xs text-green-600">Android APK İndir</p>
             </div>
             <a
-              href="/downloads/nakliyeo-v3.apk"
+              href="/downloads/nakliyeo-v1.0.0.apk"
               download
               className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
             >

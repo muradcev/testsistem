@@ -466,7 +466,7 @@ export default function DashboardPage() {
               Şoförler için Android uygulamasını indirin
             </p>
             <a
-              href="/downloads/nakliyeo-v3.apk"
+              href="/downloads/nakliyeo-v1.0.0.apk"
               download
               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-green-50 transition-colors"
             >
