@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../services/cache_service.dart';
 
 class Question {
   final String id;
@@ -41,13 +42,28 @@ class Question {
 
 class QuestionsProvider extends ChangeNotifier {
   final ApiService _apiService;
+  final CacheService _cacheService;
 
   bool _isLoading = false;
   List<Question> _questions = [];
   String? _error;
   bool _isAnswering = false;
 
-  QuestionsProvider(this._apiService);
+  QuestionsProvider(this._apiService, this._cacheService) {
+    _loadFromCache();
+  }
+
+  void _loadFromCache() {
+    final cachedQuestions = _cacheService.getCachedQuestions();
+    if (cachedQuestions.isNotEmpty) {
+      _questions = cachedQuestions
+          .map((q) => Question.fromJson(q))
+          .toList();
+      _questions.sort((a, b) => b.priority.compareTo(a.priority));
+      debugPrint('[QuestionsProvider] Loaded from cache: ${_questions.length} questions');
+      notifyListeners();
+    }
+  }
 
   bool get isLoading => _isLoading;
   List<Question> get questions => _questions;
@@ -67,8 +83,8 @@ class QuestionsProvider extends ChangeNotifier {
 
       if (response.data == null) {
         debugPrint('[QuestionsProvider] Response data is null');
-        _questions = [];
         _error = 'Sunucudan veri alınamadı';
+        // Don't clear - keep cache
       } else {
         final questionsData = response.data['questions'] as List? ?? [];
         debugPrint('[QuestionsProvider] Questions count: ${questionsData.length}');
@@ -78,11 +94,16 @@ class QuestionsProvider extends ChangeNotifier {
 
         // Sort by priority (higher first)
         _questions.sort((a, b) => b.priority.compareTo(a.priority));
+
+        // Save to cache
+        await _cacheService.cacheQuestions(
+          questionsData.map((q) => Map<String, dynamic>.from(q)).toList(),
+        );
       }
     } catch (e) {
       debugPrint('[QuestionsProvider] Failed to load questions: $e');
       _error = _parseError(e);
-      _questions = []; // Clear on error
+      // Don't clear - keep cache for offline use
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -12,6 +12,7 @@ import '../screens/vehicles/vehicles_screen.dart';
 import '../screens/vehicles/add_vehicle_screen.dart';
 import '../screens/surveys/survey_screen.dart';
 import '../screens/questions/questions_screen.dart';
+import '../screens/map/map_screen.dart';
 import 'constants.dart';
 
 // Global navigator key for notification navigation
@@ -139,6 +140,11 @@ final appRouter = GoRouter(
           path: '/questions',
           name: 'questions',
           builder: (context, state) => const QuestionsScreen(),
+        ),
+        GoRoute(
+          path: '/map',
+          name: 'map',
+          builder: (context, state) => const MapScreen(),
         ),
       ],
     ),

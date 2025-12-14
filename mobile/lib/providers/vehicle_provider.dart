@@ -1,15 +1,28 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../services/cache_service.dart';
 
 class VehicleProvider extends ChangeNotifier {
   final ApiService _apiService;
+  final CacheService _cacheService;
 
   bool _isLoading = false;
   List<Map<String, dynamic>> _vehicles = [];
   List<Map<String, dynamic>> _trailers = [];
   String? _error;
 
-  VehicleProvider(this._apiService);
+  VehicleProvider(this._apiService, this._cacheService) {
+    _loadFromCache();
+  }
+
+  void _loadFromCache() {
+    _vehicles = _cacheService.getCachedVehicles();
+    _trailers = _cacheService.getCachedTrailers();
+    if (_vehicles.isNotEmpty || _trailers.isNotEmpty) {
+      debugPrint('[VehicleProvider] Loaded from cache: ${_vehicles.length} vehicles, ${_trailers.length} trailers');
+      notifyListeners();
+    }
+  }
 
   bool get isLoading => _isLoading;
   List<Map<String, dynamic>> get vehicles => _vehicles;
@@ -29,16 +42,18 @@ class VehicleProvider extends ChangeNotifier {
 
       if (response.data == null) {
         _error = 'Sunucudan veri alınamadı';
-        _vehicles = [];
+        // Don't clear - keep cache
       } else {
         _vehicles = List<Map<String, dynamic>>.from(response.data['vehicles'] ?? []);
+        // Save to cache
+        await _cacheService.cacheVehicles(_vehicles);
       }
       debugPrint('[VehicleProvider] Loaded ${_vehicles.length} vehicles');
     } catch (e, stackTrace) {
       debugPrint('[VehicleProvider] Failed to load vehicles: $e');
       debugPrint('[VehicleProvider] Stack: $stackTrace');
       _error = _parseError(e);
-      _vehicles = []; // Clear on error to avoid stale data
+      // Don't clear - keep cache for offline use
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -53,15 +68,17 @@ class VehicleProvider extends ChangeNotifier {
 
       if (response.data == null) {
         debugPrint('[VehicleProvider] Trailers response is null');
-        _trailers = [];
+        // Don't clear - keep cache
       } else {
         _trailers = List<Map<String, dynamic>>.from(response.data['trailers'] ?? []);
+        // Save to cache
+        await _cacheService.cacheTrailers(_trailers);
       }
       debugPrint('[VehicleProvider] Loaded ${_trailers.length} trailers');
       notifyListeners();
     } catch (e) {
       debugPrint('[VehicleProvider] Failed to load trailers: $e');
-      _trailers = []; // Clear on error
+      // Don't clear - keep cache for offline use
       notifyListeners();
     }
   }

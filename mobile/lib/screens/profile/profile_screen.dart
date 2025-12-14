@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vehicle_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../config/theme.dart';
 import '../../config/constants.dart';
 
@@ -276,6 +277,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
                 },
+              ),
+              const SizedBox(height: 16),
+
+              // Uygulama Ayarları
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        'Uygulama Ayarları',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    // Harita
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.map, color: Colors.green),
+                      ),
+                      title: const Text('Konumum'),
+                      subtitle: const Text('Haritada konumunu gör'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.goNamed('map'),
+                    ),
+                    const Divider(height: 1, indent: 72),
+                    // Dark Mode Toggle
+                    Consumer<ThemeProvider>(
+                      builder: (context, themeProvider, _) {
+                        return ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                              color: Colors.indigo,
+                            ),
+                          ),
+                          title: const Text('Karanlık Mod'),
+                          subtitle: Text(themeProvider.isDarkMode ? 'Açık' : 'Kapalı'),
+                          trailing: Switch(
+                            value: themeProvider.isDarkMode,
+                            onChanged: (_) => themeProvider.toggleTheme(),
+                            activeColor: AppColors.accent,
+                          ),
+                          onTap: () => themeProvider.toggleTheme(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
 

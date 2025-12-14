@@ -16,11 +16,13 @@ import 'providers/auth_provider.dart';
 import 'providers/location_provider.dart';
 import 'providers/vehicle_provider.dart';
 import 'providers/questions_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/api_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
 import 'services/background_location_service.dart';
 import 'services/error_reporting_service.dart';
+import 'services/cache_service.dart';
 
 void main() async {
   await runZonedGuarded(() async {
@@ -73,6 +75,8 @@ void main() async {
     final apiService = ApiService();
     final locationService = LocationService();
     final notificationService = NotificationService();
+    final cacheService = CacheService();
+    await cacheService.init();
 
     // Connect notification service to API service for FCM token sending
     notificationService.setApiService(apiService);
@@ -95,10 +99,12 @@ void main() async {
           Provider<ApiService>.value(value: apiService),
           Provider<LocationService>.value(value: locationService),
           Provider<NotificationService>.value(value: notificationService),
+          Provider<CacheService>.value(value: cacheService),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ChangeNotifierProvider(create: (_) => AuthProvider(apiService)),
           ChangeNotifierProvider(create: (_) => LocationProvider(locationService, apiService)),
-          ChangeNotifierProvider(create: (_) => VehicleProvider(apiService)),
-          ChangeNotifierProvider(create: (_) => QuestionsProvider(apiService)),
+          ChangeNotifierProvider(create: (_) => VehicleProvider(apiService, cacheService)),
+          ChangeNotifierProvider(create: (_) => QuestionsProvider(apiService, cacheService)),
         ],
         child: const NakliyeoApp(),
       ),
@@ -114,23 +120,27 @@ class NakliyeoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Nakliyeo Mobil',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      routerConfig: appRouter,
-      builder: (context, child) {
-        // Wrap with error widget handler
-        ErrorWidget.builder = (FlutterErrorDetails details) {
-          ErrorReportingService.reportFlutterError(details);
-          return _ErrorDisplayWidget(details: details);
-        };
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp.router(
+          title: 'Nakliyeo Mobil',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          routerConfig: appRouter,
+          builder: (context, child) {
+            // Wrap with error widget handler
+            ErrorWidget.builder = (FlutterErrorDetails details) {
+              ErrorReportingService.reportFlutterError(details);
+              return _ErrorDisplayWidget(details: details);
+            };
 
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
-          child: child!,
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+              child: child!,
+            );
+          },
         );
       },
     );
