@@ -75,6 +75,21 @@ func (h *AdminHandler) GetDashboard(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+// GetWeeklyStats returns trip statistics for the last 7 days
+func (h *AdminHandler) GetWeeklyStats(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	weeklyStats, err := h.tripService.GetWeeklyStats(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"weekly_stats": weeklyStats,
+	})
+}
+
 func (h *AdminHandler) GetDrivers(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))

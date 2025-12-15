@@ -80,7 +80,8 @@ type DriverListItem struct {
 	Province       string     `json:"province"`
 	District       string     `json:"district"`
 	IsActive       bool       `json:"is_active"`
-	CurrentStatus  string     `json:"current_status"`
+	Status         string     `json:"status"`         // Mapped status: active, on_trip, at_home, passive
+	CurrentStatus  string     `json:"current_status"` // Raw status: home, driving, stopped, unknown
 	LastLatitude   *float64   `json:"last_latitude,omitempty"`
 	LastLongitude  *float64   `json:"last_longitude,omitempty"`
 	LastLocationAt *time.Time `json:"last_location_at,omitempty"`

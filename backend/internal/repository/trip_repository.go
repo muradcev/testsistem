@@ -201,3 +201,68 @@ func (r *TripRepository) GetRouteAnalysis(ctx context.Context, startDate, endDat
 
 	return results, nil
 }
+
+// WeeklyTripStats represents trip statistics for a single day
+type WeeklyTripStats struct {
+	Date       string  `json:"date"`
+	DayName    string  `json:"day_name"`
+	TripCount  int     `json:"trip_count"`
+	DistanceKm float64 `json:"distance_km"`
+}
+
+// GetWeeklyStats returns trip statistics for the last 7 days
+func (r *TripRepository) GetWeeklyStats(ctx context.Context) ([]WeeklyTripStats, error) {
+	query := `
+		SELECT
+			DATE(started_at) as date,
+			TO_CHAR(started_at, 'Dy') as day_name,
+			COUNT(*) as trip_count,
+			COALESCE(SUM(distance_km), 0) as distance_km
+		FROM trips
+		WHERE started_at >= NOW() - INTERVAL '7 days'
+		GROUP BY DATE(started_at), TO_CHAR(started_at, 'Dy')
+		ORDER BY DATE(started_at) ASC
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Create map for results
+	resultsMap := make(map[string]WeeklyTripStats)
+	for rows.Next() {
+		var stat WeeklyTripStats
+		err := rows.Scan(&stat.Date, &stat.DayName, &stat.TripCount, &stat.DistanceKm)
+		if err != nil {
+			return nil, err
+		}
+		resultsMap[stat.Date] = stat
+	}
+
+	// Fill in all 7 days (even if no trips)
+	dayNames := map[int]string{0: "Paz", 1: "Pzt", 2: "Sal", 3: "Çar", 4: "Per", 5: "Cum", 6: "Cmt"}
+	results := make([]WeeklyTripStats, 7)
+	now := time.Now()
+
+	for i := 6; i >= 0; i-- {
+		date := now.AddDate(0, 0, -i)
+		dateStr := date.Format("2006-01-02")
+		dayName := dayNames[int(date.Weekday())]
+
+		if stat, exists := resultsMap[dateStr]; exists {
+			stat.DayName = dayName // Use Turkish day name
+			results[6-i] = stat
+		} else {
+			results[6-i] = WeeklyTripStats{
+				Date:       dateStr,
+				DayName:    dayName,
+				TripCount:  0,
+				DistanceKm: 0,
+			}
+		}
+	}
+
+	return results, nil
+}

@@ -132,6 +132,13 @@ export default function DashboardPage() {
     queryFn: () => stopsApi.getAll({ limit: 1000 }),
   })
 
+  // Haftalık istatistikler
+  const { data: weeklyData } = useQuery({
+    queryKey: ['weeklyStats'],
+    queryFn: () => dashboardApi.getWeeklyStats(),
+    refetchInterval: 60000,
+  })
+
   // Onay bekleyen sorular
   const { data: pendingQuestions } = useQuery({
     queryKey: ['pendingQuestions'],
@@ -144,16 +151,13 @@ export default function DashboardPage() {
   const stops = stopsData?.data?.stops || []
   const pending = pendingQuestions?.data?.questions || []
 
-  // Haftalık veri (gerçek API'den gelmeli, şimdilik hesaplanıyor)
-  const weeklyTripData = [
-    { name: 'Pzt', seferler: Math.floor(Math.random() * 30) + 30, mesafe: Math.floor(Math.random() * 5000) + 10000 },
-    { name: 'Sal', seferler: Math.floor(Math.random() * 30) + 35, mesafe: Math.floor(Math.random() * 5000) + 11000 },
-    { name: 'Çar', seferler: Math.floor(Math.random() * 30) + 32, mesafe: Math.floor(Math.random() * 5000) + 10500 },
-    { name: 'Per', seferler: Math.floor(Math.random() * 30) + 40, mesafe: Math.floor(Math.random() * 5000) + 13000 },
-    { name: 'Cum', seferler: Math.floor(Math.random() * 30) + 38, mesafe: Math.floor(Math.random() * 5000) + 12000 },
-    { name: 'Cmt', seferler: Math.floor(Math.random() * 20) + 20, mesafe: Math.floor(Math.random() * 4000) + 8000 },
-    { name: 'Paz', seferler: Math.floor(Math.random() * 15) + 15, mesafe: Math.floor(Math.random() * 3000) + 6000 },
-  ]
+  // Haftalık veri (gerçek API'den)
+  const weeklyStats = weeklyData?.data?.weekly_stats || []
+  const weeklyTripData = weeklyStats.map((stat: { day_name: string; trip_count: number; distance_km: number }) => ({
+    name: stat.day_name,
+    seferler: stat.trip_count,
+    mesafe: Math.round(stat.distance_km),
+  }))
 
   // Şoför durumu verisi
   const driverStatusData = [
@@ -379,36 +383,42 @@ export default function DashboardPage() {
             <span className="text-xs text-gray-400">Son 7 gün</span>
           </div>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={weeklyTripData}>
-                <defs>
-                  <linearGradient id="colorSeferler" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                <XAxis dataKey="name" stroke="#9CA3AF" tick={{ fontSize: 12 }} />
-                <YAxis stroke="#9CA3AF" tick={{ fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#FFF',
-                    border: 'none',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="seferler"
-                  stroke="#3B82F6"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorSeferler)"
-                  name="Sefer Sayısı"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {weeklyTripData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={weeklyTripData}>
+                  <defs>
+                    <linearGradient id="colorSeferler" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                  <XAxis dataKey="name" stroke="#9CA3AF" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#9CA3AF" tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#FFF',
+                      border: 'none',
+                      borderRadius: '0.75rem',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="seferler"
+                    stroke="#3B82F6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorSeferler)"
+                    name="Sefer Sayısı"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                Sefer verisi yükleniyor...
+              </div>
+            )}
           </div>
         </div>
 
@@ -471,28 +481,34 @@ export default function DashboardPage() {
             <span className="text-xs text-gray-400">Toplam kat edilen</span>
           </div>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyTripData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                <XAxis dataKey="name" stroke="#9CA3AF" tick={{ fontSize: 12 }} />
-                <YAxis stroke="#9CA3AF" tick={{ fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#FFF',
-                    border: 'none',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  }}
-                  formatter={(value: number) => [`${value.toLocaleString()} km`, 'Mesafe']}
-                />
-                <Bar
-                  dataKey="mesafe"
-                  fill="#10B981"
-                  radius={[6, 6, 0, 0]}
-                  name="Mesafe"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {weeklyTripData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyTripData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                  <XAxis dataKey="name" stroke="#9CA3AF" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#9CA3AF" tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#FFF',
+                      border: 'none',
+                      borderRadius: '0.75rem',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }}
+                    formatter={(value: number) => [`${value.toLocaleString()} km`, 'Mesafe']}
+                  />
+                  <Bar
+                    dataKey="mesafe"
+                    fill="#10B981"
+                    radius={[6, 6, 0, 0]}
+                    name="Mesafe"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                Mesafe verisi yükleniyor...
+              </div>
+            )}
           </div>
         </div>
 

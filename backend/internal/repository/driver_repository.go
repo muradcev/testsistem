@@ -198,6 +198,7 @@ func (r *DriverRepository) GetAll(ctx context.Context, limit, offset int) ([]mod
 			return nil, 0, err
 		}
 		d.HasApp = d.AppVersion != nil
+		d.Status = models.MapDriverStatus(d.CurrentStatus, d.IsActive)
 		drivers = append(drivers, d)
 	}
 

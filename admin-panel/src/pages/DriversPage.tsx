@@ -30,6 +30,7 @@ interface Driver {
 const statusLabels: Record<string, string> = {
   active: 'Aktif',
   inactive: 'Pasif',
+  passive: 'Pasif',
   on_trip: 'Seferde',
   at_home: 'Evde',
 }
@@ -37,6 +38,7 @@ const statusLabels: Record<string, string> = {
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
   inactive: 'bg-gray-100 text-gray-800',
+  passive: 'bg-gray-100 text-gray-800',
   on_trip: 'bg-orange-100 text-orange-800',
   at_home: 'bg-blue-100 text-blue-800',
 }

@@ -20,13 +20,17 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import api, { driverHomesApi } from '../services/api'
 
-// Fix for default marker icon
-delete (L.Icon.Default.prototype as any)._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-})
+// Fix for default marker icon (with error handling)
+try {
+  delete (L.Icon.Default.prototype as any)._getIconUrl
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  })
+} catch (e) {
+  console.warn('Leaflet icon fix failed:', e)
+}
 
 // Custom home marker icon
 const homeIcon = L.divIcon({
@@ -208,13 +212,13 @@ export default function StopsPage() {
   })
 
   // Get location types
-  const { data: typesData } = useQuery({
+  const { data: typesData, error: typesError } = useQuery({
     queryKey: ['location-types'],
     queryFn: () => api.get('/admin/stops/location-types'),
   })
 
   // Get stops
-  const { data: stopsData, isLoading } = useQuery({
+  const { data: stopsData, isLoading, error: stopsError } = useQuery({
     queryKey: ['stops', filter, selectedType],
     queryFn: () => {
       if (filter === 'uncategorized') {
@@ -230,11 +234,16 @@ export default function StopsPage() {
   })
 
   // Get all driver homes
-  const { data: homesData, isLoading: homesLoading } = useQuery({
+  const { data: homesData, isLoading: homesLoading, error: homesError } = useQuery({
     queryKey: ['driver-homes'],
     queryFn: () => driverHomesApi.getAll({ limit: 100 }),
     enabled: filter === 'homes',
   })
+
+  // Log errors for debugging
+  if (typesError) console.error('Types error:', typesError)
+  if (stopsError) console.error('Stops error:', stopsError)
+  if (homesError) console.error('Homes error:', homesError)
 
   // Update stop type mutation
   const updateMutation = useMutation({
@@ -408,6 +417,27 @@ export default function StopsPage() {
     : clusteredStops.length > 0
       ? [clusteredStops[0].lat, clusteredStops[0].lng]
       : [39.0, 35.0]
+
+  // Show error state
+  const hasError = stopsError || homesError || typesError
+  if (hasError) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Veri Yüklenemedi</h2>
+          <p className="text-red-600">
+            Durak verileri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            Sayfayı Yenile
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

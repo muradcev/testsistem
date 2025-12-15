@@ -153,3 +153,8 @@ func (s *TripService) UpdateTripDistance(ctx context.Context, tripID uuid.UUID, 
 	trip.DistanceKm = distanceKm
 	return s.tripRepo.Update(ctx, trip)
 }
+
+// GetWeeklyStats returns trip statistics for the last 7 days
+func (s *TripService) GetWeeklyStats(ctx context.Context) ([]repository.WeeklyTripStats, error) {
+	return s.tripRepo.GetWeeklyStats(ctx)
+}

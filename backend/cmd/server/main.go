@@ -180,6 +180,7 @@ func main() {
 			// Dashboard
 			adminHandler := api.NewAdminHandler(adminService, driverService, locationService, tripService, surveyService, vehicleService, trailerService)
 			adminGroup.GET("/dashboard", adminHandler.GetDashboard)
+			adminGroup.GET("/dashboard/weekly", adminHandler.GetWeeklyStats)
 			adminGroup.GET("/app-stats", adminHandler.GetDriverAppStats)
 
 			// Drivers
