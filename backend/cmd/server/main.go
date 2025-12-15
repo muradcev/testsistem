@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,6 +9,7 @@ import (
 	"time"
 
 	"nakliyeo-mobil/internal/api"
+	"nakliyeo-mobil/internal/logger"
 	"nakliyeo-mobil/internal/middleware"
 	"nakliyeo-mobil/internal/repository"
 	"nakliyeo-mobil/internal/service"
@@ -21,30 +20,37 @@ import (
 )
 
 func init() {
+	// Initialize logger
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	prettyPrint := os.Getenv("GIN_MODE") != "release"
+	logger.Init(logLevel, prettyPrint)
+
 	// Initialize Sentry early
 	if err := middleware.InitSentry(); err != nil {
-		log.Printf("[WARN] Failed to initialize Sentry: %v", err)
+		logger.Warn("Failed to initialize Sentry: " + err.Error())
 	}
 }
 
 func main() {
 	// .env dosyasını yükle
 	if err := godotenv.Load(); err != nil {
-		fmt.Println("[INFO] No .env file found, using environment variables")
-		os.Stdout.Sync()
+		logger.Info("No .env file found, using environment variables")
 	}
 
 	// Veritabanı bağlantısı
 	db, err := repository.NewPostgresDB(os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatal("Failed to connect to database", err)
 	}
 	defer db.Close()
 
 	// Redis bağlantısı
 	redis, err := repository.NewRedisClient(os.Getenv("REDIS_URL"))
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		logger.Fatal("Failed to connect to Redis", err)
 	}
 	defer redis.Close()
 
@@ -103,6 +109,12 @@ func main() {
 	// CORS middleware
 	router.Use(middleware.CORSMiddleware())
 
+	// Rate limiting middleware (genel)
+	router.Use(middleware.RateLimitMiddleware())
+
+	// Logging middleware
+	router.Use(middleware.LoggingMiddleware())
+
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy", "time": time.Now()})
@@ -114,16 +126,17 @@ func main() {
 	// API routes
 	apiGroup := router.Group("/api/v1")
 	{
-		// Public routes (auth)
+		// Public routes (auth) - Strict rate limiting
+		authRateLimit := middleware.StrictRateLimitMiddleware(10, time.Minute) // 10 req/min
 		authHandler := api.NewAuthHandler(authService)
-		apiGroup.POST("/auth/register", authHandler.Register)
-		apiGroup.POST("/auth/login", authHandler.Login)
-		apiGroup.POST("/auth/send-otp", authHandler.SendOTP)
-		apiGroup.POST("/auth/verify-otp", authHandler.VerifyOTP)
+		apiGroup.POST("/auth/register", authRateLimit, authHandler.Register)
+		apiGroup.POST("/auth/login", authRateLimit, authHandler.Login)
+		apiGroup.POST("/auth/send-otp", authRateLimit, authHandler.SendOTP)
+		apiGroup.POST("/auth/verify-otp", authRateLimit, authHandler.VerifyOTP)
 		apiGroup.POST("/auth/refresh", authHandler.RefreshToken)
 
 		// Admin auth
-		apiGroup.POST("/admin/auth/login", authHandler.AdminLogin)
+		apiGroup.POST("/admin/auth/login", authRateLimit, authHandler.AdminLogin)
 
 		// Lokasyon verileri (public)
 		apiGroup.GET("/locations/provinces", api.GetProvinces)
@@ -267,6 +280,8 @@ func main() {
 
 			// Analytics
 			analyticsHandler := api.NewAnalyticsHandler(analyticsRepo, cargoRepo)
+			analyticsGeneratorService := service.NewAnalyticsGeneratorService(db.Pool, stopRepo, locationRepo, analyticsRepo)
+			analyticsHandler.SetGeneratorService(analyticsGeneratorService)
 			adminGroup.GET("/analytics/hotspots", analyticsHandler.GetHotspots)
 			adminGroup.GET("/analytics/hotspots/:id", analyticsHandler.GetHotspot)
 			adminGroup.POST("/analytics/hotspots", analyticsHandler.CreateHotspot)
@@ -289,6 +304,13 @@ func main() {
 
 			adminGroup.GET("/analytics/price-surveys", analyticsHandler.GetPriceSurveys)
 			adminGroup.PUT("/analytics/price-surveys/:id/verify", analyticsHandler.VerifyPriceSurvey)
+
+			// Analytics Generation (yeni endpointler)
+			adminGroup.POST("/analytics/generate", analyticsHandler.GenerateAllAnalytics)
+			adminGroup.POST("/analytics/generate/hotspots", analyticsHandler.GenerateHotspots)
+			adminGroup.POST("/analytics/generate/route-segments", analyticsHandler.GenerateRouteSegments)
+			adminGroup.GET("/analytics/location-heatmap", analyticsHandler.GetLocationHeatmap)
+			adminGroup.GET("/analytics/stop-heatmap", analyticsHandler.GetStopHeatmap)
 
 			// Stops (Durak Yönetimi)
 			stopDetectionService := service.NewStopDetectionService(locationRepo, stopRepo, driverRepo)
@@ -387,10 +409,9 @@ func main() {
 
 	// Graceful shutdown
 	go func() {
-		fmt.Printf("=== Server starting on port %s ===\n", port)
-		os.Stdout.Sync()
+		logger.Log.Info().Str("port", port).Msg("Server starting")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+			logger.Fatal("Failed to start server", err)
 		}
 	}()
 
@@ -398,19 +419,17 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	fmt.Println("Shutting down server...")
-	os.Stdout.Sync()
+	logger.Info("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+		logger.Fatal("Server forced to shutdown", err)
 	}
 
 	// Flush Sentry events before exit
 	middleware.FlushSentry()
 
-	fmt.Println("Server exited properly")
-	os.Stdout.Sync()
+	logger.Info("Server exited properly")
 }

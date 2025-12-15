@@ -445,10 +445,11 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
               if (!_isRequesting && !_allDone)
                 TextButton(
                   onPressed: () {
+                    final router = GoRouter.of(context);
                     PermissionService.markPermissionsRequested().then((_) {
                       authNotifier.setPermissionsRequested(true);
                       if (mounted) {
-                        context.go('/home');
+                        router.go('/home');
                       }
                     });
                   },

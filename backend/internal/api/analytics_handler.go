@@ -3,6 +3,7 @@ package api
 import (
 	"nakliyeo-mobil/internal/models"
 	"nakliyeo-mobil/internal/repository"
+	"nakliyeo-mobil/internal/service"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,8 +12,9 @@ import (
 )
 
 type AnalyticsHandler struct {
-	analyticsRepo *repository.AnalyticsRepository
-	cargoRepo     *repository.CargoRepository
+	analyticsRepo    *repository.AnalyticsRepository
+	cargoRepo        *repository.CargoRepository
+	generatorService *service.AnalyticsGeneratorService
 }
 
 func NewAnalyticsHandler(analyticsRepo *repository.AnalyticsRepository, cargoRepo *repository.CargoRepository) *AnalyticsHandler {
@@ -20,6 +22,11 @@ func NewAnalyticsHandler(analyticsRepo *repository.AnalyticsRepository, cargoRep
 		analyticsRepo: analyticsRepo,
 		cargoRepo:     cargoRepo,
 	}
+}
+
+// SetGeneratorService - Generator service'i handler'a ekle
+func (h *AnalyticsHandler) SetGeneratorService(svc *service.AnalyticsGeneratorService) {
+	h.generatorService = svc
 }
 
 // ============================================
@@ -379,4 +386,110 @@ func (h *AnalyticsHandler) VerifyPriceSurvey(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Doğrulama güncellendi"})
+}
+
+// ============================================
+// Analytics Generation
+// ============================================
+
+// GenerateAllAnalytics - Tüm analytics verilerini oluştur
+func (h *AnalyticsHandler) GenerateAllAnalytics(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	if h.generatorService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Analytics generator service not initialized"})
+		return
+	}
+
+	if err := h.generatorService.RunAllGenerators(ctx); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Analytics generation failed: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Analytics generation completed"})
+}
+
+// GenerateHotspots - Durak verilerinden hotspot oluştur
+func (h *AnalyticsHandler) GenerateHotspots(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	if h.generatorService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Analytics generator service not initialized"})
+		return
+	}
+
+	minVisits := 1 // Default: en az 1 ziyaret
+	if v := c.Query("min_visits"); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			minVisits = i
+		}
+	}
+
+	count, err := h.generatorService.GenerateHotspotsFromStops(ctx, minVisits)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Hotspot generation failed: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Hotspots generated from stops",
+		"count":   count,
+	})
+}
+
+// GenerateRouteSegments - Trip verilerinden route segment oluştur
+func (h *AnalyticsHandler) GenerateRouteSegments(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	if h.generatorService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Analytics generator service not initialized"})
+		return
+	}
+
+	count, err := h.generatorService.GenerateRouteSegments(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Route segment generation failed: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Route segments generated from trips",
+		"count":   count,
+	})
+}
+
+// GetLocationHeatmap - Konum verilerinden heatmap
+func (h *AnalyticsHandler) GetLocationHeatmap(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	if h.generatorService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Analytics generator service not initialized"})
+		return
+	}
+
+	heatmap, err := h.generatorService.GenerateLocationHeatmap(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Location heatmap failed: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"heatmap": heatmap})
+}
+
+// GetStopHeatmap - Durak verilerinden heatmap
+func (h *AnalyticsHandler) GetStopHeatmap(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	if h.generatorService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Analytics generator service not initialized"})
+		return
+	}
+
+	heatmap, err := h.generatorService.GetStopHeatmap(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Stop heatmap failed: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"heatmap": heatmap})
 }
