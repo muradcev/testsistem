@@ -227,6 +227,7 @@ func main() {
 			notificationHandler := api.NewNotificationHandler(notificationService, driverService)
 			adminGroup.POST("/notifications/send", notificationHandler.SendNotification)
 			adminGroup.POST("/notifications/broadcast", notificationHandler.BroadcastNotification)
+			adminGroup.POST("/notifications/validate-apps", notificationHandler.ValidateAppInstallations)
 
 			// Settings
 			settingsHandler := api.NewSettingsHandler(adminService)

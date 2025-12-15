@@ -666,6 +666,102 @@ func (h *NotificationHandler) BroadcastNotification(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Bildirim gönderildi", "count": len(tokens)})
 }
 
+// ValidateAppInstallations - Tüm şoförlerin uygulama kurulum durumunu FCM ile doğrula
+// Görünmez bir push göndererek uygulamanın hala kurulu olup olmadığını kontrol eder
+func (h *NotificationHandler) ValidateAppInstallations(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// FCM token'ı olan tüm şoförleri al
+	drivers, err := h.driverService.GetDriversWithFCMToken(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(drivers) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message":     "Kontrol edilecek şoför yok",
+			"total":       0,
+			"valid":       0,
+			"uninstalled": 0,
+			"results":     []interface{}{},
+		})
+		return
+	}
+
+	// Token -> Driver ID mapping
+	tokenToDriver := make(map[string]uuid.UUID)
+	var tokens []string
+	for _, d := range drivers {
+		if d.FCMToken != nil && *d.FCMToken != "" {
+			tokenToDriver[*d.FCMToken] = d.ID
+			tokens = append(tokens, *d.FCMToken)
+		}
+	}
+
+	// FCM ile token'ları doğrula
+	results, err := h.notificationService.ValidateTokens(ctx, tokens)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "FCM validation failed: " + err.Error()})
+		return
+	}
+
+	// Sonuçları işle
+	var validCount, uninstalledCount int
+	type driverResult struct {
+		DriverID    uuid.UUID `json:"driver_id"`
+		DriverName  string    `json:"driver_name"`
+		Phone       string    `json:"phone"`
+		Valid       bool      `json:"valid"`
+		Uninstalled bool      `json:"uninstalled"`
+		Error       string    `json:"error,omitempty"`
+	}
+
+	driverResults := make([]driverResult, 0, len(results))
+
+	for _, result := range results {
+		driverID := tokenToDriver[result.Token]
+
+		// Şoför bilgilerini bul
+		var driverName, phone string
+		for _, d := range drivers {
+			if d.ID == driverID {
+				driverName = d.Name + " " + d.Surname
+				phone = d.Phone
+				break
+			}
+		}
+
+		dr := driverResult{
+			DriverID:    driverID,
+			DriverName:  driverName,
+			Phone:       phone,
+			Valid:       result.Valid,
+			Uninstalled: result.Uninstalled,
+			Error:       result.Error,
+		}
+
+		if result.Valid {
+			validCount++
+		}
+		if result.Uninstalled {
+			uninstalledCount++
+			// Şoförün app_status'unu güncelle (opsiyonel)
+			// h.driverService.MarkAppUninstalled(ctx, driverID)
+		}
+
+		driverResults = append(driverResults, dr)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Uygulama kontrolü tamamlandı",
+		"total":       len(results),
+		"valid":       validCount,
+		"uninstalled": uninstalledCount,
+		"results":     driverResults,
+	})
+}
+
 // Settings Handler
 type SettingsHandler struct {
 	adminService *service.AdminService

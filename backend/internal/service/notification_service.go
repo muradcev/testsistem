@@ -242,6 +242,145 @@ func (s *NotificationService) IsInitialized() bool {
 	return s.initialized
 }
 
+// TokenValidationResult - Token doğrulama sonucu
+type TokenValidationResult struct {
+	Token       string `json:"token"`
+	Valid       bool   `json:"valid"`
+	Error       string `json:"error,omitempty"`
+	Uninstalled bool   `json:"uninstalled"` // true ise uygulama kesin silinmiş
+}
+
+// ValidateToken - Tek bir FCM token'ın geçerli olup olmadığını kontrol et
+// Görünmez bir data mesajı göndererek token'ın hala geçerli olup olmadığını test eder
+func (s *NotificationService) ValidateToken(ctx context.Context, token string) *TokenValidationResult {
+	result := &TokenValidationResult{Token: token, Valid: true}
+
+	if token == "" {
+		result.Valid = false
+		result.Error = "empty_token"
+		return result
+	}
+
+	if !s.initialized || s.client == nil {
+		// Firebase başlatılmamışsa test edemiyoruz
+		result.Error = "firebase_not_initialized"
+		return result
+	}
+
+	// Görünmez data-only mesaj gönder (kullanıcı görmez)
+	message := &messaging.Message{
+		Token: token,
+		Data: map[string]string{
+			"type":      "token_validation",
+			"timestamp": fmt.Sprintf("%d", ctx.Value("timestamp")),
+		},
+		// Android'de data-only mesaj bildirimi göstermez
+		Android: &messaging.AndroidConfig{
+			Priority: "normal",
+		},
+	}
+
+	_, err := s.client.Send(ctx, message)
+	if err != nil {
+		result.Valid = false
+		result.Error = err.Error()
+
+		// FCM hata mesajlarını kontrol et
+		errStr := err.Error()
+		if contains(errStr, "NotRegistered") ||
+			contains(errStr, "not registered") ||
+			contains(errStr, "InvalidRegistration") ||
+			contains(errStr, "invalid registration") ||
+			contains(errStr, "Requested entity was not found") {
+			result.Uninstalled = true
+			result.Error = "app_uninstalled"
+		}
+	}
+
+	return result
+}
+
+// ValidateTokens - Birden fazla FCM token'ı doğrula ve geçersiz olanları döndür
+func (s *NotificationService) ValidateTokens(ctx context.Context, tokens []string) ([]TokenValidationResult, error) {
+	results := make([]TokenValidationResult, 0, len(tokens))
+
+	if len(tokens) == 0 {
+		return results, nil
+	}
+
+	if !s.initialized || s.client == nil {
+		// Firebase başlatılmamışsa tüm tokenları "bilinmiyor" olarak işaretle
+		for _, token := range tokens {
+			results = append(results, TokenValidationResult{
+				Token: token,
+				Valid: true,
+				Error: "firebase_not_initialized",
+			})
+		}
+		return results, nil
+	}
+
+	// Görünmez multicast mesaj gönder
+	message := &messaging.MulticastMessage{
+		Tokens: tokens,
+		Data: map[string]string{
+			"type":      "token_validation",
+			"timestamp": fmt.Sprintf("%d", ctx.Value("timestamp")),
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "normal",
+		},
+	}
+
+	response, err := s.client.SendEachForMulticast(ctx, message)
+	if err != nil {
+		return nil, fmt.Errorf("multicast send failed: %w", err)
+	}
+
+	// Her token için sonucu değerlendir
+	for i, resp := range response.Responses {
+		result := TokenValidationResult{
+			Token: tokens[i],
+			Valid: resp.Success,
+		}
+
+		if !resp.Success && resp.Error != nil {
+			result.Error = resp.Error.Error()
+			errStr := resp.Error.Error()
+
+			// Uygulama silinmiş mi kontrol et
+			if contains(errStr, "NotRegistered") ||
+				contains(errStr, "not registered") ||
+				contains(errStr, "InvalidRegistration") ||
+				contains(errStr, "invalid registration") ||
+				contains(errStr, "Requested entity was not found") {
+				result.Uninstalled = true
+				result.Error = "app_uninstalled"
+			}
+		}
+
+		results = append(results, result)
+	}
+
+	log.Printf("[FCM] Token validation completed - Total: %d, Success: %d, Failed: %d",
+		len(tokens), response.SuccessCount, response.FailureCount)
+
+	return results, nil
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsRune(s, substr))
+}
+
+func containsRune(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
