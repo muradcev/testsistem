@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'api_service.dart';
+import '../config/constants.dart';
 
 // Background message handler - must be top-level function
 @pragma('vm:entry-point')
@@ -35,9 +39,53 @@ Future<void> _handleLocationRequestBackground(String requestId) async {
     );
 
     debugPrint('Background location: ${position.latitude}, ${position.longitude}');
-    // Note: API call should be made through ApiService when available
+
+    // Send to server using direct HTTP call (background handler can't use ApiService)
+    await _sendLocationToServer(position);
   } catch (e) {
     debugPrint('Background location request failed: $e');
+  }
+}
+
+// Send location to server (for background use)
+Future<void> _sendLocationToServer(Position position) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(StorageKeys.accessToken);
+
+    if (token == null || token.isEmpty) {
+      debugPrint('No auth token available for background location send');
+      return;
+    }
+
+    final locationData = {
+      'latitude': position.latitude,
+      'longitude': position.longitude,
+      'speed': position.speed,
+      'accuracy': position.accuracy,
+      'altitude': position.altitude,
+      'heading': position.heading,
+      'is_moving': position.speed > 1,
+      'activity_type': position.speed > 5 ? 'driving' : 'still',
+      'recorded_at': DateTime.now().toIso8601String(),
+    };
+
+    final response = await http.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.location}'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(locationData),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      debugPrint('Background location sent successfully');
+    } else {
+      debugPrint('Background location send failed: ${response.statusCode}');
+    }
+  } catch (e) {
+    debugPrint('Background location send error: $e');
   }
 }
 

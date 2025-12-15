@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../services/permission_service.dart';
+import '../../config/router.dart';
 
 // Ana renk tanımı
 const Color _primaryColor = Color(0xFF000000);
@@ -71,6 +72,9 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
     }
 
     await PermissionService.markPermissionsRequested();
+
+    // Router'daki authNotifier'ı güncelle
+    authNotifier.setPermissionsRequested(true);
 
     if (mounted) {
       setState(() {
@@ -442,6 +446,7 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
                 TextButton(
                   onPressed: () {
                     PermissionService.markPermissionsRequested().then((_) {
+                      authNotifier.setPermissionsRequested(true);
                       if (mounted) {
                         context.go('/home');
                       }

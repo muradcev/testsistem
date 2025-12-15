@@ -1,6 +1,8 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -304,12 +306,43 @@ type DriverContact struct {
 	DriverID     uuid.UUID `json:"driver_id" db:"driver_id"`
 	ContactID    *string   `json:"contact_id,omitempty" db:"contact_id"`
 	Name         string    `json:"name" db:"name"`
-	PhoneNumbers []byte    `json:"phone_numbers" db:"phone_numbers"` // JSONB
+	PhoneNumbers JSONArray `json:"phone_numbers" db:"phone_numbers"` // JSONB
 	ContactType  *string   `json:"contact_type,omitempty" db:"contact_type"`
 	SyncedAt     time.Time `json:"synced_at" db:"synced_at"`
 	IsDeleted    bool      `json:"is_deleted" db:"is_deleted"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// JSONArray - JSONB string array için custom type
+type JSONArray []string
+
+// Scan implements sql.Scanner
+func (j *JSONArray) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return nil
+	}
+
+	return json.Unmarshal(bytes, j)
+}
+
+// Value implements driver.Valuer
+func (j JSONArray) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
 }
 
 type ContactStats struct {
@@ -357,7 +390,7 @@ type AllDriverContact struct {
 	DriverPhone  string    `json:"driver_phone"`
 	ContactID    *string   `json:"contact_id,omitempty"`
 	Name         string    `json:"name"`
-	PhoneNumbers []byte    `json:"phone_numbers"`
+	PhoneNumbers JSONArray `json:"phone_numbers"`
 	ContactType  *string   `json:"contact_type,omitempty"`
 	SyncedAt     time.Time `json:"synced_at"`
 	CreatedAt    time.Time `json:"created_at"`
