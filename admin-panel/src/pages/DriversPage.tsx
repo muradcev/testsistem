@@ -33,6 +33,8 @@ const statusLabels: Record<string, string> = {
   passive: 'Pasif',
   on_trip: 'Seferde',
   at_home: 'Evde',
+  no_data: 'Veri Yok',
+  stale_trip: 'Eski Veri',
 }
 
 const statusColors: Record<string, string> = {
@@ -41,6 +43,8 @@ const statusColors: Record<string, string> = {
   passive: 'bg-gray-100 text-gray-800',
   on_trip: 'bg-orange-100 text-orange-800',
   at_home: 'bg-blue-100 text-blue-800',
+  no_data: 'bg-red-100 text-red-800',
+  stale_trip: 'bg-yellow-100 text-yellow-800',
 }
 
 export default function DriversPage() {

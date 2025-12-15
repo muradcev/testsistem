@@ -7,6 +7,7 @@ import {
   ClockIcon,
   MagnifyingGlassIcon,
   ArrowTopRightOnSquareIcon,
+  MapIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -35,6 +36,8 @@ const statusLabels: Record<string, string> = {
   passive: 'Pasif',
   on_trip: 'Seferde',
   at_home: 'Evde',
+  no_data: 'Veri Yok',
+  stale_trip: 'Eski Veri',
 }
 
 const statusColors: Record<string, string> = {
@@ -43,6 +46,8 @@ const statusColors: Record<string, string> = {
   passive: 'bg-gray-100 text-gray-800',
   on_trip: 'bg-orange-100 text-orange-800',
   at_home: 'bg-blue-100 text-blue-800',
+  no_data: 'bg-red-100 text-red-800',
+  stale_trip: 'bg-yellow-100 text-yellow-800',
 }
 
 function formatTimeAgo(dateString: string | null): string {
@@ -325,14 +330,23 @@ export default function DriverLocationsPage() {
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-2">
                         {driver.last_latitude && driver.last_longitude && (
-                          <a
-                            href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                          >
-                            Haritada Gör
-                          </a>
+                          <>
+                            <a
+                              href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                            >
+                              Haritada Gör
+                            </a>
+                            <Link
+                              to={`/drivers/${driver.id}/route`}
+                              className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 flex items-center gap-1"
+                            >
+                              <MapIcon className="h-3 w-3" />
+                              Güzergah
+                            </Link>
+                          </>
                         )}
                         <Link
                           to={`/drivers/${driver.id}`}

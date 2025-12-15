@@ -163,10 +163,51 @@ type DriverDetailResponse struct {
 }
 
 // MapDriverStatus - Backend current_status'u frontend status'a dönüştürür
+// lastLocationAt parametresi ile veri güncelliğini de kontrol eder
 func MapDriverStatus(currentStatus string, isActive bool) string {
 	if !isActive {
 		return "passive"
 	}
+	switch currentStatus {
+	case "driving":
+		return "on_trip"
+	case "home":
+		return "at_home"
+	case "stopped":
+		return "active"
+	default:
+		return "active"
+	}
+}
+
+// MapDriverStatusWithTime - Zaman bilgisi ile birlikte status belirler
+// 6 saatten eski veri varsa "no_data" döner
+// 1 saatten eski veri + "driving" ise "stale_trip" döner
+func MapDriverStatusWithTime(currentStatus string, isActive bool, lastLocationAt *time.Time) string {
+	if !isActive {
+		return "passive"
+	}
+
+	// Konum verisi yoksa
+	if lastLocationAt == nil {
+		return "no_data"
+	}
+
+	timeSinceLastLocation := time.Since(*lastLocationAt)
+	sixHours := 6 * time.Hour
+	oneHour := 1 * time.Hour
+
+	// 6 saatten eski veri - bağlantı kopmuş olabilir
+	if timeSinceLastLocation > sixHours {
+		return "no_data"
+	}
+
+	// 1 saatten eski veri + seferde görünüyor - şüpheli durum
+	if timeSinceLastLocation > oneHour && currentStatus == "driving" {
+		return "stale_trip"
+	}
+
+	// Normal status mapping
 	switch currentStatus {
 	case "driving":
 		return "on_trip"
