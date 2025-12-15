@@ -686,7 +686,7 @@ func (r *DriverRepository) SaveContacts(ctx context.Context, driverID uuid.UUID,
 // GetDriverSurveyResponses - Sürücünün anket cevaplarını getir
 func (r *DriverRepository) GetDriverSurveyResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverSurveyResponse, error) {
 	query := `
-		SELECT sr.id, sr.survey_id, s.title as survey_title, s.type as survey_type,
+		SELECT sr.id, sr.survey_id, s.title as survey_title, s.trigger_type as survey_type,
 		       sr.answer, sr.created_at
 		FROM survey_responses sr
 		JOIN surveys s ON sr.survey_id = s.id
@@ -717,11 +717,12 @@ func (r *DriverRepository) GetDriverSurveyResponses(ctx context.Context, driverI
 // GetDriverQuestionResponses - Sürücünün soru cevaplarını getir
 func (r *DriverRepository) GetDriverQuestionResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverQuestionResponse, error) {
 	query := `
-		SELECT dq.id, dq.question_text, dq.question_type, dq.answer_text,
-		       dq.answer_options, dq.answer_data, dq.status, dq.answered_at, dq.created_at
+		SELECT dq.id, dq.question_text, dq.question_type, dqa.answer,
+		       dq.options, dqa.answer_data, dq.status, dqa.answered_at, dq.created_at
 		FROM driver_questions dq
+		LEFT JOIN driver_question_answers dqa ON dq.id = dqa.question_id
 		WHERE dq.driver_id = $1 AND dq.status IN ('answered', 'sent')
-		ORDER BY COALESCE(dq.answered_at, dq.created_at) DESC
+		ORDER BY COALESCE(dqa.answered_at, dq.created_at) DESC
 		LIMIT $2
 	`
 
