@@ -255,7 +255,7 @@ func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, m
 				d.name,
 				d.surname,
 				d.current_status,
-				v.plate_number
+				v.plate
 			FROM locations l
 			INNER JOIN drivers d ON l.driver_id = d.id
 			LEFT JOIN vehicles v ON l.vehicle_id = v.id
