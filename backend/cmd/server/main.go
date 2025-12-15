@@ -62,6 +62,7 @@ func main() {
 	analyticsRepo := repository.NewAnalyticsRepository(db)
 	questionsRepo := repository.NewQuestionsRepository(db)
 	driverHomeRepo := repository.NewDriverHomeRepository(db)
+	auditRepo := repository.NewAuditRepository(db)
 
 	// Service'ler
 	authService := service.NewAuthService(driverRepo, adminRepo, settingsRepo)
@@ -174,6 +175,7 @@ func main() {
 		// Protected admin routes
 		adminGroup := apiGroup.Group("/admin")
 		adminGroup.Use(middleware.AuthMiddleware("admin"))
+		adminGroup.Use(middleware.AuditMiddleware(auditRepo))
 		{
 			// Dashboard
 			adminHandler := api.NewAdminHandler(adminService, driverService, locationService, tripService, surveyService, vehicleService, trailerService)
@@ -341,6 +343,12 @@ func main() {
 			adminGroup.GET("/questions/drivers-on-trip", questionsHandler.GetDriversOnTrip)
 			adminGroup.GET("/questions/idle-drivers", questionsHandler.GetIdleDrivers)
 			adminGroup.GET("/trigger-types", questionsHandler.GetTriggerTypes)
+
+			// Audit Logs
+			auditHandler := api.NewAuditHandler(auditRepo)
+			adminGroup.GET("/audit-logs", auditHandler.GetAuditLogs)
+			adminGroup.GET("/audit-logs/stats", auditHandler.GetAuditStats)
+			adminGroup.DELETE("/audit-logs/cleanup", auditHandler.CleanupOldLogs)
 		}
 
 		// Public app config (mobil uygulama için)

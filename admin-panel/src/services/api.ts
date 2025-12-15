@@ -197,6 +197,14 @@ export const questionsApi = {
   getIdleDrivers: () => api.get('/admin/questions/idle-drivers'),
 }
 
+// Audit Logs
+export const auditApi = {
+  getAll: (params?: { limit?: number; offset?: number; user_type?: string; action?: string; resource_type?: string }) =>
+    api.get('/admin/audit-logs', { params }),
+  getStats: () => api.get('/admin/audit-logs/stats'),
+  cleanup: (days?: number) => api.delete('/admin/audit-logs/cleanup', { params: { days } }),
+}
+
 // Question Rules
 export const questionRulesApi = {
   getAll: () => api.get('/admin/question-rules'),

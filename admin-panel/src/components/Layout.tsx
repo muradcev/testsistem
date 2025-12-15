@@ -19,6 +19,7 @@ import {
   BugAntIcon,
   MapPinIcon,
   FireIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -36,6 +37,7 @@ const navigation = [
   { name: 'Bildirim Şablonları', href: '/notification-templates', icon: BellAlertIcon },
   { name: 'Uygulama Ayarları', href: '/app-config', icon: AdjustmentsHorizontalIcon },
   { name: 'Sistem Ayarları', href: '/settings', icon: Cog6ToothIcon },
+  { name: 'Audit Logları', href: '/audit-logs', icon: DocumentTextIcon },
 ]
 
 export default function Layout() {
