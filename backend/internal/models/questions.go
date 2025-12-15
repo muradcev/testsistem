@@ -92,6 +92,36 @@ type DriverQuestionAnswer struct {
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
 
+// DriverQuestionWithAnswer - Soru ve cevabı birlikte (admin için)
+type DriverQuestionWithAnswer struct {
+	ID           uuid.UUID       `json:"id" db:"id"`
+	DriverID     uuid.UUID       `json:"driver_id" db:"driver_id"`
+	QuestionText string          `json:"question_text" db:"question_text"`
+	QuestionType string          `json:"question_type" db:"question_type"`
+	Options      json.RawMessage `json:"options,omitempty" db:"options"`
+	SourceType   string          `json:"source_type" db:"source_type"`
+	Status       string          `json:"status" db:"status"`
+	ContextType  *string         `json:"context_type,omitempty" db:"context_type"`
+	Priority     int             `json:"priority" db:"priority"`
+	SentAt       *time.Time      `json:"sent_at,omitempty" db:"sent_at"`
+	CreatedAt    time.Time       `json:"created_at" db:"created_at"`
+
+	// Driver info
+	DriverName     string `json:"driver_name" db:"driver_name"`
+	DriverSurname  string `json:"driver_surname" db:"driver_surname"`
+	DriverPhone    string `json:"driver_phone" db:"driver_phone"`
+	DriverProvince string `json:"driver_province" db:"driver_province"`
+
+	// Answer info
+	AnswerID        uuid.UUID       `json:"answer_id" db:"answer_id"`
+	AnswerValue     string          `json:"answer_value" db:"answer_value"`
+	AnswerType      string          `json:"answer_type" db:"answer_type"`
+	FollowUpAnswers json.RawMessage `json:"follow_up_answers,omitempty" db:"follow_up_answers"`
+	AnsweredAt      time.Time       `json:"answered_at" db:"answered_at"`
+	AnswerLatitude  *float64        `json:"answer_latitude,omitempty" db:"answer_lat"`
+	AnswerLongitude *float64        `json:"answer_longitude,omitempty" db:"answer_lng"`
+}
+
 // QuestionRule - Otomatik soru üretim kuralları
 type QuestionRule struct {
 	ID          uuid.UUID `json:"id" db:"id"`

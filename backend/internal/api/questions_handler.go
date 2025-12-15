@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"nakliyeo-mobil/internal/models"
 	"nakliyeo-mobil/internal/repository"
@@ -1083,6 +1084,31 @@ func (h *QuestionsHandler) GetQuestionStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"stats": stats})
+}
+
+// GetAnsweredQuestions - Tüm cevaplanan sorular (admin için)
+func (h *QuestionsHandler) GetAnsweredQuestions(c *gin.Context) {
+	limit := 50
+	offset := 0
+
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if o := c.Query("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	questions, err := h.repo.GetAnsweredQuestions(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cevaplanan sorular alınamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"questions": questions})
 }
 
 // GetTriggerTypes - Tetikleyici tipleri

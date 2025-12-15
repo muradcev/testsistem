@@ -337,6 +337,7 @@ func main() {
 
 			// Context & Stats
 			adminGroup.GET("/questions/stats", questionsHandler.GetQuestionStats)
+			adminGroup.GET("/questions/answered", questionsHandler.GetAnsweredQuestions)
 			adminGroup.GET("/questions/drivers-on-trip", questionsHandler.GetDriversOnTrip)
 			adminGroup.GET("/questions/idle-drivers", questionsHandler.GetIdleDrivers)
 			adminGroup.GET("/trigger-types", questionsHandler.GetTriggerTypes)

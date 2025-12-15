@@ -12,7 +12,6 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  FunnelIcon,
   UsersIcon,
   ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline'
@@ -70,6 +69,31 @@ interface Question {
   }
 }
 
+interface AnsweredQuestion {
+  id: string
+  driver_id: string
+  question_text: string
+  question_type: string
+  options?: string[]
+  source_type: string
+  status: string
+  context_type?: string
+  priority: number
+  sent_at?: string
+  created_at: string
+  driver_name: string
+  driver_surname: string
+  driver_phone: string
+  driver_province: string
+  answer_id: string
+  answer_value: string
+  answer_type: string
+  follow_up_answers?: unknown[]
+  answered_at: string
+  answer_latitude?: number
+  answer_longitude?: number
+}
+
 interface FollowUpQuestion {
   condition: { answer: string }
   question: string
@@ -114,8 +138,6 @@ export default function QuestionsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
-  const [filterRegion, setFilterRegion] = useState('Tümü')
-  const [filterStatus, setFilterStatus] = useState('all')
   const [selectedDriversForBulk, setSelectedDriversForBulk] = useState<string[]>([])
 
   // Onay bekleyen sorular
@@ -150,6 +172,13 @@ export default function QuestionsPage() {
   const { data: statsData } = useQuery({
     queryKey: ['question-stats'],
     queryFn: () => questionsApi.getStats(),
+  })
+
+  // Cevaplanan sorular
+  const { data: answeredData, isLoading: answeredLoading } = useQuery({
+    queryKey: ['answered-questions'],
+    queryFn: () => questionsApi.getAnswered(50, 0),
+    enabled: activeTab === 'history',
   })
 
   // Onaylama mutation
@@ -218,6 +247,7 @@ export default function QuestionsPage() {
   })
 
   const pendingQuestions = (pendingData?.data?.questions || []) as Question[]
+  const answeredQuestions = (answeredData?.data?.questions || []) as AnsweredQuestion[]
   const driversOnTrip = (driversOnTripData?.data?.drivers || []) as DriverOnTrip[]
   const idleDrivers = (idleDriversData?.data?.drivers || []) as IdleDriver[]
   const allDrivers = (allDriversData?.data?.drivers || []) as Driver[]
@@ -549,42 +579,64 @@ export default function QuestionsPage() {
           {/* History Tab */}
           {activeTab === 'history' && (
             <div className="space-y-4">
-              {/* Filters */}
-              <div className="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <FunnelIcon className="h-5 w-5 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Filtrele:</span>
-                </div>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-1 text-sm"
-                >
-                  <option value="all">Tüm Durumlar</option>
-                  <option value="sent">Gönderildi</option>
-                  <option value="answered">Cevaplandı</option>
-                  <option value="expired">Süresi Doldu</option>
-                  <option value="rejected">Reddedildi</option>
-                </select>
-                <select
-                  value={filterRegion}
-                  onChange={(e) => setFilterRegion(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-1 text-sm"
-                >
-                  {Object.keys(turkeyRegions).map(region => (
-                    <option key={region} value={region}>{region}</option>
-                  ))}
-                </select>
-              </div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <ChatBubbleLeftRightIcon className="h-5 w-5 text-purple-500" />
+                Cevaplanan Sorular ({answeredQuestions.length})
+              </h3>
 
-              {/* Question History List */}
-              <div className="text-center py-8 text-gray-500">
-                <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                <p>Soru geçmişi için bir şoför seçin</p>
-                <p className="text-sm mt-2">
-                  Şoför Durumları sekmesinden bir şoföre tıklayarak o şoförün soru geçmişini görebilirsiniz.
-                </p>
-              </div>
+              {answeredLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : answeredQuestions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                  <p>Henüz cevaplanan soru yok</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {answeredQuestions.map((q) => (
+                    <div key={q.answer_id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">
+                              ✓ Cevaplandı
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {q.source_type === 'manual_bulk' ? '📢 Toplu' : '✍️ Tekil'}
+                            </span>
+                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                              {questionTypes.find(t => t.id === q.question_type)?.name || q.question_type}
+                            </span>
+                          </div>
+
+                          <p className="font-medium text-gray-900 mb-2">{q.question_text}</p>
+
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+                            <p className="text-sm text-gray-600 mb-1">Cevap:</p>
+                            <p className="font-semibold text-green-700">
+                              {q.answer_value === 'true' ? '✅ Evet' :
+                               q.answer_value === 'false' ? '❌ Hayır' :
+                               q.answer_value}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                            <span>👤 {q.driver_name} {q.driver_surname}</span>
+                            {q.driver_province && <span>📍 {q.driver_province}</span>}
+                            <span>📱 {q.driver_phone}</span>
+                          </div>
+
+                          <p className="text-xs text-gray-400 mt-2">
+                            Cevaplandı: {new Date(q.answered_at).toLocaleString('tr-TR')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

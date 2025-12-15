@@ -229,6 +229,49 @@ func (r *QuestionsRepository) GetPendingApprovalQuestions(ctx context.Context) (
 	return questions, nil
 }
 
+// GetAnsweredQuestions - Tüm cevaplanan sorular ve cevapları
+func (r *QuestionsRepository) GetAnsweredQuestions(ctx context.Context, limit, offset int) ([]models.DriverQuestionWithAnswer, error) {
+	var questions []models.DriverQuestionWithAnswer
+	query := `
+		SELECT dq.id, dq.driver_id, dq.question_text, dq.question_type, dq.options,
+			   dq.source_type, dq.status, dq.context_type, dq.priority,
+			   dq.sent_at, dq.created_at,
+			   d.name as driver_name, d.surname as driver_surname,
+			   d.phone as driver_phone, d.province as driver_province,
+			   dqa.id as answer_id, dqa.answer_value, dqa.answer_type, dqa.follow_up_answers,
+			   dqa.answered_at, dqa.latitude as answer_lat, dqa.longitude as answer_lng
+		FROM driver_questions dq
+		JOIN drivers d ON dq.driver_id = d.id
+		JOIN driver_question_answers dqa ON dq.id = dqa.question_id
+		WHERE dq.status = 'answered'
+		ORDER BY dqa.answered_at DESC
+		LIMIT $1 OFFSET $2`
+
+	rows, err := r.db.Pool.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var q models.DriverQuestionWithAnswer
+		err := rows.Scan(
+			&q.ID, &q.DriverID, &q.QuestionText, &q.QuestionType, &q.Options,
+			&q.SourceType, &q.Status, &q.ContextType, &q.Priority,
+			&q.SentAt, &q.CreatedAt,
+			&q.DriverName, &q.DriverSurname, &q.DriverPhone, &q.DriverProvince,
+			&q.AnswerID, &q.AnswerValue, &q.AnswerType, &q.FollowUpAnswers,
+			&q.AnsweredAt, &q.AnswerLatitude, &q.AnswerLongitude,
+		)
+		if err != nil {
+			return nil, err
+		}
+		questions = append(questions, q)
+	}
+
+	return questions, nil
+}
+
 func (r *QuestionsRepository) UpdateQuestionStatus(ctx context.Context, id uuid.UUID, status string) error {
 	query := `UPDATE driver_questions SET status = $2, updated_at = NOW() WHERE id = $1`
 	_, err := r.db.Pool.Exec(ctx, query, id, status)

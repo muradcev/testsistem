@@ -191,6 +191,8 @@ export const questionsApi = {
   getDriverContext: (driverId: string) =>
     api.get(`/admin/drivers/${driverId}/context`),
   getStats: () => api.get('/admin/questions/stats'),
+  getAnswered: (limit?: number, offset?: number) =>
+    api.get('/admin/questions/answered', { params: { limit: limit || 50, offset: offset || 0 } }),
   getDriversOnTrip: () => api.get('/admin/questions/drivers-on-trip'),
   getIdleDrivers: () => api.get('/admin/questions/idle-drivers'),
 }
