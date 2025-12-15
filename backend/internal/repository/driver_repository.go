@@ -50,7 +50,7 @@ func (r *DriverRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.D
 			last_location_at, last_latitude, last_longitude, current_status,
 			app_version, app_build_number, device_model, device_os, device_os_version,
 			last_active_at, app_installed_at, push_enabled, location_permission, background_location_enabled,
-			COALESCE(contacts_enabled, false), COALESCE(call_log_enabled, false),
+			COALESCE(contacts_enabled, true), COALESCE(call_log_enabled, true),
 			COALESCE(surveys_enabled, true), COALESCE(questions_enabled, true),
 			created_at, updated_at
 		FROM drivers WHERE id = $1
@@ -87,7 +87,7 @@ func (r *DriverRepository) GetByPhone(ctx context.Context, phone string) (*model
 			last_location_at, last_latitude, last_longitude, current_status,
 			app_version, app_build_number, device_model, device_os, device_os_version,
 			last_active_at, app_installed_at, push_enabled, location_permission, background_location_enabled,
-			COALESCE(contacts_enabled, false), COALESCE(call_log_enabled, false),
+			COALESCE(contacts_enabled, true), COALESCE(call_log_enabled, true),
 			COALESCE(surveys_enabled, true), COALESCE(questions_enabled, true),
 			created_at, updated_at
 		FROM drivers WHERE phone = $1
