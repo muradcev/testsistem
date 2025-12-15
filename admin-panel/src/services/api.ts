@@ -1,7 +1,23 @@
 import axios from 'axios'
 
-// Railway'de VITE_API_URL env var kullanılır, yoksa relative path
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+// Railway'de VITE_API_URL env var kullanılır
+// Production'da supportive-exploration yerine testsistem backend'e yönlendir
+const getApiBaseUrl = () => {
+  // Eğer VITE_API_URL set edilmişse onu kullan
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+
+  // Production ortamında (Railway admin-panel) backend URL'ini kullan
+  if (typeof window !== 'undefined' && window.location.hostname.includes('railway.app')) {
+    return 'https://testsistem-production.up.railway.app/api/v1'
+  }
+
+  // Development ortamında relative path kullan (vite proxy)
+  return '/api/v1'
+}
+
+const API_BASE_URL = getApiBaseUrl()
 
 const api = axios.create({
   baseURL: API_BASE_URL,
