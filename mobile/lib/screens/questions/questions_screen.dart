@@ -13,10 +13,13 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadQuestions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadQuestions();
+    });
   }
 
   Future<void> _loadQuestions() async {
+    if (!mounted) return;
     await context.read<QuestionsProvider>().loadPendingQuestions();
   }
 

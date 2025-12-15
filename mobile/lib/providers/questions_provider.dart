@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import '../services/cache_service.dart';
 
@@ -159,9 +160,14 @@ class QuestionsProvider extends ChangeNotifier {
   }
 
   String _parseError(dynamic e) {
-    if (e.response?.data != null && e.response.data['error'] != null) {
-      return e.response.data['error'];
-    }
+    try {
+      if (e is DioException && e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map && data['error'] != null) {
+          return data['error'].toString();
+        }
+      }
+    } catch (_) {}
     return 'Bir hata oluştu. Lütfen tekrar deneyin.';
   }
 }

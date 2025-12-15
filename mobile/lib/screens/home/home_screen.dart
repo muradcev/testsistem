@@ -23,13 +23,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _initLocation();
-    _loadQuestionsAndShowDialog();
-    _sendFcmToken();
-    _checkVehicles();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initLocation();
+      _loadQuestionsAndShowDialog();
+      _sendFcmToken();
+      _checkVehicles();
+    });
   }
 
   Future<void> _loadQuestionsAndShowDialog() async {
+    if (!mounted) return;
     await _loadQuestions();
 
     if (!mounted) return;
@@ -82,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkVehicles() async {
+    if (!mounted) return;
     if (_vehicleCheckDone) return;
     _vehicleCheckDone = true;
 
@@ -126,18 +130,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _initLocation() async {
+    if (!mounted) return;
     final locationProvider = context.read<LocationProvider>();
     final hasPermission = await locationProvider.checkAndRequestPermission();
-    if (hasPermission) {
+    if (hasPermission && mounted) {
       await locationProvider.startTracking();
     }
   }
 
   Future<void> _loadQuestions() async {
+    if (!mounted) return;
     await context.read<QuestionsProvider>().loadPendingQuestions();
   }
 
   Future<void> _sendFcmToken() async {
+    if (!mounted) return;
     // Send FCM token to server after login
     try {
       final notificationService = context.read<NotificationService>();

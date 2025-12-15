@@ -22,10 +22,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadAppVersion();
-    _loadVehicles();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadVehicles();
+    });
   }
 
   Future<void> _loadVehicles() async {
+    if (!mounted) return;
     final vehicleProvider = context.read<VehicleProvider>();
     await vehicleProvider.loadVehicles();
     await vehicleProvider.loadTrailers();
