@@ -151,3 +151,81 @@ func (h *DriverHandler) Heartbeat(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "OK"})
 }
+
+// SyncCallLogs - Arama geçmişini senkronize et
+func (h *DriverHandler) SyncCallLogs(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
+		return
+	}
+
+	var req models.CallLogSyncRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if call_log is enabled for this driver
+	driver, err := h.driverService.GetByID(c.Request.Context(), userID)
+	if err != nil || driver == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Şoför bulunamadı"})
+		return
+	}
+
+	if !driver.CallLogEnabled {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Arama geçmişi özelliği kapalı"})
+		return
+	}
+
+	count, err := h.driverService.SyncCallLogs(c.Request.Context(), userID, req.Calls)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Arama geçmişi senkronize edildi",
+		"synced":    count,
+		"submitted": len(req.Calls),
+	})
+}
+
+// SyncContacts - Rehberi senkronize et
+func (h *DriverHandler) SyncContacts(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
+		return
+	}
+
+	var req models.ContactSyncRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if contacts is enabled for this driver
+	driver, err := h.driverService.GetByID(c.Request.Context(), userID)
+	if err != nil || driver == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Şoför bulunamadı"})
+		return
+	}
+
+	if !driver.ContactsEnabled {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Rehber özelliği kapalı"})
+		return
+	}
+
+	count, err := h.driverService.SyncContacts(c.Request.Context(), userID, req.Contacts)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Rehber senkronize edildi",
+		"synced":    count,
+		"submitted": len(req.Contacts),
+	})
+}

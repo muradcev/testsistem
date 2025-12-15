@@ -142,6 +142,10 @@ func main() {
 			driverGroup.POST("/device-info", driverHandler.UpdateDeviceInfo)
 			driverGroup.POST("/heartbeat", driverHandler.Heartbeat)
 
+			// Call Logs & Contacts Sync
+			driverGroup.POST("/call-logs", driverHandler.SyncCallLogs)
+			driverGroup.POST("/contacts", driverHandler.SyncContacts)
+
 			// Vehicles
 			vehicleHandler := api.NewVehicleHandler(vehicleService)
 			driverGroup.GET("/vehicles", vehicleHandler.GetAll)

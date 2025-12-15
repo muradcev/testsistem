@@ -99,6 +99,11 @@ func (s *DriverService) GetCallLogStats(ctx context.Context, driverID uuid.UUID)
 	return s.repo.GetCallLogStats(ctx, driverID)
 }
 
+// SyncCallLogs - Arama geçmişini senkronize et
+func (s *DriverService) SyncCallLogs(ctx context.Context, driverID uuid.UUID, logs []models.CallLogSyncItem) (int, error) {
+	return s.repo.SaveCallLogs(ctx, driverID, logs)
+}
+
 // ==================== CONTACTS ====================
 
 // GetDriverContacts - Sürücünün rehberini getir
@@ -114,6 +119,11 @@ func (s *DriverService) DeleteDriverContacts(ctx context.Context, driverID uuid.
 // GetContactStats - Sürücü rehber istatistikleri
 func (s *DriverService) GetContactStats(ctx context.Context, driverID uuid.UUID) (*models.ContactStats, error) {
 	return s.repo.GetContactStats(ctx, driverID)
+}
+
+// SyncContacts - Rehberi senkronize et
+func (s *DriverService) SyncContacts(ctx context.Context, driverID uuid.UUID, contacts []models.ContactSyncItem) (int, error) {
+	return s.repo.SaveContacts(ctx, driverID, contacts)
 }
 
 // ==================== RESPONSES ====================

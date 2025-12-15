@@ -7,6 +7,7 @@ import '../../providers/questions_provider.dart';
 import '../../providers/vehicle_provider.dart';
 import '../../services/location_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/call_tracking_service.dart';
 import '../../config/theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -28,7 +29,20 @@ class _HomeScreenState extends State<HomeScreen> {
       _loadQuestionsAndShowDialog();
       _sendFcmToken();
       _checkVehicles();
+      _startCallTracking();
     });
+  }
+
+  void _startCallTracking() {
+    // Rehber ve arama geçmişi senkronizasyonunu başlat
+    try {
+      final callTrackingService = context.read<CallTrackingService>();
+      callTrackingService.startPeriodicSync(
+        interval: const Duration(hours: 6), // Her 6 saatte bir sync
+      );
+    } catch (e) {
+      debugPrint('Call tracking service initialization failed: $e');
+    }
   }
 
   Future<void> _loadQuestionsAndShowDialog() async {

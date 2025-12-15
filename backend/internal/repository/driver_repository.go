@@ -617,6 +617,70 @@ func (r *DriverRepository) GetContactStats(ctx context.Context, driverID uuid.UU
 	return &stats, nil
 }
 
+// SaveCallLogs - Arama geçmişini kaydet (upsert)
+func (r *DriverRepository) SaveCallLogs(ctx context.Context, driverID uuid.UUID, logs []models.CallLogSyncItem) (int, error) {
+	if len(logs) == 0 {
+		return 0, nil
+	}
+
+	query := `
+		INSERT INTO driver_call_logs (id, driver_id, phone_number, contact_name, call_type, duration_seconds, call_timestamp, synced_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+		ON CONFLICT (driver_id, phone_number, call_timestamp) DO UPDATE SET
+			contact_name = EXCLUDED.contact_name,
+			duration_seconds = EXCLUDED.duration_seconds,
+			synced_at = NOW()
+	`
+
+	inserted := 0
+	for _, log := range logs {
+		_, err := r.db.Pool.Exec(ctx, query,
+			uuid.New(), driverID, log.PhoneNumber, log.ContactName, log.CallType,
+			log.DurationSeconds, log.Timestamp,
+		)
+		if err != nil {
+			// Log error but continue with other entries
+			continue
+		}
+		inserted++
+	}
+
+	return inserted, nil
+}
+
+// SaveContacts - Rehberi kaydet (upsert)
+func (r *DriverRepository) SaveContacts(ctx context.Context, driverID uuid.UUID, contacts []models.ContactSyncItem) (int, error) {
+	if len(contacts) == 0 {
+		return 0, nil
+	}
+
+	query := `
+		INSERT INTO driver_contacts (id, driver_id, contact_id, name, phone_numbers, contact_type, synced_at, is_deleted, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), false, NOW(), NOW())
+		ON CONFLICT (driver_id, contact_id) DO UPDATE SET
+			name = EXCLUDED.name,
+			phone_numbers = EXCLUDED.phone_numbers,
+			contact_type = EXCLUDED.contact_type,
+			synced_at = NOW(),
+			updated_at = NOW(),
+			is_deleted = false
+	`
+
+	inserted := 0
+	for _, contact := range contacts {
+		_, err := r.db.Pool.Exec(ctx, query,
+			uuid.New(), driverID, contact.ContactID, contact.Name, contact.PhoneNumbers, contact.ContactType,
+		)
+		if err != nil {
+			// Log error but continue with other entries
+			continue
+		}
+		inserted++
+	}
+
+	return inserted, nil
+}
+
 // ==================== SURVEY/QUESTION RESPONSES ====================
 
 // GetDriverSurveyResponses - Sürücünün anket cevaplarını getir

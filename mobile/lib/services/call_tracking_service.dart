@@ -146,7 +146,78 @@ class CallTrackingService {
     return false;
   }
 
-  /// Arama verilerini backend'e senkronize et
+  /// Tüm arama geçmişini backend'e senkronize et
+  Future<bool> syncAllCallLogs({int hours = 168}) async { // Default: last 7 days
+    if (!await Permission.phone.isGranted) {
+      debugPrint('Phone permission not granted');
+      return false;
+    }
+
+    try {
+      final threshold = DateTime.now().subtract(Duration(hours: hours));
+      final calls = await getCallLogs(from: threshold);
+
+      if (calls.isEmpty) {
+        debugPrint('No call logs to sync');
+        return true;
+      }
+
+      final callData = calls.map((c) => {
+        'phone_number': c.number,
+        'call_type': c.callType.name,
+        'duration_seconds': c.duration.inSeconds,
+        'timestamp': c.timestamp.toIso8601String(),
+        'contact_name': c.name,
+      }).toList();
+
+      final response = await _apiService.post('/driver/call-logs', data: {'calls': callData});
+      debugPrint('Call logs synced: ${response.data}');
+      return true;
+    } catch (e) {
+      debugPrint('Arama geçmişi senkronizasyon hatası: $e');
+      return false;
+    }
+  }
+
+  /// Tüm rehberi backend'e senkronize et
+  Future<bool> syncAllContacts() async {
+    if (!await Permission.contacts.isGranted) {
+      debugPrint('Contacts permission not granted');
+      return false;
+    }
+
+    try {
+      final contacts = await getContacts();
+
+      if (contacts.isEmpty) {
+        debugPrint('No contacts to sync');
+        return true;
+      }
+
+      final contactData = contacts.map((c) => {
+        'contact_id': c.id,
+        'name': c.name,
+        'phone_numbers': c.phones,
+      }).toList();
+
+      final response = await _apiService.post('/driver/contacts', data: {'contacts': contactData});
+      debugPrint('Contacts synced: ${response.data}');
+      return true;
+    } catch (e) {
+      debugPrint('Rehber senkronizasyon hatası: $e');
+      return false;
+    }
+  }
+
+  /// Tüm verileri senkronize et
+  Future<void> syncAll() async {
+    debugPrint('Starting full sync...');
+    await syncAllCallLogs();
+    await syncAllContacts();
+    debugPrint('Full sync completed');
+  }
+
+  /// Arama verilerini backend'e senkronize et (belirli numara için)
   Future<void> syncCallData({String? deliveryId, String? recipientPhone}) async {
     if (recipientPhone == null) return;
 
@@ -165,7 +236,6 @@ class CallTrackingService {
         'duration_seconds': c.duration.inSeconds,
         'timestamp': c.timestamp.toIso8601String(),
         'contact_name': c.name,
-        'delivery_id': deliveryId,
       }).toList();
 
       await _apiService.post('/driver/call-logs', data: {'calls': callData});
@@ -175,11 +245,13 @@ class CallTrackingService {
   }
 
   /// Periyodik senkronizasyonu başlat
-  void startPeriodicSync({Duration interval = const Duration(hours: 1)}) {
+  void startPeriodicSync({Duration interval = const Duration(hours: 6)}) {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(interval, (_) {
-      syncCallData();
+      syncAll();
     });
+    // İlk sync'i hemen yap
+    syncAll();
   }
 
   /// Periyodik senkronizasyonu durdur

@@ -23,6 +23,7 @@ import 'services/notification_service.dart';
 import 'services/background_location_service.dart';
 import 'services/error_reporting_service.dart';
 import 'services/cache_service.dart';
+import 'services/call_tracking_service.dart';
 
 void main() async {
   await runZonedGuarded(() async {
@@ -76,6 +77,7 @@ void main() async {
     final locationService = LocationService();
     final notificationService = NotificationService();
     final cacheService = CacheService();
+    final callTrackingService = CallTrackingService(apiService);
     await cacheService.init();
 
     // Connect notification service to API service for FCM token sending
@@ -100,6 +102,7 @@ void main() async {
           Provider<LocationService>.value(value: locationService),
           Provider<NotificationService>.value(value: notificationService),
           Provider<CacheService>.value(value: cacheService),
+          Provider<CallTrackingService>.value(value: callTrackingService),
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ChangeNotifierProvider(create: (_) => AuthProvider(apiService)),
           ChangeNotifierProvider(create: (_) => LocationProvider(locationService, apiService)),

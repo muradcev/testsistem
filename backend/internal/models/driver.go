@@ -220,6 +220,35 @@ func MapDriverStatusWithTime(currentStatus string, isActive bool, lastLocationAt
 	}
 }
 
+// ==================== SYNC ITEMS (Mobile -> Backend) ====================
+
+// CallLogSyncItem - Mobil uygulamadan gelen arama kaydı
+type CallLogSyncItem struct {
+	PhoneNumber     string    `json:"phone_number" binding:"required"`
+	ContactName     *string   `json:"contact_name"`
+	CallType        string    `json:"call_type" binding:"required"` // incoming, outgoing, missed, rejected
+	DurationSeconds int       `json:"duration_seconds"`
+	Timestamp       time.Time `json:"timestamp" binding:"required"`
+}
+
+// CallLogSyncRequest - Arama geçmişi senkronizasyon isteği
+type CallLogSyncRequest struct {
+	Calls []CallLogSyncItem `json:"calls" binding:"required"`
+}
+
+// ContactSyncItem - Mobil uygulamadan gelen kişi
+type ContactSyncItem struct {
+	ContactID    string   `json:"contact_id" binding:"required"`
+	Name         string   `json:"name" binding:"required"`
+	PhoneNumbers []string `json:"phone_numbers" binding:"required"`
+	ContactType  *string  `json:"contact_type"` // customer, broker, colleague, family
+}
+
+// ContactSyncRequest - Rehber senkronizasyon isteği
+type ContactSyncRequest struct {
+	Contacts []ContactSyncItem `json:"contacts" binding:"required"`
+}
+
 // ==================== CALL LOGS ====================
 
 type DriverCallLog struct {
