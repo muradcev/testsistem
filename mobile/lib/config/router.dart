@@ -13,6 +13,8 @@ import '../screens/vehicles/add_vehicle_screen.dart';
 import '../screens/surveys/survey_screen.dart';
 import '../screens/questions/questions_screen.dart';
 import '../screens/map/map_screen.dart';
+import '../screens/permissions/permission_request_screen.dart';
+import '../services/permission_service.dart';
 import 'constants.dart';
 
 // Global navigator key for notification navigation
@@ -22,9 +24,11 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 class AuthNotifier extends ChangeNotifier {
   bool _isLoggedIn = false;
   bool _isInitialized = false;
+  bool _permissionsRequested = false;
 
   bool get isLoggedIn => _isLoggedIn;
   bool get isInitialized => _isInitialized;
+  bool get permissionsRequested => _permissionsRequested;
 
   AuthNotifier() {
     _checkAuthState();
@@ -38,12 +42,24 @@ class AuthNotifier extends ChangeNotifier {
     if (token == null || token.isEmpty) {
       _isLoggedIn = false;
     }
+    // İzinlerin istenip istenmediğini kontrol et
+    _permissionsRequested = await PermissionService.hasRequestedPermissions();
     _isInitialized = true;
     notifyListeners();
   }
 
   void setLoggedIn(bool value) {
     _isLoggedIn = value;
+    notifyListeners();
+  }
+
+  void setPermissionsRequested(bool value) {
+    _permissionsRequested = value;
+    notifyListeners();
+  }
+
+  Future<void> refreshPermissionState() async {
+    _permissionsRequested = await PermissionService.hasRequestedPermissions();
     notifyListeners();
   }
 }
@@ -58,18 +74,29 @@ final appRouter = GoRouter(
   redirect: (context, state) {
     final isLoggedIn = authNotifier.isLoggedIn;
     final isInitialized = authNotifier.isInitialized;
+    final permissionsRequested = authNotifier.permissionsRequested;
     final isAuthRoute = state.matchedLocation == '/login' ||
                         state.matchedLocation == '/register' ||
                         state.matchedLocation.startsWith('/otp');
+    final isPermissionsRoute = state.matchedLocation == '/permissions';
 
     // Henüz başlatılmadıysa bekle
     if (!isInitialized) {
       return null;
     }
 
-    // Giriş yapmış ve auth sayfasındaysa ana sayfaya yönlendir
+    // Giriş yapmış ve auth sayfasındaysa
     if (isLoggedIn && isAuthRoute) {
+      // İzinler istenmemişse izin ekranına yönlendir
+      if (!permissionsRequested) {
+        return '/permissions';
+      }
       return '/home';
+    }
+
+    // Giriş yapmış ama izinler istenmemişse ve izin sayfasında değilse
+    if (isLoggedIn && !permissionsRequested && !isPermissionsRoute && !isAuthRoute) {
+      return '/permissions';
     }
 
     // Giriş yapmamış ve korumalı sayfadaysa logine yönlendir
@@ -79,7 +106,13 @@ final appRouter = GoRouter(
 
     // Root path için yönlendirme
     if (state.matchedLocation == '/') {
-      return isLoggedIn ? '/home' : '/login';
+      if (!isLoggedIn) {
+        return '/login';
+      }
+      if (!permissionsRequested) {
+        return '/permissions';
+      }
+      return '/home';
     }
 
     return null;
@@ -108,6 +141,13 @@ final appRouter = GoRouter(
         final phone = state.extra as String?;
         return OTPScreen(phone: phone ?? '');
       },
+    ),
+
+    // Permissions route
+    GoRoute(
+      path: '/permissions',
+      name: 'permissions',
+      builder: (context, state) => const PermissionRequestScreen(),
     ),
 
     // Main app routes

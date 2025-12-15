@@ -662,15 +662,21 @@ export default function DriverDetailPage() {
                     key={stop.id}
                     className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
                   >
-                    <div>
-                      <p className="font-medium">{stop.province}, {stop.district}</p>
+                    <div className="flex-1 min-w-0">
+                      {stop.province || stop.district ? (
+                        <p className="font-medium truncate">{stop.province || ''}{stop.province && stop.district ? ', ' : ''}{stop.district || ''}</p>
+                      ) : (
+                        <p className="font-medium text-gray-600 text-xs">
+                          📍 {stop.latitude.toFixed(5)}, {stop.longitude.toFixed(5)}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-500">
                         {formatDuration(stop.duration_minutes)} bekledi
                       </p>
                     </div>
                     <button
                       onClick={() => handleSetStopAsHome(stop)}
-                      className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs"
+                      className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs flex-shrink-0 ml-2"
                     >
                       <HomeIcon className="h-3 w-3" />
                       Ev Yap

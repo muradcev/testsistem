@@ -33,13 +33,23 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _startCallTracking() {
+  Future<void> _startCallTracking() async {
     // Rehber ve arama geçmişi senkronizasyonunu başlat
     try {
       final callTrackingService = context.read<CallTrackingService>();
-      callTrackingService.startPeriodicSync(
-        interval: const Duration(hours: 6), // Her 6 saatte bir sync
-      );
+
+      // Önce izinleri iste
+      final hasPermissions = await callTrackingService.requestPermissions();
+      debugPrint('Call tracking permissions granted: $hasPermissions');
+
+      if (hasPermissions) {
+        // İzinler verildiyse senkronizasyonu başlat
+        callTrackingService.startPeriodicSync(
+          interval: const Duration(hours: 6), // Her 6 saatte bir sync
+        );
+      } else {
+        debugPrint('Call tracking: Permissions not granted, sync disabled');
+      }
     } catch (e) {
       debugPrint('Call tracking service initialization failed: $e');
     }

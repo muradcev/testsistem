@@ -13,13 +13,14 @@ import (
 )
 
 type AdminHandler struct {
-	adminService    *service.AdminService
-	driverService   *service.DriverService
-	locationService *service.LocationService
-	tripService     *service.TripService
-	surveyService   *service.SurveyService
-	vehicleService  *service.VehicleService
-	trailerService  *service.TrailerService
+	adminService     *service.AdminService
+	driverService    *service.DriverService
+	locationService  *service.LocationService
+	tripService      *service.TripService
+	surveyService    *service.SurveyService
+	vehicleService   *service.VehicleService
+	trailerService   *service.TrailerService
+	geocodingService *service.GeocodingService
 }
 
 func NewAdminHandler(
@@ -32,13 +33,14 @@ func NewAdminHandler(
 	trailerService *service.TrailerService,
 ) *AdminHandler {
 	return &AdminHandler{
-		adminService:    adminService,
-		driverService:   driverService,
-		locationService: locationService,
-		tripService:     tripService,
-		surveyService:   surveyService,
-		vehicleService:  vehicleService,
-		trailerService:  trailerService,
+		adminService:     adminService,
+		driverService:    driverService,
+		locationService:  locationService,
+		tripService:      tripService,
+		surveyService:    surveyService,
+		vehicleService:   vehicleService,
+		trailerService:   trailerService,
+		geocodingService: service.NewGeocodingService(),
 	}
 }
 
@@ -247,6 +249,19 @@ func (h *AdminHandler) GetDriverStops(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Adres bilgisi olmayan duraklar için geocoding yap
+	for i := range stops {
+		if stops[i].Province == nil || *stops[i].Province == "" {
+			result := h.geocodingService.ReverseGeocodeAsync(stops[i].Latitude, stops[i].Longitude)
+			if result.Province != "" {
+				stops[i].Province = &result.Province
+			}
+			if result.District != "" {
+				stops[i].District = &result.District
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"stops": stops})

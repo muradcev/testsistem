@@ -10,8 +10,9 @@ interface LocationPoint {
   longitude: number
   driver_id: string
   driver_name?: string
-  timestamp: string
+  updated_at: string
   speed?: number
+  current_status?: string
 }
 
 interface HeatPoint {
@@ -34,13 +35,15 @@ function calculateHeatPoints(locations: LocationPoint[]): HeatPoint[] {
     const gridLng = Math.floor(loc.longitude / GRID_SIZE) * GRID_SIZE
     const key = `${gridLat.toFixed(4)}_${gridLng.toFixed(4)}`
 
+    const locTime = loc.updated_at || ''
+
     if (!grid[key]) {
       grid[key] = {
         lat: gridLat + GRID_SIZE / 2,
         lng: gridLng + GRID_SIZE / 2,
         count: 0,
         drivers: [],
-        lastSeen: loc.timestamp,
+        lastSeen: locTime,
       }
     }
 
@@ -48,12 +51,24 @@ function calculateHeatPoints(locations: LocationPoint[]): HeatPoint[] {
     if (!grid[key].drivers.includes(loc.driver_id)) {
       grid[key].drivers.push(loc.driver_id)
     }
-    if (new Date(loc.timestamp) > new Date(grid[key].lastSeen)) {
-      grid[key].lastSeen = loc.timestamp
+
+    // Tarih karşılaştırması güvenli şekilde
+    const currentLastSeen = new Date(grid[key].lastSeen)
+    const newTime = new Date(locTime)
+    if (locTime && !isNaN(newTime.getTime()) && newTime > currentLastSeen) {
+      grid[key].lastSeen = locTime
     }
   })
 
   return Object.values(grid)
+}
+
+// Güvenli tarih formatla
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleString('tr-TR')
 }
 
 function getHeatColor(count: number, maxCount: number): string {
@@ -130,6 +145,72 @@ export default function HeatMapPage() {
       totalLocations: liveLocations.length,
     }
   }, [liveLocations, heatPoints, maxCount])
+
+  // Şoför bazlı konum dağılımı
+  interface DriverLocationStats {
+    driver_id: string
+    driver_name: string
+    current_status: string
+    locations: { lat: number; lng: number; count: number; percentage: number }[]
+    totalPoints: number
+    topLocation: { lat: number; lng: number; percentage: number } | null
+  }
+
+  const driverLocationStats = useMemo(() => {
+    const driverStats: Record<string, DriverLocationStats> = {}
+
+    // Her sürücü için konum sayısını hesapla
+    locationsWithNames.forEach((loc) => {
+      if (!driverStats[loc.driver_id]) {
+        driverStats[loc.driver_id] = {
+          driver_id: loc.driver_id,
+          driver_name: loc.driver_name || 'Bilinmiyor',
+          current_status: loc.current_status || 'unknown',
+          locations: [],
+          totalPoints: 0,
+          topLocation: null,
+        }
+      }
+      driverStats[loc.driver_id].totalPoints++
+    })
+
+    // Her sürücü için bölge bazlı dağılımı hesapla
+    Object.keys(driverStats).forEach((driverId) => {
+      const driverLocs = locationsWithNames.filter((l) => l.driver_id === driverId)
+      const locationGrid: Record<string, number> = {}
+
+      driverLocs.forEach((loc) => {
+        const gridLat = Math.floor(loc.latitude / GRID_SIZE) * GRID_SIZE
+        const gridLng = Math.floor(loc.longitude / GRID_SIZE) * GRID_SIZE
+        const key = `${gridLat.toFixed(4)}_${gridLng.toFixed(4)}`
+
+        if (!locationGrid[key]) {
+          locationGrid[key] = 0
+        }
+        locationGrid[key]++
+      })
+
+      // En çok bulunduğu lokasyonları hesapla
+      const totalDriverPoints = driverStats[driverId].totalPoints
+      const locations = Object.entries(locationGrid)
+        .map(([key, count]) => {
+          const [lat, lng] = key.split('_').map(Number)
+          return {
+            lat: lat + GRID_SIZE / 2,
+            lng: lng + GRID_SIZE / 2,
+            count,
+            percentage: Math.round((count / totalDriverPoints) * 100),
+          }
+        })
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5) // En çok 5 lokasyon
+
+      driverStats[driverId].locations = locations
+      driverStats[driverId].topLocation = locations[0] || null
+    })
+
+    return Object.values(driverStats).sort((a, b) => b.totalPoints - a.totalPoints)
+  }, [locationsWithNames])
 
   return (
     <div className="space-y-6">
@@ -253,7 +334,7 @@ export default function HeatMapPage() {
                     </p>
                     <p>
                       <strong>Son Görülme:</strong>{' '}
-                      {new Date(point.lastSeen).toLocaleString('tr-TR')}
+                      {formatDate(point.lastSeen)}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       {point.lat.toFixed(4)}, {point.lng.toFixed(4)}
@@ -334,7 +415,7 @@ export default function HeatMapPage() {
                       {point.drivers.length}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {new Date(point.lastSeen).toLocaleString('tr-TR')}
+                      {formatDate(point.lastSeen)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -352,6 +433,92 @@ export default function HeatMapPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Şoför Bazlı Konum Dağılımı */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <UserGroupIcon className="h-5 w-5 text-blue-600" />
+          Şoför Bazlı Konum Dağılımı
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Her şoförün hangi bölgelerde ne kadar süre bulunduğu
+        </p>
+
+        {driverLocationStats.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">Henüz konum verisi yok</p>
+        ) : (
+          <div className="space-y-4">
+            {driverLocationStats.map((driver) => (
+              <div key={driver.driver_id} className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                      <span className="text-primary-600 font-semibold">
+                        {driver.driver_name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{driver.driver_name}</p>
+                      <p className="text-sm text-gray-500">
+                        {driver.totalPoints} konum kaydı •{' '}
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-xs ${
+                            driver.current_status === 'on_trip'
+                              ? 'bg-green-100 text-green-700'
+                              : driver.current_status === 'at_home'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {driver.current_status === 'on_trip'
+                            ? 'Seferde'
+                            : driver.current_status === 'at_home'
+                            ? 'Evde'
+                            : driver.current_status === 'stopped'
+                            ? 'Durağan'
+                            : 'Bilinmiyor'}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Konum dağılım çubukları */}
+                <div className="space-y-2">
+                  {driver.locations.map((loc, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <div className="w-32 text-xs text-gray-500 truncate">
+                        📍 {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}
+                      </div>
+                      <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${
+                            idx === 0
+                              ? 'bg-primary-500'
+                              : idx === 1
+                              ? 'bg-primary-400'
+                              : idx === 2
+                              ? 'bg-primary-300'
+                              : 'bg-primary-200'
+                          }`}
+                          style={{ width: `${loc.percentage}%` }}
+                        />
+                      </div>
+                      <div className="w-12 text-right text-sm font-medium text-gray-700">
+                        {loc.percentage}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {driver.locations.length === 0 && (
+                  <p className="text-sm text-gray-400 italic">Konum verisi yetersiz</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
