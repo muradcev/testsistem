@@ -16,7 +16,7 @@ class LocationProvider extends ChangeNotifier {
 
   bool _isTracking = false;
   LocationData? _currentLocation;
-  DriverStatus _currentStatus = DriverStatus.unknown;
+  DriverStatus _currentStatus = DriverStatus.stopped; // Varsayılan olarak durmuş
   int _batteryLevel = 100;
   bool _isOnline = true;
   int _pendingCount = 0;

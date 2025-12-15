@@ -374,16 +374,20 @@ class LocationService {
       }
     }
 
+    // Driving: moving with significant speed
     if (_isMoving && position.speed > 5) {
       return DriverStatus.driving;
     }
 
-    // Stop detection
-    if (_config.stopDetectionEnabled && !_isMoving && _lastStopTime != null) {
-      Duration stopDuration = DateTime.now().difference(_lastStopTime!);
-      if (stopDuration.inMinutes >= _config.stopDetectionMinMinutes) {
-        return DriverStatus.stopped;
-      }
+    // Stopped: not moving OR low speed
+    // Hız 2 m/s'den düşükse veya hareket etmiyorsa durmuş sayılır
+    if (!_isMoving || position.speed <= 2) {
+      return DriverStatus.stopped;
+    }
+
+    // Slow movement (walking pace, between 2-5 m/s)
+    if (position.speed > 2 && position.speed <= 5) {
+      return DriverStatus.stopped; // Yavaş hareket de durmuş sayılır
     }
 
     return DriverStatus.unknown;
