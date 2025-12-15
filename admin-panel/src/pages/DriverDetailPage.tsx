@@ -756,7 +756,7 @@ export default function DriverDetailPage() {
                     <br />
                     Son konum: {new Date(lastLocation.timestamp).toLocaleString('tr-TR')}
                     <br />
-                    Hız: {lastLocation.speed.toFixed(1)} km/s
+                    Hız: {lastLocation.speed.toFixed(1)} km/h
                   </div>
                 </Popup>
               </Marker>

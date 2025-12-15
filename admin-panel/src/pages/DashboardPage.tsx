@@ -730,12 +730,13 @@ export default function DashboardPage() {
               Şoförler için Android uygulamasını indirin ve takibe başlayın
             </p>
             <a
-              href="/downloads/nakliyeo-v1.0.0.apk"
-              download
+              href="https://github.com/muradcev/testsistem/releases/latest"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-green-600 font-semibold rounded-lg hover:bg-green-50 transition-colors shadow-md"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
-              APK İndir (v1.0.0)
+              APK İndir (Güncel)
             </a>
           </div>
         </div>

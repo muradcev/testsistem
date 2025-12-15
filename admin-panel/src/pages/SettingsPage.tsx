@@ -269,7 +269,7 @@ export default function SettingsPage() {
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Başlama Hız Eşiği (km/s)
+                    Başlama Hız Eşiği (km/h)
                   </label>
                   <input
                     type="number"
@@ -379,7 +379,7 @@ export default function SettingsPage() {
             <strong>Ev Yarıçapı:</strong> Şoförün evde sayılacağı mesafe
           </li>
           <li className="hidden sm:list-item">
-            <strong>Başlama Hız Eşiği:</strong> Seferin başladığı kabul edilen minimum hız
+            <strong>Başlama Hız Eşiği:</strong> Seferin başladığı kabul edilen minimum hız (km/h)
           </li>
           <li className="hidden sm:list-item">
             <strong>Bitiş Bekleme Süresi:</strong> Bu süre hareketsiz kalınırsa sefer sonlandırılır
