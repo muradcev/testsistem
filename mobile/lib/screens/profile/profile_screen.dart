@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vehicle_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -345,6 +347,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         );
                       },
                     ),
+                    // Konum Bildirimi Ayarı (Android)
+                    if (Platform.isAndroid) ...[
+                      const Divider(height: 1, indent: 72),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.notifications_off, color: Colors.orange),
+                        ),
+                        title: const Text('Konum Bildirimi'),
+                        subtitle: const Text('Üst bardaki bildirimi gizle'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _showNotificationSettingsDialog(context),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -687,6 +707,112 @@ class _ProfileScreenState extends State<ProfileScreen> {
               foregroundColor: Colors.white,
             ),
             child: const Text('Çıkış Yap'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotificationSettingsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.notifications, color: Colors.orange),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Konum Bildirimi')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Android, arka planda konum takibi yapan uygulamaların bir bildirim göstermesini zorunlu tutar.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Bu bildirimi gizlemek icin:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '1. Asagidaki butona tiklayin\n'
+              '2. "Konum Takibi" bildirim kanalini bulun\n'
+              '3. "Sessiz" veya "Minimized" secin',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Bildirimi tamamen kapatmak konum takibini durdurmaz.',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              // Android uygulama ayarlarına yönlendir
+              // Kullanıcı buradan bildirim kanallarını yönetebilir
+              try {
+                // Uygulama detay ayarlarına git
+                final launched = await launchUrl(
+                  Uri.parse('app-settings:'),
+                  mode: LaunchMode.externalApplication,
+                );
+
+                if (!launched) {
+                  // Fallback - genel ayarlara git
+                  await launchUrl(
+                    Uri.parse('android.settings.SETTINGS'),
+                    mode: LaunchMode.externalApplication,
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'Ayarlar > Uygulamalar > Nakliyeo > Bildirimler yolunu takip edin',
+                      ),
+                      backgroundColor: Colors.orange,
+                      duration: const Duration(seconds: 5),
+                    ),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.settings, size: 18),
+            label: const Text('Ayarlara Git'),
           ),
         ],
       ),
