@@ -25,6 +25,7 @@ interface Driver {
   device_os: string | null
   last_active_at: string | null
   has_app: boolean
+  app_status: 'active' | 'inactive' | 'stale' | 'never_installed'
 }
 
 const statusLabels: Record<string, string> = {
@@ -45,6 +46,21 @@ const statusColors: Record<string, string> = {
   at_home: 'bg-blue-100 text-blue-800',
   no_data: 'bg-red-100 text-red-800',
   stale_trip: 'bg-yellow-100 text-yellow-800',
+}
+
+// Uygulama durumu etiketleri
+const appStatusLabels: Record<string, string> = {
+  active: 'Aktif',
+  inactive: 'Beklemede',
+  stale: 'Silinmis Olabilir',
+  never_installed: 'Kurulmadi',
+}
+
+const appStatusColors: Record<string, string> = {
+  active: 'bg-green-100 text-green-700',
+  inactive: 'bg-yellow-100 text-yellow-700',
+  stale: 'bg-red-100 text-red-700',
+  never_installed: 'bg-gray-100 text-gray-600',
 }
 
 export default function DriversPage() {
@@ -207,20 +223,30 @@ export default function DriversPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {driver.has_app ? (
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-2">
                         <DevicePhoneMobileIcon className={clsx(
-                          'h-5 w-5 mr-1',
+                          'h-5 w-5',
                           driver.device_os === 'ios' ? 'text-gray-600' : 'text-green-600'
                         )} />
                         <div className="text-xs">
                           <div className="font-medium text-gray-900">
-                            {driver.device_os === 'ios' ? 'iOS' : 'Android'}
+                            {driver.device_os === 'ios' ? 'iOS' : 'Android'} v{driver.app_version}
                           </div>
-                          <div className="text-gray-500">v{driver.app_version}</div>
+                          <span className={clsx(
+                            'px-1.5 py-0.5 text-[10px] font-medium rounded',
+                            appStatusColors[driver.app_status] || appStatusColors.inactive
+                          )}>
+                            {appStatusLabels[driver.app_status] || 'Bilinmiyor'}
+                          </span>
                         </div>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400">Yüklü değil</span>
+                      <span className={clsx(
+                        'px-2 py-1 text-xs font-medium rounded',
+                        appStatusColors.never_installed
+                      )}>
+                        Kurulmadi
+                      </span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
