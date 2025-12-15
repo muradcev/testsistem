@@ -93,7 +93,30 @@ type DriverListItem struct {
 	DeviceOS       *string    `json:"device_os,omitempty"`
 	LastActiveAt   *time.Time `json:"last_active_at,omitempty"`
 	AppInstalledAt *time.Time `json:"app_installed_at,omitempty"`
-	HasApp         bool       `json:"has_app"` // app_version != null ise true
+	HasApp         bool       `json:"has_app"`    // app_version != null ise true
+	AppStatus      string     `json:"app_status"` // active, inactive, stale, never_installed
+}
+
+// GetAppStatus - LastActiveAt'e göre uygulama durumunu belirler
+// active: Son 1 saat içinde aktif
+// inactive: 1-24 saat arası aktif değil
+// stale: 24+ saat aktif değil (muhtemelen uygulama silinmiş)
+// never_installed: Hiç uygulama bilgisi yok
+func GetAppStatus(lastActiveAt *time.Time, hasApp bool) string {
+	if !hasApp {
+		return "never_installed"
+	}
+	if lastActiveAt == nil {
+		return "stale"
+	}
+
+	hoursSinceActive := time.Since(*lastActiveAt).Hours()
+	if hoursSinceActive < 1 {
+		return "active"
+	} else if hoursSinceActive < 24 {
+		return "inactive"
+	}
+	return "stale"
 }
 
 // DeviceInfoRequest - Mobil uygulamadan gelen cihaz bilgisi

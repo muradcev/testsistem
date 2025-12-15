@@ -199,6 +199,7 @@ func (r *DriverRepository) GetAll(ctx context.Context, limit, offset int) ([]mod
 		}
 		d.HasApp = d.AppVersion != nil
 		d.Status = models.MapDriverStatusWithTime(d.CurrentStatus, d.IsActive, d.LastLocationAt)
+		d.AppStatus = models.GetAppStatus(d.LastActiveAt, d.HasApp)
 		drivers = append(drivers, d)
 	}
 
@@ -267,13 +268,47 @@ func (r *DriverRepository) GetDriversWithFCMToken(ctx context.Context) ([]models
 }
 
 func (r *DriverRepository) GetStats(ctx context.Context) (total, active, onTrip, atHome int, err error) {
+	// on_trip: son 1 saat içinde konum gönderen VE son 1 saatte en az 1km hareket eden şoförler
+	// at_home: son 1 saat içinde konum gönderen ve home durumunda olanlar
 	query := `
+		WITH recent_distance AS (
+			-- Her şoför için son 1 saatteki toplam mesafeyi hesapla
+			SELECT
+				driver_id,
+				COALESCE(SUM(
+					-- Haversine formülü ile ardışık noktalar arası mesafe (metre)
+					6371000 * 2 * ASIN(SQRT(
+						POWER(SIN(RADIANS(latitude - prev_lat) / 2), 2) +
+						COS(RADIANS(prev_lat)) * COS(RADIANS(latitude)) *
+						POWER(SIN(RADIANS(longitude - prev_lng) / 2), 2)
+					))
+				), 0) as total_distance
+			FROM (
+				SELECT
+					driver_id,
+					latitude,
+					longitude,
+					LAG(latitude) OVER (PARTITION BY driver_id ORDER BY recorded_at) as prev_lat,
+					LAG(longitude) OVER (PARTITION BY driver_id ORDER BY recorded_at) as prev_lng
+				FROM locations
+				WHERE recorded_at > NOW() - INTERVAL '1 hour'
+			) sub
+			WHERE prev_lat IS NOT NULL
+			GROUP BY driver_id
+		)
 		SELECT
 			COUNT(*) as total,
-			COUNT(*) FILTER (WHERE is_active = true) as active,
-			COUNT(*) FILTER (WHERE current_status = 'driving') as on_trip,
-			COUNT(*) FILTER (WHERE current_status = 'home') as at_home
-		FROM drivers
+			COUNT(*) FILTER (WHERE d.is_active = true) as active,
+			COUNT(*) FILTER (WHERE
+				d.last_location_at > NOW() - INTERVAL '1 hour'
+				AND COALESCE(rd.total_distance, 0) >= 1000
+			) as on_trip,
+			COUNT(*) FILTER (WHERE
+				d.current_status = 'home'
+				AND d.last_location_at > NOW() - INTERVAL '1 hour'
+			) as at_home
+		FROM drivers d
+		LEFT JOIN recent_distance rd ON d.id = rd.driver_id
 	`
 
 	err = r.db.Pool.QueryRow(ctx, query).Scan(&total, &active, &onTrip, &atHome)
