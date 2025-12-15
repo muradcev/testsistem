@@ -239,3 +239,73 @@ func (r *LocationRepository) GetAllLiveLocations(ctx context.Context) ([]models.
 
 	return locations, nil
 }
+
+// GetRecentLiveLocationsFromDB gets the last location for each driver from the database (within specified duration)
+func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, maxAge time.Duration) ([]models.LiveLocation, error) {
+	query := `
+		WITH latest_locations AS (
+			SELECT DISTINCT ON (l.driver_id)
+				l.driver_id,
+				l.latitude,
+				l.longitude,
+				l.speed,
+				l.is_moving,
+				l.activity_type,
+				l.recorded_at,
+				d.name,
+				d.surname,
+				d.current_status,
+				v.plate_number
+			FROM locations l
+			INNER JOIN drivers d ON l.driver_id = d.id
+			LEFT JOIN vehicles v ON l.vehicle_id = v.id
+			WHERE l.recorded_at >= $1
+			ORDER BY l.driver_id, l.recorded_at DESC
+		)
+		SELECT * FROM latest_locations
+	`
+
+	cutoffTime := time.Now().Add(-maxAge)
+	rows, err := r.db.Pool.Query(ctx, query, cutoffTime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var locations []models.LiveLocation
+	for rows.Next() {
+		var loc models.LiveLocation
+		var name, surname string
+		var currentStatus *string
+		var recordedAt time.Time
+
+		err := rows.Scan(
+			&loc.DriverID,
+			&loc.Latitude,
+			&loc.Longitude,
+			&loc.Speed,
+			&loc.IsMoving,
+			&loc.ActivityType,
+			&recordedAt,
+			&name,
+			&surname,
+			&currentStatus,
+			&loc.VehiclePlate,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		loc.DriverName = name + " " + surname
+		loc.UpdatedAt = recordedAt
+		if currentStatus != nil {
+			loc.CurrentStatus = *currentStatus
+		} else {
+			loc.CurrentStatus = "unknown"
+		}
+
+		locations = append(locations, loc)
+	}
+
+	return locations, nil
+}

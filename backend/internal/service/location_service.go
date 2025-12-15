@@ -80,7 +80,19 @@ func (s *LocationService) SetLiveLocation(ctx context.Context, location *models.
 }
 
 func (s *LocationService) GetAllLiveLocations(ctx context.Context) ([]models.LiveLocation, error) {
-	return s.repo.GetAllLiveLocations(ctx)
+	// First try Redis
+	locations, err := s.repo.GetAllLiveLocations(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// If Redis has data, return it
+	if len(locations) > 0 {
+		return locations, nil
+	}
+
+	// Fallback to database - get last locations within 1 hour
+	return s.repo.GetRecentLiveLocationsFromDB(ctx, 1*time.Hour)
 }
 
 // Haversine formülü ile iki nokta arası mesafe (km)
