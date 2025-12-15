@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/theme.dart';
 
@@ -348,7 +349,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+
+                  // APK Download Link
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final url = Uri.parse(
+                          'https://github.com/muradcev/testsistem/releases/latest',
+                        );
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      icon: Icon(
+                        Icons.download_rounded,
+                        size: 18,
+                        color: Colors.grey.shade600,
+                      ),
+                      label: Text(
+                        'En guncel surumu indir',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
