@@ -300,11 +300,13 @@ func main() {
 
 			// Driver Homes (Şoför Ev Adresleri)
 			driverHomeHandler := api.NewDriverHomeHandler(driverHomeRepo, driverRepo)
+			driverHomeHandler.SetStopRepository(stopRepo)
 			adminGroup.GET("/driver-homes", driverHomeHandler.GetAllDriverHomes)
 			adminGroup.GET("/drivers/:id/homes", driverHomeHandler.GetDriverHomes)
 			adminGroup.POST("/drivers/:id/homes", driverHomeHandler.CreateDriverHome)
 			adminGroup.PUT("/driver-homes/:id", driverHomeHandler.UpdateDriverHome)
 			adminGroup.DELETE("/driver-homes/:id", driverHomeHandler.DeleteDriverHome)
+			adminGroup.POST("/driver-homes/from-stop", driverHomeHandler.SetHomeFromStop)
 
 			// Questions (Akıllı Soru Sistemi)
 			questionsHandler := api.NewQuestionsHandler(questionsRepo, driverRepo, notificationService)

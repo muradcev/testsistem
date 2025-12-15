@@ -14,6 +14,7 @@ import (
 type DriverHomeHandler struct {
 	homeRepo   *repository.DriverHomeRepository
 	driverRepo *repository.DriverRepository
+	stopRepo   *repository.StopRepository
 }
 
 func NewDriverHomeHandler(
@@ -24,6 +25,11 @@ func NewDriverHomeHandler(
 		homeRepo:   homeRepo,
 		driverRepo: driverRepo,
 	}
+}
+
+// SetStopRepository sets the stop repository (optional, for SetHomeFromStop feature)
+func (h *DriverHomeHandler) SetStopRepository(stopRepo *repository.StopRepository) {
+	h.stopRepo = stopRepo
 }
 
 // GetDriverHomes returns all home locations for a driver
@@ -272,10 +278,12 @@ func (h *DriverHomeHandler) GetAllDriverHomes(c *gin.Context) {
 
 // SetHomeFromStop creates a home from an existing stop (convenience function)
 func (h *DriverHomeHandler) SetHomeFromStop(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	var req struct {
-		StopID   string  `json:"stop_id" binding:"required"`
-		Name     string  `json:"name" binding:"required"`
-		Radius   float64 `json:"radius"`
+		StopID string  `json:"stop_id" binding:"required"`
+		Name   string  `json:"name" binding:"required"`
+		Radius float64 `json:"radius"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -289,11 +297,58 @@ func (h *DriverHomeHandler) SetHomeFromStop(c *gin.Context) {
 		return
 	}
 
-	// This would require the stop repository - for now just return a placeholder
-	// In real implementation, we would get the stop and create a home from its location
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Bu özellik yakında eklenecek",
+	// Check if stop repository is available
+	if h.stopRepo == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Bu özellik şu anda kullanılamıyor"})
+		return
+	}
+
+	// Get the stop
+	stop, err := h.stopRepo.GetByID(ctx, stopID)
+	if err != nil || stop == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Durak bulunamadı"})
+		return
+	}
+
+	// Check if driver exists
+	driver, err := h.driverRepo.GetByID(ctx, stop.DriverID)
+	if err != nil || driver == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Şoför bulunamadı"})
+		return
+	}
+
+	// Set default radius
+	radius := 200.0
+	if req.Radius > 0 {
+		radius = req.Radius
+	}
+
+	// Create home from stop location
+	home := &models.DriverHome{
+		DriverID:  stop.DriverID,
+		Name:      req.Name,
+		Latitude:  stop.Latitude,
+		Longitude: stop.Longitude,
+		Address:   stop.Address,
+		Province:  stop.Province,
+		District:  stop.District,
+		Radius:    radius,
+		IsActive:  true,
+	}
+
+	err = h.homeRepo.Create(ctx, home)
+	if err != nil {
+		if err.Error() == "driver already has maximum number of home locations (2)" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Şoför maksimum 2 ev adresi ekleyebilir"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ev adresi oluşturulamadı"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Duraktan ev adresi oluşturuldu",
+		"home":    home,
 		"stop_id": stopID,
-		"name":    req.Name,
 	})
 }
