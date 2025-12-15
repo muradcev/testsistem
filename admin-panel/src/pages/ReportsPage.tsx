@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { reportsApi, questionsApi, dashboardApi } from '../services/api'
+import { reportsApi, questionsApi, dashboardApi, driversApi } from '../services/api'
 import {
   ChartBarIcon,
   DocumentChartBarIcon,
@@ -98,12 +98,20 @@ export default function ReportsPage() {
     enabled: selectedReport === 'questions' || selectedReport === 'overview',
   })
 
+  // Şoför listesi (performans raporu için)
+  const { data: driversData, isLoading: driversLoading } = useQuery({
+    queryKey: ['reports', 'drivers'],
+    queryFn: () => driversApi.getAll({ limit: 100 }),
+    enabled: selectedReport === 'drivers',
+  })
+
   const dashboardStats = dashboardData?.data
   const routes = routesData?.data?.routes || []
   const routesSummary = routesData?.data?.summary || {}
   const stops = stopsData?.data?.stops || []
   const stopsSummary = stopsData?.data?.summary || {}
   const questionStats = questionStatsData?.data?.stats || {}
+  const drivers = driversData?.data?.drivers || []
 
   const reportTabs = [
     { id: 'overview', label: 'Genel Özet', icon: DocumentChartBarIcon },
@@ -117,6 +125,7 @@ export default function ReportsPage() {
     (selectedReport === 'routes' && routesLoading) ||
     (selectedReport === 'stops' && stopsLoading) ||
     (selectedReport === 'questions' && questionStatsLoading) ||
+    (selectedReport === 'drivers' && driversLoading) ||
     (selectedReport === 'overview' && (routesLoading || stopsLoading))
 
   // Grafik verileri
@@ -712,12 +721,190 @@ export default function ReportsPage() {
                 </div>
               )}
 
-              {/* Drivers Report (placeholder) */}
+              {/* Drivers Report */}
               {selectedReport === 'drivers' && (
-                <div className="text-center py-16 text-gray-500">
-                  <UserGroupIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Şoför Performans Raporu</h3>
-                  <p className="text-sm">Bu rapor yakında eklenecek</p>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">Şoför Performans Raporu</h3>
+                    <ExportButtons data={drivers} filename="sofor_performans" />
+                  </div>
+
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard
+                      title="Toplam Şoför"
+                      value={drivers.length}
+                      icon={UserGroupIcon}
+                      color="text-blue-600"
+                      bgColor="bg-blue-50"
+                    />
+                    <StatCard
+                      title="Aktif Şoför"
+                      value={drivers.filter((d: any) => d.is_active).length}
+                      icon={UserGroupIcon}
+                      color="text-green-600"
+                      bgColor="bg-green-50"
+                    />
+                    <StatCard
+                      title="Yolda"
+                      value={drivers.filter((d: any) => d.current_status === 'on_trip').length}
+                      icon={TruckIcon}
+                      color="text-orange-600"
+                      bgColor="bg-orange-50"
+                    />
+                    <StatCard
+                      title="Evde"
+                      value={drivers.filter((d: any) => d.current_status === 'at_home').length}
+                      icon={MapPinIcon}
+                      color="text-purple-600"
+                      bgColor="bg-purple-50"
+                    />
+                  </div>
+
+                  {/* Status Distribution Chart */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-4">Durum Dağılımı</h4>
+                      <div className="h-64">
+                        {drivers.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={[
+                                  { name: 'Yolda', value: drivers.filter((d: any) => d.current_status === 'on_trip').length },
+                                  { name: 'Boşta', value: drivers.filter((d: any) => d.current_status === 'idle').length },
+                                  { name: 'Evde', value: drivers.filter((d: any) => d.current_status === 'at_home').length },
+                                  { name: 'Bilinmiyor', value: drivers.filter((d: any) => !d.current_status || d.current_status === 'unknown').length },
+                                ].filter(d => d.value > 0)}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={80}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {[0, 1, 2, 3].map((index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                              <Legend layout="vertical" align="right" verticalAlign="middle" />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-gray-400">Veri yok</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-4">Aktivite Özeti</h4>
+                      <div className="space-y-4">
+                        <div className="bg-white rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-gray-600">Aktif Oran</span>
+                            <span className="text-sm font-medium text-green-600">
+                              %{drivers.length > 0 ? ((drivers.filter((d: any) => d.is_active).length / drivers.length) * 100).toFixed(0) : 0}
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-green-500 rounded-full"
+                              style={{ width: `${drivers.length > 0 ? (drivers.filter((d: any) => d.is_active).length / drivers.length) * 100 : 0}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-gray-600">Yolda Oran</span>
+                            <span className="text-sm font-medium text-orange-600">
+                              %{drivers.length > 0 ? ((drivers.filter((d: any) => d.current_status === 'on_trip').length / drivers.length) * 100).toFixed(0) : 0}
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-orange-500 rounded-full"
+                              style={{ width: `${drivers.length > 0 ? (drivers.filter((d: any) => d.current_status === 'on_trip').length / drivers.length) * 100 : 0}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-gray-600">Uygulama Aktif</span>
+                            <span className="text-sm font-medium text-blue-600">
+                              %{drivers.length > 0 ? ((drivers.filter((d: any) => d.fcm_token).length / drivers.length) * 100).toFixed(0) : 0}
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500 rounded-full"
+                              style={{ width: `${drivers.length > 0 ? (drivers.filter((d: any) => d.fcm_token).length / drivers.length) * 100 : 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Drivers Table */}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Şoför</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefon</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Durum</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Son Aktivite</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uygulama</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {drivers.map((driver: any) => (
+                          <tr key={driver.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${driver.is_active ? 'bg-green-500' : 'bg-gray-400'}`}>
+                                  {driver.name?.[0]}{driver.surname?.[0]}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{driver.name} {driver.surname}</p>
+                                  <p className="text-xs text-gray-500">{driver.email || '-'}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{driver.phone}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                driver.current_status === 'on_trip' ? 'bg-orange-100 text-orange-700'
+                                : driver.current_status === 'idle' ? 'bg-blue-100 text-blue-700'
+                                : driver.current_status === 'at_home' ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {driver.current_status === 'on_trip' ? 'Yolda'
+                                : driver.current_status === 'idle' ? 'Bosta'
+                                : driver.current_status === 'at_home' ? 'Evde'
+                                : 'Bilinmiyor'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {driver.last_location_at ? new Date(driver.last_location_at).toLocaleString('tr-TR') : '-'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${driver.fcm_token ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {driver.fcm_token ? 'Aktif' : 'Pasif'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {drivers.length === 0 && (
+                      <div className="text-center py-12 text-gray-500">
+                        <UserGroupIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p>Şoför verisi bulunamadı</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </>
