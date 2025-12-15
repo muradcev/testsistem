@@ -237,6 +237,51 @@ func (s *NotificationService) SendBroadcastNotification(ctx context.Context, tok
 	return s.SendToDevices(ctx, tokens, message)
 }
 
+// SendLocationRequest - Şoförden anlık konum isteği gönder (sessiz bildirim)
+func (s *NotificationService) SendLocationRequest(ctx context.Context, token string, requestID string) error {
+	if token == "" {
+		return nil
+	}
+
+	if !s.initialized || s.client == nil {
+		log.Printf("[MOCK] Konum isteği gönderildi - Token: %s..., RequestID: %s",
+			token[:min(20, len(token))], requestID)
+		return nil
+	}
+
+	// Data-only mesaj gönder (sessiz, kullanıcı görmez)
+	fcmMessage := &messaging.Message{
+		Token: token,
+		Data: map[string]string{
+			"type":       "location_request",
+			"request_id": requestID,
+			"action":     "send_location",
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+		},
+		APNS: &messaging.APNSConfig{
+			Headers: map[string]string{
+				"apns-priority": "10",
+			},
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					ContentAvailable: true,
+				},
+			},
+		},
+	}
+
+	response, err := s.client.Send(ctx, fcmMessage)
+	if err != nil {
+		log.Printf("Konum isteği gönderilemedi - Token: %s..., Hata: %v", token[:min(20, len(token))], err)
+		return err
+	}
+
+	log.Printf("Konum isteği gönderildi - Response: %s, RequestID: %s", response, requestID)
+	return nil
+}
+
 // IsInitialized - Firebase'in başlatılıp başlatılmadığını kontrol et
 func (s *NotificationService) IsInitialized() bool {
 	return s.initialized

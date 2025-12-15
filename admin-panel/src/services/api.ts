@@ -105,6 +105,8 @@ export const notificationsApi = {
     api.post('/admin/notifications/send', data),
   broadcast: (data: { title: string; body: string }) =>
     api.post('/admin/notifications/broadcast', data),
+  requestLocation: (driverId: string) =>
+    api.post('/admin/notifications/request-location', { driver_id: driverId }),
 }
 
 export const reportsApi = {

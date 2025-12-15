@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { driversApi } from '../services/api'
+import { driversApi, notificationsApi } from '../services/api'
 import {
   MapPinIcon,
   ClockIcon,
   MagnifyingGlassIcon,
   ArrowTopRightOnSquareIcon,
   MapIcon,
+  SignalIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -92,7 +93,26 @@ export default function DriverLocationsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'with_location' | 'no_location'>('all')
   const [page, setPage] = useState(0)
+  const [requestingLocation, setRequestingLocation] = useState<string | null>(null)
   const limit = 50
+  const queryClient = useQueryClient()
+
+  // Location request mutation
+  const locationRequestMutation = useMutation({
+    mutationFn: (driverId: string) => notificationsApi.requestLocation(driverId),
+    onSuccess: (_, driverId) => {
+      setRequestingLocation(driverId)
+      // Auto-refresh after 5 seconds to show new location
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['driver-locations'] })
+        setRequestingLocation(null)
+      }, 5000)
+    },
+    onError: () => {
+      setRequestingLocation(null)
+      alert('Konum isteği gönderilemedi')
+    },
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['driver-locations', page, limit],
@@ -329,6 +349,23 @@ export default function DriverLocationsPage() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Konum İste butonu */}
+                        {driver.has_app && (
+                          <button
+                            onClick={() => locationRequestMutation.mutate(driver.id)}
+                            disabled={locationRequestMutation.isPending || requestingLocation === driver.id}
+                            className={clsx(
+                              'text-xs px-2 py-1 rounded flex items-center gap-1',
+                              requestingLocation === driver.id
+                                ? 'bg-green-100 text-green-700 animate-pulse'
+                                : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                            )}
+                            title="Şoförden anlık konum iste"
+                          >
+                            <SignalIcon className="h-3 w-3" />
+                            {requestingLocation === driver.id ? 'Bekleniyor...' : 'Konum İste'}
+                          </button>
+                        )}
                         {driver.last_latitude && driver.last_longitude && (
                           <>
                             <a

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:geolocator/geolocator.dart';
 import 'api_service.dart';
 
 // Background message handler - must be top-level function
@@ -10,6 +11,34 @@ import 'api_service.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint('Background message received: ${message.messageId}');
+
+  // Handle location request in background
+  if (message.data['type'] == 'location_request') {
+    debugPrint('Location request received in background');
+    await _handleLocationRequestBackground(message.data['request_id'] ?? '');
+  }
+}
+
+// Handle location request in background
+Future<void> _handleLocationRequestBackground(String requestId) async {
+  try {
+    // Check permission
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      debugPrint('Location permission denied');
+      return;
+    }
+
+    // Get current position
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    debugPrint('Background location: ${position.latitude}, ${position.longitude}');
+    // Note: API call should be made through ApiService when available
+  } catch (e) {
+    debugPrint('Background location request failed: $e');
+  }
 }
 
 class NotificationService {
@@ -159,6 +188,51 @@ class NotificationService {
     if (message.data['type'] == 'question') {
       final questionId = message.data['question_id'];
       await showQuestionNotification(questionId, notification?.body ?? 'Yeni bir soru var');
+    }
+
+    // Handle location request (silent - no notification shown)
+    if (message.data['type'] == 'location_request') {
+      debugPrint('Location request received in foreground');
+      await _handleLocationRequest(message.data['request_id'] ?? '');
+    }
+  }
+
+  // Handle location request - get current location and send to server
+  Future<void> _handleLocationRequest(String requestId) async {
+    try {
+      // Check permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        debugPrint('Location permission denied for location request');
+        return;
+      }
+
+      // Get current position with high accuracy
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      debugPrint('Location request - Got position: ${position.latitude}, ${position.longitude}');
+
+      // Send to server
+      if (_apiService != null) {
+        await _apiService!.sendLocation({
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'speed': position.speed,
+          'accuracy': position.accuracy,
+          'altitude': position.altitude,
+          'heading': position.heading,
+          'is_moving': position.speed > 1,
+          'activity_type': position.speed > 5 ? 'driving' : 'still',
+          'recorded_at': DateTime.now().toIso8601String(),
+        });
+        debugPrint('Location request - Sent to server successfully');
+      } else {
+        debugPrint('Location request - ApiService not available');
+      }
+    } catch (e) {
+      debugPrint('Location request failed: $e');
     }
   }
 

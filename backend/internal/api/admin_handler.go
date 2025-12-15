@@ -762,6 +762,47 @@ func (h *NotificationHandler) ValidateAppInstallations(c *gin.Context) {
 	})
 }
 
+// RequestDriverLocation - Şoförden anlık konum iste
+func (h *NotificationHandler) RequestDriverLocation(c *gin.Context) {
+	var req struct {
+		DriverID uuid.UUID `json:"driver_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	driver, err := h.driverService.GetByID(c.Request.Context(), req.DriverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if driver == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Şoför bulunamadı"})
+		return
+	}
+	if driver.FCMToken == nil || *driver.FCMToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Şoförün FCM token'ı yok, uygulama kurulu olmayabilir"})
+		return
+	}
+
+	// Benzersiz istek ID'si oluştur
+	requestID := uuid.New().String()
+
+	// Konum isteği gönder
+	if err := h.notificationService.SendLocationRequest(c.Request.Context(), *driver.FCMToken, requestID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Konum isteği gönderilemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Konum isteği gönderildi",
+		"request_id": requestID,
+		"driver_id":  req.DriverID,
+		"driver":     driver.Name + " " + driver.Surname,
+	})
+}
+
 // Settings Handler
 type SettingsHandler struct {
 	adminService *service.AdminService
