@@ -77,7 +77,6 @@ class LocationService {
   Timer? _syncTimer;
 
   Position? _lastPosition;
-  DateTime? _lastStopTime;
   bool _isMoving = false;
   double _currentAcceleration = 0;
   int _currentBatteryLevel = 100;
@@ -307,16 +306,7 @@ class LocationService {
   }
 
   void _detectMovement() {
-    bool wasMoving = _isMoving;
     _isMoving = _currentAcceleration > 2.0;
-
-    if (wasMoving != _isMoving) {
-      if (_isMoving) {
-        _lastStopTime = null;
-      } else {
-        _lastStopTime = DateTime.now();
-      }
-    }
   }
 
   void _processPosition(Position position) {
@@ -374,23 +364,15 @@ class LocationService {
       }
     }
 
-    // Driving: moving with significant speed
-    if (_isMoving && position.speed > 5) {
+    // Driving: significant speed (> 5 m/s = 18 km/h)
+    // Hız yeterli ise hareket durumundan bağımsız olarak seferde say
+    if (position.speed > 5) {
       return DriverStatus.driving;
     }
 
-    // Stopped: not moving OR low speed
-    // Hız 2 m/s'den düşükse veya hareket etmiyorsa durmuş sayılır
-    if (!_isMoving || position.speed <= 2) {
-      return DriverStatus.stopped;
-    }
-
-    // Slow movement (walking pace, between 2-5 m/s)
-    if (position.speed > 2 && position.speed <= 5) {
-      return DriverStatus.stopped; // Yavaş hareket de durmuş sayılır
-    }
-
-    return DriverStatus.unknown;
+    // Stopped: low speed or not moving
+    // Hız 5 m/s'den düşükse durmuş sayılır (mola, trafik, park vs.)
+    return DriverStatus.stopped;
   }
 
   void setHomeLocation(double lat, double lng) {

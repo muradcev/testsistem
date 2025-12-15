@@ -489,6 +489,70 @@ func (h *AdminHandler) DeleteDriverContacts(c *gin.Context) {
 	})
 }
 
+// ==================== ALL CALL LOGS & CONTACTS ====================
+
+// GetAllCallLogs - Tüm şoförlerin arama geçmişini getir
+func (h *AdminHandler) GetAllCallLogs(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	callType := c.Query("call_type")
+
+	var driverID *uuid.UUID
+	if driverIDStr := c.Query("driver_id"); driverIDStr != "" {
+		if parsed, err := uuid.Parse(driverIDStr); err == nil {
+			driverID = &parsed
+		}
+	}
+
+	ctx := c.Request.Context()
+	logs, total, err := h.driverService.GetAllCallLogs(ctx, limit, offset, driverID, callType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	stats, _ := h.driverService.GetAllCallLogsStats(ctx)
+
+	c.JSON(http.StatusOK, gin.H{
+		"call_logs": logs,
+		"total":     total,
+		"limit":     limit,
+		"offset":    offset,
+		"stats":     stats,
+	})
+}
+
+// GetAllContacts - Tüm şoförlerin rehberini getir
+func (h *AdminHandler) GetAllContacts(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	search := c.Query("search")
+
+	var driverID *uuid.UUID
+	if driverIDStr := c.Query("driver_id"); driverIDStr != "" {
+		if parsed, err := uuid.Parse(driverIDStr); err == nil {
+			driverID = &parsed
+		}
+	}
+
+	ctx := c.Request.Context()
+	contacts, total, err := h.driverService.GetAllContacts(ctx, limit, offset, driverID, search)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	stats, _ := h.driverService.GetAllContactsStats(ctx)
+
+	c.JSON(http.StatusOK, gin.H{
+		"contacts": contacts,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
+		"stats":    stats,
+	})
+}
+
 // ==================== DRIVER RESPONSES ====================
 
 // GetDriverResponses - Sürücünün anket ve soru cevaplarını getir

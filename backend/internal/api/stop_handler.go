@@ -114,6 +114,7 @@ func (h *StopHandler) GetUncategorizedStops(c *gin.Context) {
 			"latitude":         stop.Latitude,
 			"longitude":        stop.Longitude,
 			"location_type":    stop.LocationType,
+			"location_label":   models.LocationTypeLabels[stop.LocationType],
 			"address":          stop.Address,
 			"province":         stop.Province,
 			"district":         stop.District,

@@ -208,6 +208,10 @@ func main() {
 			// Driver Responses (Survey & Question)
 			adminGroup.GET("/drivers/:id/responses", adminHandler.GetDriverResponses)
 
+			// All Call Logs & Contacts (tüm şoförler için)
+			adminGroup.GET("/call-logs", adminHandler.GetAllCallLogs)
+			adminGroup.GET("/contacts", adminHandler.GetAllContacts)
+
 			// Real-time locations
 			adminGroup.GET("/locations/live", adminHandler.GetLiveLocations)
 

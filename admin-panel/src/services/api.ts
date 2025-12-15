@@ -360,3 +360,15 @@ export const stopsApi = {
   detectAll: (params?: { start_date?: string; end_date?: string }) =>
     api.post('/admin/stops/detect-all', null, { params }),
 }
+
+// All Call Logs (Tüm şoförlerin arama geçmişi)
+export const callLogsApi = {
+  getAll: (params?: { limit?: number; offset?: number; driver_id?: string; call_type?: string }) =>
+    api.get('/admin/call-logs', { params }),
+}
+
+// All Contacts (Tüm şoförlerin rehberi)
+export const contactsApi = {
+  getAll: (params?: { limit?: number; offset?: number; driver_id?: string; search?: string }) =>
+    api.get('/admin/contacts', { params }),
+}

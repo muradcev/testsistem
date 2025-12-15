@@ -298,6 +298,58 @@ type ContactStats struct {
 	LastSyncAt        *time.Time `json:"last_sync_at,omitempty"`
 }
 
+// ==================== ALL CALL LOGS & CONTACTS ====================
+
+// AllDriverCallLog - Tüm şoförlerin arama geçmişi için model
+type AllDriverCallLog struct {
+	ID              uuid.UUID  `json:"id"`
+	DriverID        uuid.UUID  `json:"driver_id"`
+	DriverName      string     `json:"driver_name"`
+	DriverPhone     string     `json:"driver_phone"`
+	PhoneNumber     string     `json:"phone_number"`
+	ContactName     *string    `json:"contact_name,omitempty"`
+	CallType        string     `json:"call_type"`
+	DurationSeconds int        `json:"duration_seconds"`
+	CallTimestamp   time.Time  `json:"call_timestamp"`
+	SyncedAt        time.Time  `json:"synced_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+}
+
+// AllCallLogStats - Tüm arama istatistikleri
+type AllCallLogStats struct {
+	TotalCalls           int `json:"total_calls"`
+	OutgoingCalls        int `json:"outgoing_calls"`
+	IncomingCalls        int `json:"incoming_calls"`
+	MissedCalls          int `json:"missed_calls"`
+	TotalDurationSeconds int `json:"total_duration_seconds"`
+	TotalDrivers         int `json:"total_drivers"`
+	UniqueContacts       int `json:"unique_contacts"`
+}
+
+// AllDriverContact - Tüm şoförlerin rehberi için model
+type AllDriverContact struct {
+	ID           uuid.UUID `json:"id"`
+	DriverID     uuid.UUID `json:"driver_id"`
+	DriverName   string    `json:"driver_name"`
+	DriverPhone  string    `json:"driver_phone"`
+	ContactID    *string   `json:"contact_id,omitempty"`
+	Name         string    `json:"name"`
+	PhoneNumbers []byte    `json:"phone_numbers"`
+	ContactType  *string   `json:"contact_type,omitempty"`
+	SyncedAt     time.Time `json:"synced_at"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// AllContactStats - Tüm rehber istatistikleri
+type AllContactStats struct {
+	TotalContacts     int `json:"total_contacts"`
+	TotalDrivers      int `json:"total_drivers"`
+	CustomerContacts  int `json:"customer_contacts"`
+	BrokerContacts    int `json:"broker_contacts"`
+	ColleagueContacts int `json:"colleague_contacts"`
+	FamilyContacts    int `json:"family_contacts"`
+}
+
 // ==================== SURVEY/QUESTION RESPONSES ====================
 
 type DriverSurveyResponse struct {

@@ -746,3 +746,210 @@ func (r *DriverRepository) GetDriverQuestionResponses(ctx context.Context, drive
 
 	return responses, nil
 }
+
+// ==================== ALL CALL LOGS & CONTACTS ====================
+
+// GetAllCallLogs - Tüm şoförlerin arama geçmişini getir
+func (r *DriverRepository) GetAllCallLogs(ctx context.Context, limit, offset int, driverID *uuid.UUID, callType string) ([]models.AllDriverCallLog, int, error) {
+	// Toplam sayı
+	var total int
+	countArgs := []interface{}{}
+	countQuery := `SELECT COUNT(*) FROM driver_call_logs cl JOIN drivers d ON cl.driver_id = d.id WHERE 1=1`
+	argIdx := 1
+
+	if driverID != nil {
+		countQuery += fmt.Sprintf(" AND cl.driver_id = $%d", argIdx)
+		countArgs = append(countArgs, *driverID)
+		argIdx++
+	}
+	if callType != "" {
+		countQuery += fmt.Sprintf(" AND cl.call_type = $%d", argIdx)
+		countArgs = append(countArgs, callType)
+		argIdx++
+	}
+
+	err := r.db.Pool.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count all call logs: %w", err)
+	}
+
+	query := `
+		SELECT cl.id, cl.driver_id, d.name || ' ' || d.surname as driver_name, d.phone as driver_phone,
+		       cl.phone_number, cl.contact_name, cl.call_type, cl.duration_seconds,
+		       cl.call_timestamp, cl.synced_at, cl.created_at
+		FROM driver_call_logs cl
+		JOIN drivers d ON cl.driver_id = d.id
+		WHERE 1=1
+	`
+	args := []interface{}{}
+	argIdx = 1
+
+	if driverID != nil {
+		query += fmt.Sprintf(" AND cl.driver_id = $%d", argIdx)
+		args = append(args, *driverID)
+		argIdx++
+	}
+	if callType != "" {
+		query += fmt.Sprintf(" AND cl.call_type = $%d", argIdx)
+		args = append(args, callType)
+		argIdx++
+	}
+
+	query += fmt.Sprintf(" ORDER BY cl.call_timestamp DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get all call logs: %w", err)
+	}
+	defer rows.Close()
+
+	var logs []models.AllDriverCallLog
+	for rows.Next() {
+		var log models.AllDriverCallLog
+		err := rows.Scan(
+			&log.ID, &log.DriverID, &log.DriverName, &log.DriverPhone,
+			&log.PhoneNumber, &log.ContactName, &log.CallType, &log.DurationSeconds,
+			&log.CallTimestamp, &log.SyncedAt, &log.CreatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan call log: %w", err)
+		}
+		logs = append(logs, log)
+	}
+
+	return logs, total, nil
+}
+
+// GetAllCallLogsStats - Tüm arama istatistikleri
+func (r *DriverRepository) GetAllCallLogsStats(ctx context.Context) (*models.AllCallLogStats, error) {
+	query := `
+		SELECT
+			COUNT(*) as total_calls,
+			COUNT(CASE WHEN call_type = 'outgoing' THEN 1 END) as outgoing_calls,
+			COUNT(CASE WHEN call_type = 'incoming' THEN 1 END) as incoming_calls,
+			COUNT(CASE WHEN call_type = 'missed' THEN 1 END) as missed_calls,
+			COALESCE(SUM(duration_seconds), 0) as total_duration_seconds,
+			COUNT(DISTINCT driver_id) as total_drivers,
+			COUNT(DISTINCT phone_number) as unique_contacts
+		FROM driver_call_logs
+	`
+
+	var stats models.AllCallLogStats
+	err := r.db.Pool.QueryRow(ctx, query).Scan(
+		&stats.TotalCalls,
+		&stats.OutgoingCalls,
+		&stats.IncomingCalls,
+		&stats.MissedCalls,
+		&stats.TotalDurationSeconds,
+		&stats.TotalDrivers,
+		&stats.UniqueContacts,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all call log stats: %w", err)
+	}
+
+	return &stats, nil
+}
+
+// GetAllContacts - Tüm şoförlerin rehberini getir
+func (r *DriverRepository) GetAllContacts(ctx context.Context, limit, offset int, driverID *uuid.UUID, search string) ([]models.AllDriverContact, int, error) {
+	// Toplam sayı
+	var total int
+	countArgs := []interface{}{}
+	countQuery := `SELECT COUNT(*) FROM driver_contacts dc JOIN drivers d ON dc.driver_id = d.id WHERE dc.is_deleted = false`
+	argIdx := 1
+
+	if driverID != nil {
+		countQuery += fmt.Sprintf(" AND dc.driver_id = $%d", argIdx)
+		countArgs = append(countArgs, *driverID)
+		argIdx++
+	}
+	if search != "" {
+		countQuery += fmt.Sprintf(" AND (dc.name ILIKE $%d OR dc.phone_numbers::text ILIKE $%d)", argIdx, argIdx)
+		countArgs = append(countArgs, "%"+search+"%")
+		argIdx++
+	}
+
+	err := r.db.Pool.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count all contacts: %w", err)
+	}
+
+	query := `
+		SELECT dc.id, dc.driver_id, d.name || ' ' || d.surname as driver_name, d.phone as driver_phone,
+		       dc.contact_id, dc.name, dc.phone_numbers, dc.contact_type,
+		       dc.synced_at, dc.created_at
+		FROM driver_contacts dc
+		JOIN drivers d ON dc.driver_id = d.id
+		WHERE dc.is_deleted = false
+	`
+	args := []interface{}{}
+	argIdx = 1
+
+	if driverID != nil {
+		query += fmt.Sprintf(" AND dc.driver_id = $%d", argIdx)
+		args = append(args, *driverID)
+		argIdx++
+	}
+	if search != "" {
+		query += fmt.Sprintf(" AND (dc.name ILIKE $%d OR dc.phone_numbers::text ILIKE $%d)", argIdx, argIdx)
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	query += fmt.Sprintf(" ORDER BY dc.name ASC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get all contacts: %w", err)
+	}
+	defer rows.Close()
+
+	var contacts []models.AllDriverContact
+	for rows.Next() {
+		var contact models.AllDriverContact
+		err := rows.Scan(
+			&contact.ID, &contact.DriverID, &contact.DriverName, &contact.DriverPhone,
+			&contact.ContactID, &contact.Name, &contact.PhoneNumbers, &contact.ContactType,
+			&contact.SyncedAt, &contact.CreatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan contact: %w", err)
+		}
+		contacts = append(contacts, contact)
+	}
+
+	return contacts, total, nil
+}
+
+// GetAllContactsStats - Tüm rehber istatistikleri
+func (r *DriverRepository) GetAllContactsStats(ctx context.Context) (*models.AllContactStats, error) {
+	query := `
+		SELECT
+			COUNT(*) as total_contacts,
+			COUNT(DISTINCT driver_id) as total_drivers,
+			COUNT(CASE WHEN contact_type = 'customer' THEN 1 END) as customer_contacts,
+			COUNT(CASE WHEN contact_type = 'broker' THEN 1 END) as broker_contacts,
+			COUNT(CASE WHEN contact_type = 'colleague' THEN 1 END) as colleague_contacts,
+			COUNT(CASE WHEN contact_type = 'family' THEN 1 END) as family_contacts
+		FROM driver_contacts
+		WHERE is_deleted = false
+	`
+
+	var stats models.AllContactStats
+	err := r.db.Pool.QueryRow(ctx, query).Scan(
+		&stats.TotalContacts,
+		&stats.TotalDrivers,
+		&stats.CustomerContacts,
+		&stats.BrokerContacts,
+		&stats.ColleagueContacts,
+		&stats.FamilyContacts,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all contact stats: %w", err)
+	}
+
+	return &stats, nil
+}

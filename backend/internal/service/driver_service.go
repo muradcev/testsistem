@@ -137,3 +137,25 @@ func (s *DriverService) GetDriverSurveyResponses(ctx context.Context, driverID u
 func (s *DriverService) GetDriverQuestionResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverQuestionResponse, error) {
 	return s.repo.GetDriverQuestionResponses(ctx, driverID, limit)
 }
+
+// ==================== ALL CALL LOGS & CONTACTS ====================
+
+// GetAllCallLogs - Tüm şoförlerin arama geçmişini getir
+func (s *DriverService) GetAllCallLogs(ctx context.Context, limit, offset int, driverID *uuid.UUID, callType string) ([]models.AllDriverCallLog, int, error) {
+	return s.repo.GetAllCallLogs(ctx, limit, offset, driverID, callType)
+}
+
+// GetAllCallLogsStats - Tüm arama istatistikleri
+func (s *DriverService) GetAllCallLogsStats(ctx context.Context) (*models.AllCallLogStats, error) {
+	return s.repo.GetAllCallLogsStats(ctx)
+}
+
+// GetAllContacts - Tüm şoförlerin rehberini getir
+func (s *DriverService) GetAllContacts(ctx context.Context, limit, offset int, driverID *uuid.UUID, search string) ([]models.AllDriverContact, int, error) {
+	return s.repo.GetAllContacts(ctx, limit, offset, driverID, search)
+}
+
+// GetAllContactsStats - Tüm rehber istatistikleri
+func (s *DriverService) GetAllContactsStats(ctx context.Context) (*models.AllContactStats, error) {
+	return s.repo.GetAllContactsStats(ctx)
+}

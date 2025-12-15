@@ -585,9 +585,8 @@ class _HomeScreenState extends State<HomeScreen> {
       case DriverStatus.driving:
         return Icons.directions_car;
       case DriverStatus.stopped:
+      case DriverStatus.unknown:
         return Icons.pause_circle;
-      default:
-        return Icons.help_outline;
     }
   }
 
@@ -598,9 +597,8 @@ class _HomeScreenState extends State<HomeScreen> {
       case DriverStatus.driving:
         return AppColors.primary;
       case DriverStatus.stopped:
+      case DriverStatus.unknown:
         return AppColors.warning;
-      default:
-        return AppColors.textSecondary;
     }
   }
 
@@ -611,9 +609,8 @@ class _HomeScreenState extends State<HomeScreen> {
       case DriverStatus.driving:
         return 'Seferde';
       case DriverStatus.stopped:
+      case DriverStatus.unknown:
         return 'Mola';
-      default:
-        return 'Bilinmiyor';
     }
   }
 }
