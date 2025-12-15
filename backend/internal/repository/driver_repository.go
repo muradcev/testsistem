@@ -722,11 +722,11 @@ func (r *DriverRepository) SaveContacts(ctx context.Context, driverID uuid.UUID,
 func (r *DriverRepository) GetDriverSurveyResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverSurveyResponse, error) {
 	query := `
 		SELECT sr.id, sr.survey_id, s.title as survey_title, s.trigger_type as survey_type,
-		       sr.answer, sr.created_at
+		       sr.answer, sr.answered_at
 		FROM survey_responses sr
 		JOIN surveys s ON sr.survey_id = s.id
 		WHERE sr.driver_id = $1
-		ORDER BY sr.created_at DESC
+		ORDER BY sr.answered_at DESC
 		LIMIT $2
 	`
 
@@ -752,8 +752,8 @@ func (r *DriverRepository) GetDriverSurveyResponses(ctx context.Context, driverI
 // GetDriverQuestionResponses - Sürücünün soru cevaplarını getir
 func (r *DriverRepository) GetDriverQuestionResponses(ctx context.Context, driverID uuid.UUID, limit int) ([]models.DriverQuestionResponse, error) {
 	query := `
-		SELECT dq.id, dq.question_text, dq.question_type, dqa.answer,
-		       dq.options, dqa.answer_data, dq.status, dqa.answered_at, dq.created_at
+		SELECT dq.id, dq.question_text, dq.question_type, dqa.answer_value,
+		       dq.options, dqa.follow_up_answers, dq.status, dqa.answered_at, dq.created_at
 		FROM driver_questions dq
 		LEFT JOIN driver_question_answers dqa ON dq.id = dqa.question_id
 		WHERE dq.driver_id = $1 AND dq.status IN ('answered', 'sent')
