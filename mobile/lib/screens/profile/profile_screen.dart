@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vehicle_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../services/notification_service.dart';
 import '../../config/theme.dart';
 import '../../config/constants.dart';
 
@@ -656,22 +657,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Text('Nakliyeo Mobil'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Sürüm: $_appVersion'),
-            const SizedBox(height: 16),
-            const Text(
-              'Nakliyeo Mobil, nakliye sektörü için geliştirilmiş konum takip ve filo yönetim uygulamasıdır.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '© 2024 Nakliyeo',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
+        content: Builder(
+          builder: (context) {
+            final notificationService = context.read<NotificationService>();
+            final fcmToken = notificationService.fcmToken;
+            final fcmError = notificationService.fcmError;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Sürüm: $_appVersion'),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      fcmToken != null ? Icons.check_circle : Icons.error,
+                      size: 16,
+                      color: fcmToken != null ? Colors.green : Colors.red,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      fcmToken != null ? 'Bildirim: Aktif' : 'Bildirim: Pasif',
+                      style: TextStyle(
+                        color: fcmToken != null ? Colors.green : Colors.red,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                if (fcmError != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    fcmError,
+                    style: const TextStyle(color: Colors.red, fontSize: 10),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Text(
+                  'Nakliyeo Mobil, nakliye sektörü için geliştirilmiş konum takip ve filo yönetim uygulamasıdır.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '© 2024 Nakliyeo',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            );
+          },
         ),
         actions: [
           TextButton(

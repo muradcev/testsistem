@@ -93,9 +93,11 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   FirebaseMessaging? _firebaseMessaging;
   String? _fcmToken;
+  String? _fcmError;
   ApiService? _apiService;
 
   String? get fcmToken => _fcmToken;
+  String? get fcmError => _fcmError;
 
   void setApiService(ApiService apiService) {
     _apiService = apiService;
@@ -188,14 +190,22 @@ class NotificationService {
 
       // Get FCM token
       debugPrint('[FCM] Getting FCM token from Firebase...');
-      _fcmToken = await _firebaseMessaging?.getToken();
-      debugPrint('[FCM] FCM Token received: ${_fcmToken != null ? _fcmToken!.substring(0, 30) + "..." : "NULL"}');
+      try {
+        _fcmToken = await _firebaseMessaging?.getToken();
+        debugPrint('[FCM] FCM Token received: ${_fcmToken != null ? _fcmToken!.substring(0, 30) + "..." : "NULL"}');
+      } catch (tokenError) {
+        _fcmError = 'Token alma hatası: $tokenError';
+        debugPrint('[FCM] ERROR getting token: $tokenError');
+      }
 
       // Send token to server immediately after getting it
       if (_fcmToken != null) {
         debugPrint('[FCM] Attempting to send token to server...');
         await _sendFcmTokenToServer(_fcmToken!);
       } else {
+        if (_fcmError == null) {
+          _fcmError = 'FCM token alınamadı (null döndü)';
+        }
         debugPrint('[FCM] WARNING: Could not get FCM token from Firebase');
       }
 
@@ -221,9 +231,10 @@ class NotificationService {
         });
       }
 
-    } catch (e) {
-      debugPrint('Firebase Messaging initialization failed: $e');
-      // Firebase may not be configured yet - this is OK during development
+    } catch (e, stackTrace) {
+      _fcmError = 'Firebase init error: $e';
+      debugPrint('[FCM] ERROR: Firebase Messaging initialization failed: $e');
+      debugPrint('[FCM] Stack trace: $stackTrace');
     }
   }
 
