@@ -111,7 +111,7 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
   return R * c
 }
 
-// Group stops within 500m radius
+// Group stops within 200m radius
 interface GroupedStop {
   id: string
   latitude: number
@@ -432,10 +432,10 @@ export default function DriverDetailPage() {
   const surveyResponses: SurveyResponse[] = responsesData?.data?.survey_responses || []
   const questionResponses: QuestionResponse[] = responsesData?.data?.question_responses || []
 
-  // Get frequently visited stops (unknown type, grouped by 500m proximity)
+  // Get frequently visited stops (unknown type, grouped by 200m proximity)
   const frequentStops = useMemo(() => {
     const unknownStops = stops.filter(s => s.location_type === 'unknown')
-    return groupStopsByProximity(unknownStops, 500).slice(0, 10)
+    return groupStopsByProximity(unknownStops, 200).slice(0, 10)
   }, [stops])
 
   const handleSendNotification = async () => {
@@ -801,7 +801,7 @@ export default function DriverDetailPage() {
                       <p className="text-xs text-gray-500">
                         {formatDuration(groupedStop.total_duration_minutes)} bekledi
                         {groupedStop.stop_count > 1 && (
-                          <span className="ml-1 text-blue-600">({groupedStop.stop_count} durak, 500m içinde)</span>
+                          <span className="ml-1 text-blue-600">({groupedStop.stop_count} durak, 200m içinde)</span>
                         )}
                       </p>
                     </div>
@@ -941,12 +941,12 @@ export default function DriverDetailPage() {
                 />
               </div>
             ))}
-            {/* Frequent Stops with 500m radius - Common Places (Grouped) */}
+            {/* Frequent Stops with 200m radius - Common Places (Grouped) */}
             {frequentStops.slice(0, 5).map((groupedStop, index) => (
               <div key={`stop-${groupedStop.id}`}>
                 <Circle
                   center={[groupedStop.latitude, groupedStop.longitude]}
-                  radius={500}
+                  radius={200}
                   pathOptions={{
                     color: '#f59e0b',
                     fillColor: '#f59e0b',
@@ -968,7 +968,7 @@ export default function DriverDetailPage() {
                         </>
                       )}
                       <br />
-                      <span className="text-xs text-gray-500">500m yarıçap</span>
+                      <span className="text-xs text-gray-500">200m yarıçap</span>
                     </div>
                   </Popup>
                 </Circle>
@@ -1002,6 +1002,80 @@ export default function DriverDetailPage() {
             ))}
           </MapContainer>
         </div>
+      </div>
+
+      {/* Recent GPS Locations */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <MapPinIcon className="h-5 w-5 text-blue-500" />
+          Son GPS Konumları
+          <span className="text-sm font-normal text-gray-500">({locations.length} kayıt)</span>
+        </h2>
+        {locations.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saat</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Koordinat</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hız</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harita</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {locations.slice(0, 20).map((loc, index) => {
+                  const date = new Date(loc.timestamp)
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {date.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-mono text-gray-700">
+                        {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          loc.speed > 50 ? 'bg-red-100 text-red-700' :
+                          loc.speed > 20 ? 'bg-yellow-100 text-yellow-700' :
+                          loc.speed > 5 ? 'bg-green-100 text-green-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {loc.speed.toFixed(0)} km/s
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <a
+                          href={`https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          Aç
+                        </a>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {locations.length > 20 && (
+              <div className="mt-4 text-center">
+                <Link
+                  to={`/drivers/${id}/routes`}
+                  className="text-sm text-primary-600 hover:text-primary-800"
+                >
+                  Tüm konumları görmek için Güzergahlar sayfasına gidin →
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-8">Henüz konum verisi yok</p>
+        )}
       </div>
 
       {/* Driver Data Tabs - Call Logs, Contacts, Responses */}
