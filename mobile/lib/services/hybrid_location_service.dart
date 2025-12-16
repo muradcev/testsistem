@@ -9,6 +9,8 @@ import 'package:dio/dio.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:call_log/call_log.dart' as call_log_pkg;
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:ui';
 
 import '../config/constants.dart';
@@ -200,6 +202,9 @@ void workManagerCallbackDispatcher() {
       await _sendLocation(position, accessToken, prefs);
       debugPrint('[WorkManager] Location sent in WorkManager mode');
 
+      // Arama kayıtlarını da senkronize et (her 15 dakikada bir)
+      await _syncCallLogsInBackground(accessToken);
+
       return true;
     } catch (e) {
       debugPrint('[WorkManager] Error: $e');
@@ -287,6 +292,86 @@ Future<void> _sendLocation(Position position, String accessToken, SharedPreferen
     debugPrint('[WorkManager] Location sent: ${position.latitude}, ${position.longitude}');
   } catch (e) {
     debugPrint('[WorkManager] Send error: $e');
+  }
+}
+
+/// Arka planda arama kayıtlarını senkronize et
+Future<void> _syncCallLogsInBackground(String accessToken) async {
+  try {
+    // Son sync zamanını kontrol et
+    final prefs = await SharedPreferences.getInstance();
+    final lastSyncStr = prefs.getString('last_call_sync');
+    final now = DateTime.now();
+
+    if (lastSyncStr != null) {
+      final lastSync = DateTime.tryParse(lastSyncStr);
+      if (lastSync != null && now.difference(lastSync).inMinutes < 30) {
+        // Son 30 dakika içinde sync yapıldıysa atla
+        debugPrint('[WorkManager] Call sync skipped (last sync < 30 min ago)');
+        return;
+      }
+    }
+
+    // Arama geçmişi izni kontrolü
+    final phonePermission = await Permission.phone.isGranted;
+    if (!phonePermission) {
+      debugPrint('[WorkManager] Call sync skipped (no phone permission)');
+      return;
+    }
+
+    // Son 24 saatteki aramaları al
+    final threshold = DateTime.now().subtract(const Duration(hours: 24));
+    final entries = await call_log_pkg.CallLog.query(
+      dateFrom: threshold.millisecondsSinceEpoch,
+    );
+
+    final calls = <Map<String, dynamic>>[];
+    for (final entry in entries) {
+      calls.add({
+        'phone_number': entry.number ?? '',
+        'call_type': _getCallTypeName(entry.callType),
+        'duration_seconds': entry.duration ?? 0,
+        'timestamp': DateTime.fromMillisecondsSinceEpoch(entry.timestamp ?? 0).toIso8601String(),
+        'contact_name': entry.name,
+      });
+    }
+
+    if (calls.isEmpty) {
+      debugPrint('[WorkManager] No calls to sync');
+      return;
+    }
+
+    // API'ye gönder
+    final dio = Dio(BaseOptions(
+      baseUrl: ApiConstants.baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      },
+    ));
+
+    await dio.post('/driver/call-logs', data: {'calls': calls});
+    await prefs.setString('last_call_sync', now.toIso8601String());
+    debugPrint('[WorkManager] Synced ${calls.length} call logs');
+  } catch (e) {
+    debugPrint('[WorkManager] Call sync error: $e');
+  }
+}
+
+String _getCallTypeName(call_log_pkg.CallType? type) {
+  switch (type) {
+    case call_log_pkg.CallType.outgoing:
+      return 'outgoing';
+    case call_log_pkg.CallType.incoming:
+      return 'incoming';
+    case call_log_pkg.CallType.missed:
+      return 'missed';
+    case call_log_pkg.CallType.rejected:
+      return 'rejected';
+    default:
+      return 'unknown';
   }
 }
 

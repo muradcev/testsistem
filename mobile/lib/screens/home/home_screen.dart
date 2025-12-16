@@ -124,9 +124,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // İzinler verildiyse senkronizasyonu başlat
         debugPrint('[HomeScreen] Starting periodic sync...');
         callTrackingService.startPeriodicSync(
-          interval: const Duration(hours: 6), // Her 6 saatte bir sync
+          interval: const Duration(hours: 1), // Her 1 saatte bir sync
         );
-        debugPrint('[HomeScreen] Periodic sync started');
+        debugPrint('[HomeScreen] Periodic sync started (every 1 hour)');
       } else {
         debugPrint('[HomeScreen] Call tracking: Permissions NOT granted, sync disabled');
       }
