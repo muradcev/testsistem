@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -85,6 +86,30 @@ func (h *QuestionsHandler) CreateQuestion(c *gin.Context) {
 	if err := h.repo.CreateQuestion(c.Request.Context(), question); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Soru oluşturulamadı"})
 		return
+	}
+
+	// Hemen gönder seçeneği aktifse push bildirimi gönder
+	if req.SendImmediately && h.driverRepo != nil && h.notificationService != nil {
+		driver, err := h.driverRepo.GetByID(c.Request.Context(), req.DriverID)
+		if err == nil && driver != nil && driver.FCMToken != nil && *driver.FCMToken != "" {
+			fcmToken := *driver.FCMToken
+			questionID := question.ID.String()
+			questionText := question.QuestionText
+			go func() {
+				if err := h.notificationService.SendQuestionNotification(
+					c.Request.Context(),
+					fcmToken,
+					questionID,
+					questionText,
+				); err != nil {
+					log.Printf("[Questions] Soru bildirimi gönderilemedi: %v (driver: %s)", err, req.DriverID)
+				} else {
+					log.Printf("[Questions] Soru bildirimi gönderildi: %s (driver: %s)", questionID, req.DriverID)
+				}
+			}()
+		} else {
+			log.Printf("[Questions] FCM token bulunamadı, bildirim gönderilmedi (driver: %s)", req.DriverID)
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -451,14 +476,21 @@ func (h *QuestionsHandler) CreateBulkQuestions(c *gin.Context) {
 				fcmToken := *driver.FCMToken
 				questionID := question.ID.String()
 				questionText := question.QuestionText
+				driverIDStr := driverID.String()
 				go func() {
-					_ = h.notificationService.SendQuestionNotification(
+					if err := h.notificationService.SendQuestionNotification(
 						c.Request.Context(),
 						fcmToken,
 						questionID,
 						questionText,
-					)
+					); err != nil {
+						log.Printf("[BulkQuestions] Bildirim gönderilemedi: %v (driver: %s)", err, driverIDStr)
+					} else {
+						log.Printf("[BulkQuestions] Bildirim gönderildi: %s (driver: %s)", questionID, driverIDStr)
+					}
 				}()
+			} else {
+				log.Printf("[BulkQuestions] FCM token yok (driver: %s)", driverID)
 			}
 		}
 	}
@@ -636,14 +668,21 @@ func (h *QuestionsHandler) processBulkQuestions(c *gin.Context, req *models.Bulk
 				fcmToken := *driver.FCMToken
 				questionID := question.ID.String()
 				questionText := question.QuestionText
+				driverIDStr := driverID.String()
 				go func() {
-					_ = h.notificationService.SendQuestionNotification(
+					if err := h.notificationService.SendQuestionNotification(
 						c.Request.Context(),
 						fcmToken,
 						questionID,
 						questionText,
-					)
+					); err != nil {
+						log.Printf("[FilteredBulkQuestions] Bildirim gönderilemedi: %v (driver: %s)", err, driverIDStr)
+					} else {
+						log.Printf("[FilteredBulkQuestions] Bildirim gönderildi: %s (driver: %s)", questionID, driverIDStr)
+					}
 				}()
+			} else {
+				log.Printf("[FilteredBulkQuestions] FCM token yok (driver: %s)", driverID)
 			}
 		}
 	}
@@ -682,14 +721,21 @@ func (h *QuestionsHandler) SendQuestion(c *gin.Context) {
 			fcmToken := *driver.FCMToken
 			questionID := question.ID.String()
 			questionText := question.QuestionText
+			driverID := question.DriverID.String()
 			go func() {
-				_ = h.notificationService.SendQuestionNotification(
+				if err := h.notificationService.SendQuestionNotification(
 					c.Request.Context(),
 					fcmToken,
 					questionID,
 					questionText,
-				)
+				); err != nil {
+					log.Printf("[SendQuestion] Bildirim gönderilemedi: %v (driver: %s)", err, driverID)
+				} else {
+					log.Printf("[SendQuestion] Bildirim gönderildi: %s (driver: %s)", questionID, driverID)
+				}
 			}()
+		} else {
+			log.Printf("[SendQuestion] FCM token yok (driver: %s)", question.DriverID)
 		}
 	}
 

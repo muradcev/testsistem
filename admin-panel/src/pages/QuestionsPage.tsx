@@ -14,7 +14,9 @@ import {
   TrashIcon,
   UsersIcon,
   ChatBubbleLeftRightIcon,
+  MapPinIcon,
 } from '@heroicons/react/24/outline'
+import { turkeyProvinces } from '../data/turkeyLocations'
 
 interface Driver {
   id: string
@@ -107,6 +109,8 @@ const questionTypes = [
   { id: 'text', name: 'Metin' },
   { id: 'number', name: 'Sayı' },
   { id: 'price', name: 'Fiyat (TL)' },
+  { id: 'province', name: 'İl Seçimi' },
+  { id: 'province_district', name: 'İl-İlçe Seçimi' },
 ]
 
 const statusLabels: Record<string, { label: string; color: string }> = {
@@ -916,6 +920,9 @@ function CreateQuestionModal({
     ]},
     { text: 'Son seferiniz için ne kadar ücret aldınız?', type: 'price', followUps: [] },
     { text: 'Yol durumu nasıl?', type: 'multiple_choice', options: ['Açık', 'Yoğun', 'Çok Yoğun', 'Kapalı'], followUps: [] },
+    { text: 'Yükünüz hangi ile gidecek?', type: 'province', followUps: [] },
+    { text: 'Hangi ilden yük almak istersiniz?', type: 'province', followUps: [] },
+    { text: 'Şu an hangi il/ilçedesiniz?', type: 'province_district', followUps: [] },
   ]
 
   const getDriverId = (): string | null => {
@@ -937,13 +944,21 @@ function CreateQuestionModal({
       return
     }
 
+    // Soru tipine göre options belirle
+    let questionOptions: string[] | undefined = undefined
+    if (questionType === 'multiple_choice') {
+      questionOptions = options.filter(o => o)
+    } else if (questionType === 'province' || questionType === 'province_district') {
+      questionOptions = turkeyProvinces
+    }
+
     setLoading(true)
     try {
       await questionsApi.create({
         driver_id: driverId,
         question_text: questionText,
         question_type: questionType,
-        options: questionType === 'multiple_choice' ? options.filter(o => o) : undefined,
+        options: questionOptions,
         follow_up_questions: followUps.length > 0 ? followUps : undefined,
         send_immediately: sendImmediately,
         priority: 50,
@@ -1081,6 +1096,49 @@ function CreateQuestionModal({
                 >
                   + Seçenek Ekle
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Province selection info */}
+          {questionType === 'province' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <MapPinIcon className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800">İl Seçimi</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Şoför, Türkiye'nin 81 ilinden birini seçebilecek.
+                    Örnek: "İstanbul", "Ankara", "İzmir" vb.
+                  </p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {turkeyProvinces.slice(0, 8).map((p, idx) => (
+                      <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                        {p}
+                      </span>
+                    ))}
+                    <span className="text-xs text-blue-500">+{turkeyProvinces.length - 8} il daha</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Province-District selection info */}
+          {questionType === 'province_district' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <MapPinIcon className="h-5 w-5 text-green-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">İl-İlçe Seçimi</p>
+                  <p className="text-xs text-green-600 mt-1">
+                    Şoför önce il, sonra ilçe seçecek. Daha detaylı konum bilgisi alınacak.
+                    Örnek: "İstanbul → Kadıköy", "Ankara → Çankaya" vb.
+                  </p>
+                  <div className="mt-2 text-xs text-green-700">
+                    <span className="font-medium">Toplam:</span> 81 il, 970+ ilçe
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1382,11 +1440,20 @@ function BulkQuestionSender({
     if (selectedDrivers.length === 0 || !questionText) {
       return
     }
+
+    // Soru tipine göre options belirle
+    let questionOptions: string[] | undefined = undefined
+    if (questionType === 'multiple_choice') {
+      questionOptions = options.filter(o => o)
+    } else if (questionType === 'province' || questionType === 'province_district') {
+      questionOptions = turkeyProvinces
+    }
+
     onSend({
       driver_ids: selectedDrivers,
       question_text: questionText,
       question_type: questionType,
-      options: questionType === 'multiple_choice' ? options.filter(o => o) : undefined,
+      options: questionOptions,
       send_immediately: sendImmediately,
     })
     setQuestionText('')
@@ -1398,6 +1465,9 @@ function BulkQuestionSender({
     { text: 'Yükünüz var mı?', type: 'yes_no' },
     { text: 'Hangi bölgeden yük almak istersiniz?', type: 'text' },
     { text: 'Yol durumu nasıl?', type: 'multiple_choice', options: ['Açık', 'Yoğun', 'Çok Yoğun', 'Kapalı'] },
+    { text: 'Yükünüz hangi ile gidecek?', type: 'province' },
+    { text: 'Hangi ilden yük almak istersiniz?', type: 'province' },
+    { text: 'Şu an hangi il/ilçedesiniz?', type: 'province_district' },
   ]
 
   return (
@@ -1558,6 +1628,36 @@ function BulkQuestionSender({
                   >
                     + Seçenek Ekle
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Province selection info */}
+            {questionType === 'province' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <MapPinIcon className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-medium text-blue-800">İl Seçimi</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Şoförler 81 ilden birini seçebilecek
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Province-District selection info */}
+            {questionType === 'province_district' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <MapPinIcon className="h-4 w-4 text-green-600 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-medium text-green-800">İl-İlçe Seçimi</p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Şoförler önce il, sonra ilçe seçecek
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

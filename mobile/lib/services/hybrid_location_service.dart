@@ -18,10 +18,11 @@ import '../config/constants.dart';
 // Sabitler
 const String _workManagerTaskName = 'nakliyeo_location_check';
 const String _workManagerTaskTag = 'location';
-const double _speedThresholdKmh = 30.0; // 30 km/s üzeri = Foreground mod
+const double _speedThresholdKmh = 35.0; // 35 km/s üzeri = Foreground mod (GPS gürültüsünü önlemek için biraz yüksek)
+const double _speedStopThresholdKmh = 25.0; // 25 km/s altı = WorkManager moduna dön
 const int _workManagerIntervalMinutes = 15; // WorkManager aralığı (hareketsiz)
-const int _foregroundIntervalSeconds = 300; // 5 dakika = Foreground mod aralığı (hızlı sürüş)
-const int _slowSpeedCheckCount = 1; // 1 x 5dk = hız düşerse hemen WorkManager'a dön
+const int _foregroundIntervalSeconds = 30; // 30 saniye = Foreground mod aralığı (hızlı sürüş)
+const int _slowSpeedCheckCount = 2; // 2 x 30sn = 1 dakika düşük hız = WorkManager'a dön
 
 /// Hibrit Konum Servisi
 /// - Hız < 30 km/s: WorkManager modu (15 dk'da bir, bildirim yok)
@@ -45,7 +46,21 @@ class HybridLocationService {
     // Foreground Service'i yapılandır (ama başlatma)
     await _configureForegroundService();
 
+    // Önceki oturumdan kalmış olabilecek foreground servisi temizle
+    final service = FlutterBackgroundService();
+    final isRunning = await service.isRunning();
+    if (isRunning) {
+      debugPrint('[HybridLocation] Found running service from previous session, stopping...');
+      service.invoke('stop');
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    // Flag'i de temizle
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('should_start_foreground', false);
+
     _isInitialized = true;
+    _isForegroundMode = false;
     debugPrint('[HybridLocation] Initialized');
   }
 
@@ -97,17 +112,33 @@ class HybridLocationService {
 
   /// Foreground modunu durdur
   static Future<void> stopForegroundMode() async {
-    if (!_isForegroundMode) return;
-
     debugPrint('[HybridLocation] Stopping Foreground mode...');
 
     final service = FlutterBackgroundService();
     var isRunning = await service.isRunning();
+
+    // Servis çalışıyorsa durdur (flag'e bakmadan)
     if (isRunning) {
+      debugPrint('[HybridLocation] Service is running, stopping...');
       service.invoke('stop');
+
+      // Servisin durmasını bekle
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Tekrar kontrol et
+      isRunning = await service.isRunning();
+      if (isRunning) {
+        debugPrint('[HybridLocation] Service still running, trying stopSelf...');
+        service.invoke('stopSelf');
+      }
     }
 
     _isForegroundMode = false;
+
+    // Flag'i de temizle
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('should_start_foreground', false);
+
     debugPrint('[HybridLocation] Foreground mode stopped');
   }
 
@@ -177,7 +208,7 @@ void workManagerCallbackDispatcher() {
 
       // Hızı km/s'e çevir (m/s -> km/h)
       double speedKmh = position.speed * 3.6;
-      debugPrint('[WorkManager] Current speed: ${speedKmh.toStringAsFixed(1)} km/h');
+      debugPrint('[WorkManager] Current speed: ${speedKmh.toStringAsFixed(1)} km/h, accuracy: ${position.accuracy.toStringAsFixed(1)}m');
 
       // Prefs'ten token ve ayarları al
       final prefs = await SharedPreferences.getInstance();
@@ -188,7 +219,15 @@ void workManagerCallbackDispatcher() {
         return true;
       }
 
-      // Hız kontrolü - 30 km/s üzerinde mi?
+      // GPS doğruluk kontrolü - düşük doğrulukta hız verisi güvenilmez
+      // 50m üzeri doğruluk = GPS gürültüsü olabilir, foreground başlatma
+      if (position.accuracy > 50) {
+        debugPrint('[WorkManager] GPS accuracy too low (${position.accuracy.toStringAsFixed(1)}m), skipping foreground check');
+        await _sendLocation(position, accessToken, prefs);
+        return true;
+      }
+
+      // Hız kontrolü - 35 km/s üzerinde mi? (GPS gürültüsünü önlemek için biraz yüksek eşik)
       if (speedKmh >= _speedThresholdKmh) {
         debugPrint('[WorkManager] Speed >= $_speedThresholdKmh km/h, switching to Foreground mode');
         // Foreground moduna geç (bu WorkManager içinden yapılamaz, flag kaydet)
@@ -448,10 +487,10 @@ void _onForegroundStart(ServiceInstance service) async {
       double speedKmh = position.speed * 3.6;
       debugPrint('[Foreground] Speed: ${speedKmh.toStringAsFixed(1)} km/h');
 
-      // Hız kontrolü
-      if (speedKmh < _speedThresholdKmh) {
+      // Hız kontrolü - durdurma için daha düşük eşik kullan (histerezis)
+      if (speedKmh < _speedStopThresholdKmh) {
         slowSpeedCount++;
-        debugPrint('[Foreground] Slow speed count: $slowSpeedCount');
+        debugPrint('[Foreground] Slow speed count: $slowSpeedCount (speed: ${speedKmh.toStringAsFixed(1)} < $_speedStopThresholdKmh)');
 
         // 1 dakika (2 x 30sn) yavaş hız = WorkManager'a dön
         if (slowSpeedCount >= _slowSpeedCheckCount) {

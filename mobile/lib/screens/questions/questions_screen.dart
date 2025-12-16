@@ -113,6 +113,8 @@ class _QuestionCard extends StatefulWidget {
 
 class _QuestionCardState extends State<_QuestionCard> {
   String? _selectedOption;
+  String? _selectedProvince;
+  String? _selectedDistrict;
   final _textController = TextEditingController();
   DateTime? _startTime;
 
@@ -356,6 +358,22 @@ class _QuestionCardState extends State<_QuestionCard> {
           ),
         );
 
+      case 'province':
+        // İl seçimi - options içinde iller var
+        if (widget.question.options == null ||
+            widget.question.options!.isEmpty) {
+          return const Text('İller yüklenemedi');
+        }
+        return _buildProvinceSelector();
+
+      case 'province_district':
+        // İl-İlçe seçimi
+        if (widget.question.options == null ||
+            widget.question.options!.isEmpty) {
+          return const Text('İller yüklenemedi');
+        }
+        return _buildProvinceDistrictSelector();
+
       case 'text':
       default:
         return TextField(
@@ -367,5 +385,320 @@ class _QuestionCardState extends State<_QuestionCard> {
           ),
         );
     }
+  }
+
+  Widget _buildProvinceSelector() {
+    final provider = context.watch<QuestionsProvider>();
+    final provinces = widget.question.options ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              hint: const Text('İl seçin'),
+              value: _selectedProvince,
+              items: provinces.map((province) {
+                return DropdownMenuItem<String>(
+                  value: province,
+                  child: Text(province),
+                );
+              }).toList(),
+              onChanged: provider.isAnswering
+                  ? null
+                  : (value) {
+                      setState(() => _selectedProvince = value);
+                    },
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: provider.isAnswering || _selectedProvince == null
+                ? null
+                : () => _submitAnswer(_selectedProvince!),
+            child: provider.isAnswering
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Gönder'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProvinceDistrictSelector() {
+    final provider = context.watch<QuestionsProvider>();
+    final provinces = widget.question.options ?? [];
+
+    // İlçe listesi - basit bir eşleştirme
+    final districts = _getDistrictsForProvince(_selectedProvince);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // İl seçimi
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              hint: const Text('İl seçin'),
+              value: _selectedProvince,
+              items: provinces.map((province) {
+                return DropdownMenuItem<String>(
+                  value: province,
+                  child: Text(province),
+                );
+              }).toList(),
+              onChanged: provider.isAnswering
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _selectedProvince = value;
+                        _selectedDistrict = null; // İlçeyi sıfırla
+                      });
+                    },
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // İlçe seçimi
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: _selectedProvince == null
+                  ? Colors.grey.shade200
+                  : Colors.grey.shade300,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            color:
+                _selectedProvince == null ? Colors.grey.shade100 : Colors.white,
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              hint: Text(
+                _selectedProvince == null ? 'Önce il seçin' : 'İlçe seçin',
+                style: TextStyle(
+                  color: _selectedProvince == null
+                      ? Colors.grey.shade400
+                      : Colors.grey.shade600,
+                ),
+              ),
+              value: _selectedDistrict,
+              items: districts.map((district) {
+                return DropdownMenuItem<String>(
+                  value: district,
+                  child: Text(district),
+                );
+              }).toList(),
+              onChanged: _selectedProvince == null || provider.isAnswering
+                  ? null
+                  : (value) {
+                      setState(() => _selectedDistrict = value);
+                    },
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: provider.isAnswering ||
+                    _selectedProvince == null ||
+                    _selectedDistrict == null
+                ? null
+                : () =>
+                    _submitAnswer('$_selectedProvince / $_selectedDistrict'),
+            child: provider.isAnswering
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Gönder'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<String> _getDistrictsForProvince(String? province) {
+    if (province == null) return [];
+
+    // İlçe verileri - yaygın kullanılan ilçeler
+    final districtMap = {
+      'Adana': [
+        'Seyhan',
+        'Yüreğir',
+        'Çukurova',
+        'Sarıçam',
+        'Ceyhan',
+        'Kozan',
+        'İmamoğlu',
+        'Karaisalı'
+      ],
+      'Ankara': [
+        'Çankaya',
+        'Keçiören',
+        'Mamak',
+        'Etimesgut',
+        'Sincan',
+        'Yenimahalle',
+        'Altındağ',
+        'Pursaklar',
+        'Polatlı'
+      ],
+      'Antalya': [
+        'Muratpaşa',
+        'Kepez',
+        'Konyaaltı',
+        'Aksu',
+        'Döşemealtı',
+        'Alanya',
+        'Manavgat',
+        'Serik'
+      ],
+      'Bursa': [
+        'Osmangazi',
+        'Yıldırım',
+        'Nilüfer',
+        'İnegöl',
+        'Gemlik',
+        'Mudanya',
+        'Gürsu',
+        'Kestel'
+      ],
+      'Gaziantep': [
+        'Şahinbey',
+        'Şehitkamil',
+        'Nizip',
+        'İslahiye',
+        'Nurdağı',
+        'Araban',
+        'Oğuzeli'
+      ],
+      'İstanbul': [
+        'Kadıköy',
+        'Üsküdar',
+        'Beşiktaş',
+        'Fatih',
+        'Bakırköy',
+        'Beyoğlu',
+        'Maltepe',
+        'Pendik',
+        'Kartal',
+        'Ataşehir',
+        'Ümraniye',
+        'Şişli',
+        'Sarıyer',
+        'Beykoz',
+        'Beylikdüzü',
+        'Esenyurt',
+        'Küçükçekmece',
+        'Bağcılar',
+        'Bahçelievler',
+        'Tuzla',
+        'Sancaktepe',
+        'Sultanbeyli',
+        'Arnavutköy',
+        'Silivri'
+      ],
+      'İzmir': [
+        'Konak',
+        'Karşıyaka',
+        'Bornova',
+        'Buca',
+        'Bayraklı',
+        'Çiğli',
+        'Gaziemir',
+        'Karabağlar',
+        'Narlıdere',
+        'Aliağa',
+        'Bergama',
+        'Çeşme',
+        'Menemen',
+        'Torbalı'
+      ],
+      'Kocaeli': [
+        'İzmit',
+        'Gebze',
+        'Darıca',
+        'Körfez',
+        'Gölcük',
+        'Derince',
+        'Başiskele',
+        'Kartepe',
+        'Çayırova'
+      ],
+      'Konya': [
+        'Selçuklu',
+        'Meram',
+        'Karatay',
+        'Ereğli',
+        'Akşehir',
+        'Beyşehir',
+        'Cihanbeyli',
+        'Seydişehir'
+      ],
+      'Mersin': [
+        'Akdeniz',
+        'Mezitli',
+        'Toroslar',
+        'Yenişehir',
+        'Tarsus',
+        'Erdemli',
+        'Silifke',
+        'Anamur'
+      ],
+      'Samsun': [
+        'İlkadım',
+        'Atakum',
+        'Canik',
+        'Tekkeköy',
+        'Bafra',
+        'Çarşamba',
+        'Terme',
+        'Vezirköprü'
+      ],
+      'Trabzon': [
+        'Ortahisar',
+        'Akçaabat',
+        'Araklı',
+        'Vakfıkebir',
+        'Of',
+        'Yomra',
+        'Sürmene',
+        'Maçka'
+      ],
+    };
+
+    // Eğer ilçe listesi varsa döndür, yoksa genel ilçeler
+    if (districtMap.containsKey(province)) {
+      return districtMap[province]!;
+    }
+
+    // Diğer iller için varsayılan ilçeler
+    return ['Merkez', 'Diğer'];
   }
 }
