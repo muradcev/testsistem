@@ -149,8 +149,8 @@ const locationTypeIcons: Record<string, string> = {
   unknown: '❓',
 }
 
-// Grid boyutu (yaklaşık 200m) - 200 metre içindeki duraklar birleştirilir
-const CLUSTER_GRID_SIZE = 0.002
+// Grid boyutu (yaklaşık 500m) - 500 metre içindeki duraklar birleştirilir
+const CLUSTER_GRID_SIZE = 0.0045
 
 function clusterStops(stops: Stop[]): ClusteredStop[] {
   const grid: Record<string, ClusteredStop> = {}
@@ -208,7 +208,7 @@ export default function StopsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [homeForm, setHomeForm] = useState({
     name: '',
-    radius: 200,
+    radius: 500,
   })
 
   // Get location types
@@ -288,7 +288,7 @@ export default function StopsPage() {
       queryClient.invalidateQueries({ queryKey: ['stops'] })
       setShowHomeModal(false)
       setSelectedStop(null)
-      setHomeForm({ name: '', radius: 200 })
+      setHomeForm({ name: '', radius: 500 })
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Ev adresi eklenemedi')
@@ -407,7 +407,7 @@ export default function StopsPage() {
     if (!selectedStop) return
     setHomeForm({
       name: `Ev`,
-      radius: 200,
+      radius: 500,
     })
     setShowHomeModal(true)
   }
@@ -1162,7 +1162,7 @@ export default function StopsPage() {
               <button
                 onClick={() => {
                   setShowHomeModal(false)
-                  setHomeForm({ name: '', radius: 200 })
+                  setHomeForm({ name: '', radius: 500 })
                 }}
                 className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
