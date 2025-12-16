@@ -4,6 +4,8 @@ import { locationsApi } from '../services/api'
 import { useAuthStore } from '../store/authStore'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import { Link } from 'react-router-dom'
+import { formatDistanceToNow } from 'date-fns'
+import { tr } from 'date-fns/locale'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -452,44 +454,95 @@ export default function LiveMapPage() {
               icon={statusIcons[location.status] || statusIcons.inactive}
             >
               <Popup>
-                <div className="min-w-48">
-                  <h3 className="font-semibold">
+                <div className="min-w-56">
+                  <h3 className="font-semibold text-base">
                     {location.driver_name} {location.driver_surname}
                   </h3>
                   {location.province && (
                     <p className="text-sm text-gray-600">{location.province}</p>
                   )}
-                  <p className="text-sm text-gray-500">
-                    Hız: {location.speed.toFixed(1)} km/s
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Güncelleme:{' '}
-                    {new Date(location.updated_at).toLocaleTimeString('tr-TR')}
-                  </p>
-                  <p className="text-sm">
-                    Durum:{' '}
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs ${
-                        location.status === 'on_trip'
-                          ? 'bg-orange-100 text-orange-800'
+
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm">
+                      <span className="text-gray-500">Hız:</span>{' '}
+                      <span className={`font-semibold ${location.speed >= 30 ? 'text-green-600' : 'text-gray-700'}`}>
+                        {location.speed.toFixed(0)} km/s
+                      </span>
+                      {location.speed >= 30 && <span className="text-xs text-green-500 ml-1">(Aktif takip)</span>}
+                    </p>
+
+                    <p className="text-sm">
+                      <span className="text-gray-500">GPS:</span>{' '}
+                      <span className="font-mono text-xs">{location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}</span>
+                    </p>
+
+                    <p className="text-sm">
+                      <span className="text-gray-500">Son Güncelleme:</span>{' '}
+                      <span className={`font-medium ${
+                        (Date.now() - new Date(location.updated_at).getTime()) < 120000
+                          ? 'text-green-600'
+                          : (Date.now() - new Date(location.updated_at).getTime()) < 900000
+                          ? 'text-yellow-600'
+                          : 'text-red-600'
+                      }`}>
+                        {formatDistanceToNow(new Date(location.updated_at), { addSuffix: true, locale: tr })}
+                      </span>
+                    </p>
+
+                    <p className="text-xs text-gray-400">
+                      {new Date(location.updated_at).toLocaleString('tr-TR')}
+                    </p>
+
+                    <p className="text-sm">
+                      <span className="text-gray-500">Durum:</span>{' '}
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs ${
+                          location.status === 'on_trip'
+                            ? 'bg-orange-100 text-orange-800'
+                            : location.status === 'at_home'
+                            ? 'bg-blue-100 text-blue-800'
+                            : location.status === 'moving'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {location.status === 'on_trip'
+                          ? 'Seferde'
                           : location.status === 'at_home'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
+                          ? 'Evde'
+                          : location.status === 'moving'
+                          ? 'Hareket Halinde'
+                          : location.status === 'stationary'
+                          ? 'Duruyor'
+                          : 'Aktif'}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="mt-3 flex gap-2">
+                    <Link
+                      to={`/drivers/${location.driver_id}`}
+                      className="text-blue-600 hover:text-blue-700 text-sm"
                     >
-                      {location.status === 'on_trip'
-                        ? 'Seferde'
-                        : location.status === 'at_home'
-                        ? 'Evde'
-                        : 'Aktif'}
-                    </span>
-                  </p>
-                  <Link
-                    to={`/drivers/${location.driver_id}`}
-                    className="text-primary-600 hover:text-primary-700 text-sm mt-2 inline-block"
-                  >
-                    Detaya Git &rarr;
-                  </Link>
+                      Detay
+                    </Link>
+                    <span className="text-gray-300">|</span>
+                    <Link
+                      to={`/drivers/${location.driver_id}/route`}
+                      className="text-green-600 hover:text-green-700 text-sm"
+                    >
+                      Rota
+                    </Link>
+                    <span className="text-gray-300">|</span>
+                    <a
+                      href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-600 hover:text-purple-700 text-sm"
+                    >
+                      Google Maps
+                    </a>
+                  </div>
                 </div>
               </Popup>
             </Marker>
