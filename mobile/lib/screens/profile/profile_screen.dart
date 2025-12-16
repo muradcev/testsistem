@@ -708,6 +708,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           TextButton(
+            onPressed: () async {
+              final notificationService = context.read<NotificationService>();
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              Navigator.pop(context);
+
+              scaffoldMessenger.showSnackBar(
+                const SnackBar(content: Text('FCM token gönderiliyor...')),
+              );
+
+              await notificationService.sendFcmTokenToServer();
+
+              final error = notificationService.fcmError;
+              final token = notificationService.fcmToken;
+
+              if (error != null) {
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text('Hata: $error'), backgroundColor: Colors.red),
+                );
+              } else if (token != null) {
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(content: Text('FCM token gönderildi!'), backgroundColor: Colors.green),
+                );
+              } else {
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(content: Text('FCM token yok!'), backgroundColor: Colors.orange),
+                );
+              }
+            },
+            child: const Text('Bildirim Test'),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Kapat'),
           ),
