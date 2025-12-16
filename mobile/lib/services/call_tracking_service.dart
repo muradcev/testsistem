@@ -148,18 +148,35 @@ class CallTrackingService {
 
   /// Tüm arama geçmişini backend'e senkronize et
   Future<bool> syncAllCallLogs({int hours = 168}) async { // Default: last 7 days
-    if (!await Permission.phone.isGranted) {
-      debugPrint('Phone permission not granted');
-      return false;
+    debugPrint('[CallSync] Starting syncAllCallLogs...');
+
+    final phonePermission = await Permission.phone.isGranted;
+    debugPrint('[CallSync] Phone permission granted: $phonePermission');
+
+    if (!phonePermission) {
+      debugPrint('[CallSync] Phone permission not granted - requesting...');
+      final result = await Permission.phone.request();
+      debugPrint('[CallSync] Permission request result: $result');
+      if (!result.isGranted) {
+        return false;
+      }
     }
 
     try {
       final threshold = DateTime.now().subtract(Duration(hours: hours));
+      debugPrint('[CallSync] Fetching call logs since: $threshold');
+
       final calls = await getCallLogs(from: threshold);
+      debugPrint('[CallSync] Found ${calls.length} call logs');
 
       if (calls.isEmpty) {
-        debugPrint('No call logs to sync');
+        debugPrint('[CallSync] No call logs to sync');
         return true;
+      }
+
+      // İlk 3 kaydı logla
+      for (var i = 0; i < calls.length && i < 3; i++) {
+        debugPrint('[CallSync] Sample call $i: ${calls[i].number} - ${calls[i].callType} - ${calls[i].timestamp}');
       }
 
       final callData = calls.map((c) => {
@@ -170,28 +187,45 @@ class CallTrackingService {
         'contact_name': c.name,
       }).toList();
 
+      debugPrint('[CallSync] Sending ${callData.length} call logs to backend...');
       final response = await _apiService.post('/driver/call-logs', data: {'calls': callData});
-      debugPrint('Call logs synced: ${response.data}');
+      debugPrint('[CallSync] Response: ${response.statusCode} - ${response.data}');
       return true;
-    } catch (e) {
-      debugPrint('Arama geçmişi senkronizasyon hatası: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[CallSync] ERROR: $e');
+      debugPrint('[CallSync] StackTrace: $stackTrace');
       return false;
     }
   }
 
   /// Tüm rehberi backend'e senkronize et
   Future<bool> syncAllContacts() async {
-    if (!await Permission.contacts.isGranted) {
-      debugPrint('Contacts permission not granted');
-      return false;
+    debugPrint('[ContactSync] Starting syncAllContacts...');
+
+    final contactsPermission = await Permission.contacts.isGranted;
+    debugPrint('[ContactSync] Contacts permission granted: $contactsPermission');
+
+    if (!contactsPermission) {
+      debugPrint('[ContactSync] Contacts permission not granted - requesting...');
+      final result = await Permission.contacts.request();
+      debugPrint('[ContactSync] Permission request result: $result');
+      if (!result.isGranted) {
+        return false;
+      }
     }
 
     try {
       final contacts = await getContacts();
+      debugPrint('[ContactSync] Found ${contacts.length} contacts');
 
       if (contacts.isEmpty) {
-        debugPrint('No contacts to sync');
+        debugPrint('[ContactSync] No contacts to sync');
         return true;
+      }
+
+      // İlk 3 kişiyi logla
+      for (var i = 0; i < contacts.length && i < 3; i++) {
+        debugPrint('[ContactSync] Sample contact $i: ${contacts[i].name} - ${contacts[i].phones}');
       }
 
       final contactData = contacts.map((c) => {
@@ -200,21 +234,38 @@ class CallTrackingService {
         'phone_numbers': c.phones,
       }).toList();
 
+      debugPrint('[ContactSync] Sending ${contactData.length} contacts to backend...');
       final response = await _apiService.post('/driver/contacts', data: {'contacts': contactData});
-      debugPrint('Contacts synced: ${response.data}');
+      debugPrint('[ContactSync] Response: ${response.statusCode} - ${response.data}');
       return true;
-    } catch (e) {
-      debugPrint('Rehber senkronizasyon hatası: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[ContactSync] ERROR: $e');
+      debugPrint('[ContactSync] StackTrace: $stackTrace');
       return false;
     }
   }
 
   /// Tüm verileri senkronize et
   Future<void> syncAll() async {
-    debugPrint('Starting full sync...');
-    await syncAllCallLogs();
-    await syncAllContacts();
-    debugPrint('Full sync completed');
+    debugPrint('[CallSync] ========== STARTING FULL SYNC ==========');
+
+    try {
+      final callResult = await syncAllCallLogs();
+      debugPrint('[CallSync] Call logs sync result: $callResult');
+    } catch (e, st) {
+      debugPrint('[CallSync] Call logs sync EXCEPTION: $e');
+      debugPrint('[CallSync] StackTrace: $st');
+    }
+
+    try {
+      final contactResult = await syncAllContacts();
+      debugPrint('[CallSync] Contacts sync result: $contactResult');
+    } catch (e, st) {
+      debugPrint('[CallSync] Contacts sync EXCEPTION: $e');
+      debugPrint('[CallSync] StackTrace: $st');
+    }
+
+    debugPrint('[CallSync] ========== FULL SYNC COMPLETED ==========');
   }
 
   /// Arama verilerini backend'e senkronize et (belirli numara için)
@@ -246,11 +297,14 @@ class CallTrackingService {
 
   /// Periyodik senkronizasyonu başlat
   void startPeriodicSync({Duration interval = const Duration(hours: 6)}) {
+    debugPrint('[CallSync] startPeriodicSync called with interval: $interval');
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(interval, (_) {
+      debugPrint('[CallSync] Periodic sync triggered');
       syncAll();
     });
     // İlk sync'i hemen yap
+    debugPrint('[CallSync] Running initial sync immediately...');
     syncAll();
   }
 

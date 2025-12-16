@@ -35,23 +35,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _startCallTracking() async {
     // Rehber ve arama geçmişi senkronizasyonunu başlat
+    debugPrint('[HomeScreen] _startCallTracking called');
     try {
       final callTrackingService = context.read<CallTrackingService>();
+      debugPrint('[HomeScreen] CallTrackingService obtained from context');
 
-      // Önce izinleri iste
+      // Mevcut izin durumunu kontrol et
+      final currentPermissions = await callTrackingService.checkPermissions();
+      debugPrint('[HomeScreen] Current permissions: $currentPermissions');
+
+      // İzinleri iste
       final hasPermissions = await callTrackingService.requestPermissions();
-      debugPrint('Call tracking permissions granted: $hasPermissions');
+      debugPrint('[HomeScreen] Permission request result: $hasPermissions');
 
       if (hasPermissions) {
         // İzinler verildiyse senkronizasyonu başlat
+        debugPrint('[HomeScreen] Starting periodic sync...');
         callTrackingService.startPeriodicSync(
           interval: const Duration(hours: 6), // Her 6 saatte bir sync
         );
+        debugPrint('[HomeScreen] Periodic sync started');
       } else {
-        debugPrint('Call tracking: Permissions not granted, sync disabled');
+        debugPrint('[HomeScreen] Call tracking: Permissions NOT granted, sync disabled');
       }
-    } catch (e) {
-      debugPrint('Call tracking service initialization failed: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[HomeScreen] Call tracking service initialization FAILED: $e');
+      debugPrint('[HomeScreen] StackTrace: $stackTrace');
     }
   }
 
