@@ -382,14 +382,18 @@ class NotificationService {
   Future<void> _sendFcmTokenToServer(String token) async {
     debugPrint('[FCM] _sendFcmTokenToServer called with token: ${token.substring(0, 20)}...');
     if (_apiService == null) {
+      _fcmError = 'ApiService not set';
       debugPrint('[FCM] ERROR: ApiService not set, cannot send FCM token');
       return;
     }
 
     try {
-      await _apiService!.updateFcmToken(token);
-      debugPrint('[FCM] SUCCESS: FCM token sent to server');
+      debugPrint('[FCM] Calling API to update FCM token...');
+      final response = await _apiService!.updateFcmToken(token);
+      debugPrint('[FCM] SUCCESS: FCM token sent to server. Response: ${response.statusCode}');
+      _fcmError = null; // Clear any previous error
     } catch (e) {
+      _fcmError = 'Token gönderme hatası: $e';
       debugPrint('[FCM] ERROR: Failed to send FCM token: $e');
     }
   }
