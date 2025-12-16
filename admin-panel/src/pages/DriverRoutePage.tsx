@@ -76,6 +76,39 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c
 }
 
+// Calculate distance in meters
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  return calculateDistance(lat1, lon1, lat2, lon2) * 1000
+}
+
+// Group nearby locations within radius (default 100m) for cleaner map display
+function simplifyLocations(locations: Location[], radiusMeters: number = 100): Location[] {
+  if (locations.length < 2) return locations
+
+  const simplified: Location[] = [locations[0]]
+
+  for (let i = 1; i < locations.length; i++) {
+    const last = simplified[simplified.length - 1]
+    const current = locations[i]
+    const distance = calculateDistanceMeters(last.latitude, last.longitude, current.latitude, current.longitude)
+
+    // Keep point if distance > radius OR significant speed change OR significant time gap
+    const timeDiff = Math.abs(new Date(current.recorded_at).getTime() - new Date(last.recorded_at).getTime()) / 1000
+    const speedChange = Math.abs((current.speed || 0) - (last.speed || 0))
+
+    if (distance > radiusMeters || speedChange > 10 || timeDiff > 300) {
+      simplified.push(current)
+    }
+  }
+
+  // Always include last point
+  if (simplified[simplified.length - 1] !== locations[locations.length - 1]) {
+    simplified.push(locations[locations.length - 1])
+  }
+
+  return simplified
+}
+
 // Detect stops from location data
 function detectStops(locations: Location[], minDurationMinutes: number = 5, maxDistanceMeters: number = 50): Stop[] {
   if (locations.length < 2) return []
@@ -278,22 +311,29 @@ export default function DriverRoutePage() {
   })
 
   const driver = driverData?.data?.driver
-  const locations: Location[] = useMemo(() => {
+
+  // All locations for stats
+  const allLocations: Location[] = useMemo(() => {
     const locs = locationsData?.data?.locations || []
     // Sort by recorded_at ascending for correct route drawing
     return [...locs].sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())
   }, [locationsData])
 
-  // Detect stops
-  const stops = useMemo(() => detectStops(locations), [locations])
+  // Simplified locations for map (group within 100m)
+  const locations: Location[] = useMemo(() => {
+    return simplifyLocations(allLocations, 100)
+  }, [allLocations])
 
-  // Calculate stats
+  // Detect stops (use all locations for accuracy)
+  const stops = useMemo(() => detectStops(allLocations), [allLocations])
+
+  // Calculate stats (use all locations)
   const stats = useMemo(() => {
-    const baseStats = calculateStats(locations)
+    const baseStats = calculateStats(allLocations)
     return { ...baseStats, totalStops: stops.length }
-  }, [locations, stops])
+  }, [allLocations, stops])
 
-  // Create polyline segments with colors based on speed
+  // Create polyline segments with colors based on speed (use simplified for performance)
   const routeSegments = useMemo(() => {
     if (locations.length < 2) return []
 
@@ -433,7 +473,10 @@ export default function DriverRoutePage() {
             <div className="flex items-center gap-2">
               <MapPinIcon className="h-4 w-4 text-blue-500" />
               <span className="text-sm">
-                <strong>{locations.length}</strong> konum noktası
+                <strong>{allLocations.length}</strong> konum
+                {allLocations.length !== locations.length && (
+                  <span className="text-gray-400 ml-1">({locations.length} haritada)</span>
+                )}
               </span>
             </div>
             <div className="flex items-center gap-2">

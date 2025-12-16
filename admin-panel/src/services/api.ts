@@ -53,8 +53,8 @@ export const driversApi = {
   getAll: (params?: { limit?: number; offset?: number }) =>
     api.get('/admin/drivers', { params }),
   getById: (id: string) => api.get(`/admin/drivers/${id}`),
-  getLocations: (id: string, params?: { start_date?: string; end_date?: string }) =>
-    api.get(`/admin/drivers/${id}/locations`, { params }),
+  getLocations: (id: string, params?: { start_date?: string; end_date?: string; limit?: number }) =>
+    api.get(`/admin/drivers/${id}/locations`, { params: { ...params, limit: params?.limit || 5000 } }),
   getTrips: (id: string, params?: { limit?: number; offset?: number }) =>
     api.get(`/admin/drivers/${id}/trips`, { params }),
   getStops: (id: string) => api.get(`/admin/drivers/${id}/stops`),
