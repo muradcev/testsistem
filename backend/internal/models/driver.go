@@ -182,6 +182,9 @@ type DriverDetailResponse struct {
 	SurveysEnabled   bool `json:"surveys_enabled"`
 	QuestionsEnabled bool `json:"questions_enabled"`
 
+	// FCM Token (bildirim durumu için)
+	FCMToken string `json:"fcm_token,omitempty"`
+
 	// İlişkili veriler
 	Vehicles []Vehicle `json:"vehicles"`
 	Trailers []Trailer `json:"trailers"`

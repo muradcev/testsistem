@@ -94,6 +94,7 @@ func (h *DriverHandler) UpdateProfile(c *gin.Context) {
 func (h *DriverHandler) UpdateFCMToken(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
+		log.Printf("[FCM] UpdateFCMToken - Yetkisiz erişim")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
 		return
 	}
@@ -102,15 +103,20 @@ func (h *DriverHandler) UpdateFCMToken(c *gin.Context) {
 		Token string `json:"token" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[FCM] UpdateFCMToken - JSON parse hatası: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("[FCM] UpdateFCMToken - Driver: %s, Token: %s...", userID, req.Token[:min(30, len(req.Token))])
+
 	if err := h.driverService.UpdateFCMToken(c.Request.Context(), userID, req.Token); err != nil {
+		log.Printf("[FCM] UpdateFCMToken - DB hatası: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("[FCM] UpdateFCMToken - BAŞARILI: %s", userID)
 	c.JSON(http.StatusOK, gin.H{"message": "Token güncellendi"})
 }
 

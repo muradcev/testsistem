@@ -171,6 +171,7 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		CallLogEnabled:            driver.CallLogEnabled,
 		SurveysEnabled:            driver.SurveysEnabled,
 		QuestionsEnabled:          driver.QuestionsEnabled,
+		FCMToken:                  func() string { if driver.FCMToken != nil { return *driver.FCMToken } return "" }(),
 		Vehicles:                  vehicles,
 		Trailers:                  trailers,
 	}
