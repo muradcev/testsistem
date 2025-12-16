@@ -59,16 +59,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _onPhonePickedUp() async {
     debugPrint('[HomeScreen] Phone picked up - user is using phone');
 
+    final prefs = await SharedPreferences.getInstance();
+
+    // Önce should_start_foreground flag'ini temizle (tekrar başlatmasını engelle)
+    await prefs.setBool('should_start_foreground', false);
+
+    // Telefon kullanımı event'ini kaydet
+    await prefs.setString('last_phone_pickup', DateTime.now().toIso8601String());
+    await prefs.setBool('phone_in_use', true);
+
     // Eğer Foreground modundaysak, WorkManager moduna geç
     if (HybridLocationService.isForegroundMode) {
       debugPrint('[HomeScreen] Switching from Foreground to WorkManager mode');
       await HybridLocationService.stopForegroundMode();
       await HybridLocationService.startWorkManagerMode();
-
-      // Telefon kullanımı event'ini kaydet
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_phone_pickup', DateTime.now().toIso8601String());
-      await prefs.setBool('phone_in_use', true);
     }
   }
 
@@ -94,6 +98,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       final shouldStartForeground = prefs.getBool('should_start_foreground') ?? false;
+
+      // Son 5 dakika içinde telefon ele alındıysa foreground başlatma
+      final lastPickup = prefs.getString('last_phone_pickup');
+      if (lastPickup != null) {
+        final pickupTime = DateTime.tryParse(lastPickup);
+        if (pickupTime != null) {
+          final minutesSincePickup = DateTime.now().difference(pickupTime).inMinutes;
+          if (minutesSincePickup < 5) {
+            debugPrint('[HomeScreen] Phone was picked up $minutesSincePickup min ago, skipping foreground');
+            await prefs.setBool('should_start_foreground', false);
+            return;
+          }
+        }
+      }
 
       if (shouldStartForeground && !HybridLocationService.isForegroundMode) {
         debugPrint('[HomeScreen] Speed threshold reached, switching to Foreground mode');
