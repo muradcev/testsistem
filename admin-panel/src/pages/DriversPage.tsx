@@ -21,11 +21,30 @@ interface Driver {
   district: string
   created_at: string
   last_location_at: string | null
+  last_latitude: number | null
+  last_longitude: number | null
   app_version: string | null
   device_os: string | null
   last_active_at: string | null
   has_app: boolean
   app_status: 'active' | 'inactive' | 'stale' | 'never_installed'
+}
+
+// Time elapsed helper function
+function formatTimeElapsed(dateString: string | null): string {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'Az önce'
+  if (diffMins < 60) return `${diffMins} dk önce`
+  if (diffHours < 24) return `${diffHours} saat önce`
+  if (diffDays < 7) return `${diffDays} gün önce`
+  return date.toLocaleDateString('tr-TR')
 }
 
 const statusLabels: Record<string, string> = {
@@ -162,6 +181,20 @@ export default function DriversPage() {
                 </div>
               )}
             </div>
+            {driver.last_latitude && driver.last_longitude && (
+              <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-xs text-gray-500">Son konum:</span>
+                <a
+                  href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-primary-600 hover:underline"
+                >
+                  {formatTimeElapsed(driver.last_location_at)}
+                </a>
+              </div>
+            )}
           </Link>
         ))}
       </div>
@@ -188,7 +221,7 @@ export default function DriversPage() {
                   Durum
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Son Aktif
+                  Son Konum
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   İşlemler
@@ -259,12 +292,24 @@ export default function DriversPage() {
                       {statusLabels[driver.status] || 'Bilinmiyor'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {driver.last_active_at
-                      ? new Date(driver.last_active_at).toLocaleString('tr-TR')
-                      : driver.last_location_at
-                      ? new Date(driver.last_location_at).toLocaleString('tr-TR')
-                      : '-'}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {driver.last_latitude && driver.last_longitude ? (
+                      <div className="text-sm">
+                        <a
+                          href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary-600 hover:text-primary-800 hover:underline"
+                        >
+                          {driver.last_latitude.toFixed(4)}, {driver.last_longitude.toFixed(4)}
+                        </a>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {formatTimeElapsed(driver.last_location_at)}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">Veri yok</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <Link

@@ -57,6 +57,10 @@ interface Driver {
   call_log_enabled: boolean
   surveys_enabled: boolean
   questions_enabled: boolean
+  last_location_at?: string
+  last_latitude?: number
+  last_longitude?: number
+  last_active_at?: string
   vehicles: Array<{
     id: string
     brand: string
@@ -73,6 +77,23 @@ interface Driver {
     plate: string
     is_active: boolean
   }>
+}
+
+// Time elapsed helper function
+function formatTimeElapsed(dateString: string | null | undefined): string {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'Az önce'
+  if (diffMins < 60) return `${diffMins} dakika önce`
+  if (diffHours < 24) return `${diffHours} saat önce`
+  if (diffDays < 7) return `${diffDays} gün önce`
+  return date.toLocaleDateString('tr-TR')
 }
 
 interface Location {
@@ -453,6 +474,45 @@ export default function DriverDetailPage() {
         </Link>
       </div>
 
+      {/* Last Location Card */}
+      {driver.last_latitude && driver.last_longitude && (
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg shadow p-4 border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500 rounded-full">
+                <MapPinIcon className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-blue-800">Son Konum</h3>
+                <p className="text-lg font-semibold text-blue-900">
+                  {driver.last_latitude.toFixed(6)}, {driver.last_longitude.toFixed(6)}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <ClockIcon className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm text-blue-700">
+                    {driver.last_location_at
+                      ? new Date(driver.last_location_at).toLocaleString('tr-TR')
+                      : '-'}
+                  </span>
+                  <span className="text-sm font-medium text-blue-800 bg-blue-200 px-2 py-0.5 rounded">
+                    {formatTimeElapsed(driver.last_location_at)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <a
+              href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <MapPinIcon className="h-5 w-5" />
+              Haritada Gör
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Driver Info */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -674,13 +734,24 @@ export default function DriverDetailPage() {
                         {formatDuration(stop.duration_minutes)} bekledi
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleSetStopAsHome(stop)}
-                      className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs flex-shrink-0 ml-2"
-                    >
-                      <HomeIcon className="h-3 w-3" />
-                      Ev Yap
-                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      <a
+                        href={`https://www.google.com/maps?q=${stop.latitude},${stop.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"
+                        title="Haritada Gör"
+                      >
+                        <MapPinIcon className="h-4 w-4" />
+                      </a>
+                      <button
+                        onClick={() => handleSetStopAsHome(stop)}
+                        className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs"
+                      >
+                        <HomeIcon className="h-3 w-3" />
+                        Ev Yap
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -797,6 +868,53 @@ export default function DriverDetailPage() {
                     fillOpacity: 0.2,
                   }}
                 />
+              </div>
+            ))}
+            {/* Frequent Stops with 500m radius - Common Places */}
+            {frequentStops.slice(0, 5).map((stop, index) => (
+              <div key={`stop-${stop.id}`}>
+                <Circle
+                  center={[stop.latitude, stop.longitude]}
+                  radius={500}
+                  pathOptions={{
+                    color: '#f59e0b',
+                    fillColor: '#f59e0b',
+                    fillOpacity: 0.15,
+                    dashArray: '5, 5',
+                  }}
+                >
+                  <Popup>
+                    <div className="text-sm">
+                      <strong>📍 Sık Durulan Yer #{index + 1}</strong>
+                      <br />
+                      {stop.province && `${stop.province}, `}{stop.district}
+                      <br />
+                      Toplam: {formatDuration(stop.duration_minutes)} bekleme
+                      <br />
+                      <span className="text-xs text-gray-500">500m yarıçap</span>
+                    </div>
+                  </Popup>
+                </Circle>
+                <Marker position={[stop.latitude, stop.longitude]}>
+                  <Popup>
+                    <div className="text-sm">
+                      <strong>📍 Sık Durulan Yer #{index + 1}</strong>
+                      <br />
+                      {stop.province && `${stop.province}, `}{stop.district}
+                      <br />
+                      Toplam: {formatDuration(stop.duration_minutes)} bekleme
+                      <br />
+                      <a
+                        href={`https://www.google.com/maps?q=${stop.latitude},${stop.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline text-xs"
+                      >
+                        Google Maps'te Aç
+                      </a>
+                    </div>
+                  </Popup>
+                </Marker>
               </div>
             ))}
           </MapContainer>
