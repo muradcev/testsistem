@@ -35,6 +35,7 @@ func (s *LocationService) SaveLocation(ctx context.Context, driverID uuid.UUID, 
 		IsMoving:     req.IsMoving,
 		ActivityType: req.ActivityType,
 		BatteryLevel: req.BatteryLevel,
+		PhoneInUse:   req.PhoneInUse,
 		RecordedAt:   req.RecordedAt.Time, // FlexibleTime'dan time.Time'a
 	}
 
@@ -60,6 +61,7 @@ func (s *LocationService) SaveBatchLocations(ctx context.Context, driverID uuid.
 			IsMoving:     req.IsMoving,
 			ActivityType: req.ActivityType,
 			BatteryLevel: req.BatteryLevel,
+			PhoneInUse:   req.PhoneInUse,
 			RecordedAt:   req.RecordedAt.Time, // FlexibleTime'dan time.Time'a
 		}
 	}

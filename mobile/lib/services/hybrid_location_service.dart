@@ -17,8 +17,9 @@ import '../config/constants.dart';
 const String _workManagerTaskName = 'nakliyeo_location_check';
 const String _workManagerTaskTag = 'location';
 const double _speedThresholdKmh = 30.0; // 30 km/s üzeri = Foreground mod
-const int _workManagerIntervalMinutes = 15; // WorkManager aralığı
-const int _slowSpeedCheckCount = 2; // 2 x 30sn = 1 dakika yavaş = WorkManager'a dön
+const int _workManagerIntervalMinutes = 15; // WorkManager aralığı (hareketsiz)
+const int _foregroundIntervalSeconds = 300; // 5 dakika = Foreground mod aralığı (hızlı sürüş)
+const int _slowSpeedCheckCount = 1; // 1 x 5dk = hız düşerse hemen WorkManager'a dön
 
 /// Hibrit Konum Servisi
 /// - Hız < 30 km/s: WorkManager modu (15 dk'da bir, bildirim yok)
@@ -224,6 +225,13 @@ Future<void> _sendLocation(Position position, String accessToken, SharedPreferen
       // ignore
     }
 
+    // Telefon kullanım durumunu kontrol et
+    final phoneInUse = prefs.getBool('phone_in_use') ?? false;
+    // Telefon kullanımı flag'ini sıfırla (bir kez gönderildi)
+    if (phoneInUse) {
+      await prefs.setBool('phone_in_use', false);
+    }
+
     // Konum verisi
     final locationData = {
       'latitude': position.latitude,
@@ -235,6 +243,7 @@ Future<void> _sendLocation(Position position, String accessToken, SharedPreferen
       'is_moving': position.speed > 2,
       'activity_type': position.speed * 3.6 > 30 ? 'driving' : (position.speed > 2 ? 'moving' : 'still'),
       'battery_level': batteryLevel,
+      'phone_in_use': phoneInUse,
       'recorded_at': DateTime.now().toIso8601String(),
     };
 
@@ -390,6 +399,7 @@ void _onForegroundStart(ServiceInstance service) async {
         'is_moving': speedKmh > 5,
         'activity_type': 'driving',
         'battery_level': batteryLevel,
+        'phone_in_use': false, // Foreground modunda telefon kullanılmıyor (sürüş halinde)
         'recorded_at': DateTime.now().toIso8601String(),
       };
 
@@ -410,8 +420,8 @@ void _onForegroundStart(ServiceInstance service) async {
     }
   }
 
-  // Her 30 saniyede konum gönder
-  locationTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+  // Her 5 dakikada konum gönder (Foreground modunda)
+  locationTimer = Timer.periodic(const Duration(seconds: _foregroundIntervalSeconds), (_) {
     sendLocation();
   });
 

@@ -50,8 +50,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      // Uygulama ön plana geldiğinde foreground flag'i kontrol et
-      _checkForegroundFlag();
+      // Kullanıcı telefonu eline aldı - Foreground modundan çık
+      _onPhonePickedUp();
+    }
+  }
+
+  /// Kullanıcı telefonu eline aldığında çağrılır
+  Future<void> _onPhonePickedUp() async {
+    debugPrint('[HomeScreen] Phone picked up - user is using phone');
+
+    // Eğer Foreground modundaysak, WorkManager moduna geç
+    if (HybridLocationService.isForegroundMode) {
+      debugPrint('[HomeScreen] Switching from Foreground to WorkManager mode');
+      await HybridLocationService.stopForegroundMode();
+      await HybridLocationService.startWorkManagerMode();
+
+      // Telefon kullanımı event'ini kaydet
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_phone_pickup', DateTime.now().toIso8601String());
+      await prefs.setBool('phone_in_use', true);
     }
   }
 

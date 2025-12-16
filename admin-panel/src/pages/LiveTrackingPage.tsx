@@ -15,6 +15,7 @@ interface LiveLocation {
   status: string
   updated_at: string
   province?: string
+  phone_in_use?: boolean
 }
 
 interface Driver {
@@ -138,6 +139,7 @@ export default function LiveTrackingPage() {
     moving: filteredLocations.filter(l => (l.speed || 0) > 5).length,
     fast: filteredLocations.filter(l => (l.speed || 0) >= 30).length,
     stationary: filteredLocations.filter(l => (l.speed || 0) <= 5).length,
+    phoneInUse: filteredLocations.filter(l => l.phone_in_use).length,
   }
 
   return (
@@ -149,7 +151,7 @@ export default function LiveTrackingPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
           <div className="text-sm text-gray-500">Toplam Şoför</div>
           <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
@@ -165,6 +167,10 @@ export default function LiveTrackingPage() {
         <div className="bg-white rounded-lg shadow p-4">
           <div className="text-sm text-gray-500">Duruyor</div>
           <div className="text-2xl font-bold text-gray-600">{stats.stationary}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="text-sm text-gray-500">Telefon Kullanan</div>
+          <div className="text-2xl font-bold text-red-600">{stats.phoneInUse}</div>
         </div>
       </div>
 
@@ -227,6 +233,9 @@ export default function LiveTrackingPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Durum
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Telefon
+                </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('updated')}
@@ -246,7 +255,7 @@ export default function LiveTrackingPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredLocations.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     {searchTerm ? 'Arama sonucu bulunamadı' : 'Canlı konum verisi yok'}
                   </td>
                 </tr>
@@ -289,6 +298,18 @@ export default function LiveTrackingPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(loc.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {loc.phone_in_use ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                            </svg>
+                            Kullanımda
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className={`font-medium ${updateStatus.color}`}>

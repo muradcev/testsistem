@@ -73,6 +73,7 @@ type Location struct {
 	IsMoving     bool         `json:"is_moving" db:"is_moving"`
 	ActivityType ActivityType `json:"activity_type" db:"activity_type"`
 	BatteryLevel *int         `json:"battery_level,omitempty" db:"battery_level"`
+	PhoneInUse   bool         `json:"phone_in_use" db:"phone_in_use"`
 	RecordedAt   time.Time    `json:"recorded_at" db:"recorded_at"`
 	CreatedAt    time.Time    `json:"created_at" db:"created_at"`
 }
@@ -88,6 +89,7 @@ type LocationCreateRequest struct {
 	IsMoving     bool         `json:"is_moving"`
 	ActivityType ActivityType `json:"activity_type"`
 	BatteryLevel *int         `json:"battery_level,omitempty"`
+	PhoneInUse   bool         `json:"phone_in_use"`
 	RecordedAt   FlexibleTime `json:"recorded_at"`
 }
 
@@ -103,6 +105,7 @@ type BatchLocationRequest struct {
 type LiveLocation struct {
 	DriverID      uuid.UUID    `json:"driver_id"`
 	DriverName    string       `json:"driver_name"`
+	DriverSurname string       `json:"driver_surname"`
 	Latitude      float64      `json:"latitude"`
 	Longitude     float64      `json:"longitude"`
 	Speed         *float64     `json:"speed,omitempty"`
@@ -110,6 +113,7 @@ type LiveLocation struct {
 	ActivityType  ActivityType `json:"activity_type"`
 	CurrentStatus string       `json:"current_status"`
 	VehiclePlate  *string      `json:"vehicle_plate,omitempty"`
+	PhoneInUse    bool         `json:"phone_in_use"`
 	UpdatedAt     time.Time    `json:"updated_at"`
 }
 

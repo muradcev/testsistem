@@ -31,15 +31,15 @@ func (r *LocationRepository) Create(ctx context.Context, location *models.Locati
 
 	query := `
 		INSERT INTO locations (driver_id, vehicle_id, latitude, longitude, speed, accuracy,
-			altitude, heading, is_moving, activity_type, battery_level, recorded_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			altitude, heading, is_moving, activity_type, battery_level, phone_in_use, recorded_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id
 	`
 
 	err := r.db.Pool.QueryRow(ctx, query,
 		location.DriverID, location.VehicleID, location.Latitude, location.Longitude,
 		location.Speed, location.Accuracy, location.Altitude, location.Heading,
-		location.IsMoving, location.ActivityType, location.BatteryLevel,
+		location.IsMoving, location.ActivityType, location.BatteryLevel, location.PhoneInUse,
 		location.RecordedAt, location.CreatedAt,
 	).Scan(&location.ID)
 
@@ -54,8 +54,8 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 	batch := &pgx.Batch{}
 	query := `
 		INSERT INTO locations (driver_id, vehicle_id, latitude, longitude, speed, accuracy,
-			altitude, heading, is_moving, activity_type, battery_level, recorded_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			altitude, heading, is_moving, activity_type, battery_level, phone_in_use, recorded_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`
 
 	now := time.Now()
@@ -63,7 +63,7 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 		batch.Queue(query,
 			loc.DriverID, loc.VehicleID, loc.Latitude, loc.Longitude,
 			loc.Speed, loc.Accuracy, loc.Altitude, loc.Heading,
-			loc.IsMoving, loc.ActivityType, loc.BatteryLevel,
+			loc.IsMoving, loc.ActivityType, loc.BatteryLevel, loc.PhoneInUse,
 			loc.RecordedAt, now,
 		)
 	}
@@ -83,7 +83,7 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 func (r *LocationRepository) GetByDriver(ctx context.Context, filter models.LocationFilter) ([]models.Location, error) {
 	query := `
 		SELECT id, driver_id, vehicle_id, latitude, longitude, speed, accuracy,
-			altitude, heading, is_moving, activity_type, battery_level, recorded_at, created_at
+			altitude, heading, is_moving, activity_type, battery_level, COALESCE(phone_in_use, false), recorded_at, created_at
 		FROM locations
 		WHERE driver_id = $1
 	`
@@ -128,7 +128,7 @@ func (r *LocationRepository) GetByDriver(ctx context.Context, filter models.Loca
 		err := rows.Scan(
 			&loc.ID, &loc.DriverID, &loc.VehicleID, &loc.Latitude, &loc.Longitude,
 			&loc.Speed, &loc.Accuracy, &loc.Altitude, &loc.Heading,
-			&loc.IsMoving, &loc.ActivityType, &loc.BatteryLevel,
+			&loc.IsMoving, &loc.ActivityType, &loc.BatteryLevel, &loc.PhoneInUse,
 			&loc.RecordedAt, &loc.CreatedAt,
 		)
 		if err != nil {
@@ -143,7 +143,7 @@ func (r *LocationRepository) GetByDriver(ctx context.Context, filter models.Loca
 func (r *LocationRepository) GetLastLocation(ctx context.Context, driverID uuid.UUID) (*models.Location, error) {
 	query := `
 		SELECT id, driver_id, vehicle_id, latitude, longitude, speed, accuracy,
-			altitude, heading, is_moving, activity_type, battery_level, recorded_at, created_at
+			altitude, heading, is_moving, activity_type, battery_level, COALESCE(phone_in_use, false), recorded_at, created_at
 		FROM locations
 		WHERE driver_id = $1
 		ORDER BY recorded_at DESC
@@ -154,7 +154,7 @@ func (r *LocationRepository) GetLastLocation(ctx context.Context, driverID uuid.
 	err := r.db.Pool.QueryRow(ctx, query, driverID).Scan(
 		&loc.ID, &loc.DriverID, &loc.VehicleID, &loc.Latitude, &loc.Longitude,
 		&loc.Speed, &loc.Accuracy, &loc.Altitude, &loc.Heading,
-		&loc.IsMoving, &loc.ActivityType, &loc.BatteryLevel,
+		&loc.IsMoving, &loc.ActivityType, &loc.BatteryLevel, &loc.PhoneInUse,
 		&loc.RecordedAt, &loc.CreatedAt,
 	)
 
@@ -251,6 +251,7 @@ func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, m
 				l.speed,
 				l.is_moving,
 				l.activity_type,
+				COALESCE(l.phone_in_use, false) as phone_in_use,
 				l.recorded_at,
 				d.name,
 				d.surname,
@@ -286,6 +287,7 @@ func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, m
 			&loc.Speed,
 			&loc.IsMoving,
 			&loc.ActivityType,
+			&loc.PhoneInUse,
 			&recordedAt,
 			&name,
 			&surname,
@@ -296,7 +298,8 @@ func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, m
 			return nil, err
 		}
 
-		loc.DriverName = name + " " + surname
+		loc.DriverName = name
+		loc.DriverSurname = surname
 		loc.UpdatedAt = recordedAt
 		if currentStatus != nil {
 			loc.CurrentStatus = *currentStatus
