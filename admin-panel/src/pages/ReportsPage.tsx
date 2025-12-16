@@ -774,7 +774,7 @@ export default function ReportsPage() {
                                   { name: 'Yolda', value: drivers.filter((d: any) => d.current_status === 'on_trip').length },
                                   { name: 'Boşta', value: drivers.filter((d: any) => d.current_status === 'idle').length },
                                   { name: 'Evde', value: drivers.filter((d: any) => d.current_status === 'at_home').length },
-                                  { name: 'Bilinmiyor', value: drivers.filter((d: any) => !d.current_status || d.current_status === 'unknown').length },
+                                  { name: 'Veri Yok', value: drivers.filter((d: any) => !d.current_status || d.current_status === 'unknown').length },
                                 ].filter(d => d.value > 0)}
                                 cx="50%"
                                 cy="50%"
@@ -874,24 +874,30 @@ export default function ReportsPage() {
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600">{driver.phone}</td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                driver.current_status === 'on_trip' ? 'bg-orange-100 text-orange-700'
-                                : driver.current_status === 'idle' ? 'bg-blue-100 text-blue-700'
-                                : driver.current_status === 'at_home' ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-600'
-                              }`}>
+                              <span
+                                className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  driver.current_status === 'on_trip' ? 'bg-orange-100 text-orange-700'
+                                  : driver.current_status === 'idle' ? 'bg-blue-100 text-blue-700'
+                                  : driver.current_status === 'at_home' ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-600'
+                                }`}
+                                title={!driver.current_status ? 'Henüz konum verisi gelmedi' : ''}
+                              >
                                 {driver.current_status === 'on_trip' ? 'Yolda'
-                                : driver.current_status === 'idle' ? 'Bosta'
+                                : driver.current_status === 'idle' ? 'Boşta'
                                 : driver.current_status === 'at_home' ? 'Evde'
-                                : 'Bilinmiyor'}
+                                : 'Veri Yok'}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600">
                               {driver.last_location_at ? new Date(driver.last_location_at).toLocaleString('tr-TR') : '-'}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${driver.fcm_token ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {driver.fcm_token ? 'Aktif' : 'Pasif'}
+                              <span
+                                className={`px-2 py-1 text-xs font-medium rounded-full ${driver.fcm_token ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+                                title={driver.fcm_token ? 'Uygulama yüklü ve bildirimler açık' : 'Uygulama yüklü değil veya bildirimler kapalı'}
+                              >
+                                {driver.fcm_token ? 'Uygulama Açık' : 'Uygulama Kapalı'}
                               </span>
                             </td>
                           </tr>

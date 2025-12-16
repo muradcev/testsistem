@@ -83,17 +83,30 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
 
 // Group nearby locations within radius (default 100m) for cleaner map display
 function simplifyLocations(locations: Location[], radiusMeters: number = 100): Location[] {
-  if (locations.length < 2) return locations
+  if (!locations || locations.length < 2) return locations || []
 
-  const simplified: Location[] = [locations[0]]
+  // Filter out invalid locations first
+  const validLocations = locations.filter(loc =>
+    loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number' &&
+    !isNaN(loc.latitude) && !isNaN(loc.longitude)
+  )
 
-  for (let i = 1; i < locations.length; i++) {
+  if (validLocations.length < 2) return validLocations
+
+  const simplified: Location[] = [validLocations[0]]
+
+  for (let i = 1; i < validLocations.length; i++) {
     const last = simplified[simplified.length - 1]
-    const current = locations[i]
+    const current = validLocations[i]
     const distance = calculateDistanceMeters(last.latitude, last.longitude, current.latitude, current.longitude)
 
     // Keep point if distance > radius OR significant speed change OR significant time gap
-    const timeDiff = Math.abs(new Date(current.recorded_at).getTime() - new Date(last.recorded_at).getTime()) / 1000
+    let timeDiff = 0
+    try {
+      timeDiff = Math.abs(new Date(current.recorded_at).getTime() - new Date(last.recorded_at).getTime()) / 1000
+    } catch {
+      timeDiff = 0
+    }
     const speedChange = Math.abs((current.speed || 0) - (last.speed || 0))
 
     if (distance > radiusMeters || speedChange > 10 || timeDiff > 300) {
@@ -102,11 +115,21 @@ function simplifyLocations(locations: Location[], radiusMeters: number = 100): L
   }
 
   // Always include last point
-  if (simplified[simplified.length - 1] !== locations[locations.length - 1]) {
-    simplified.push(locations[locations.length - 1])
+  if (simplified[simplified.length - 1] !== validLocations[validLocations.length - 1]) {
+    simplified.push(validLocations[validLocations.length - 1])
   }
 
   return simplified
+}
+
+// Safe difference in minutes
+function safeDifferenceInMinutes(date1: string | undefined | null, date2: string | undefined | null): number {
+  if (!date1 || !date2) return 0
+  try {
+    return differenceInMinutes(parseISO(date1), parseISO(date2))
+  } catch {
+    return 0
+  }
 }
 
 // Detect stops from location data
@@ -131,7 +154,7 @@ function detectStops(locations: Location[], minDurationMinutes: number = 5, maxD
       pointCount++
     } else {
       // Moved out of stop zone
-      const stopDuration = differenceInMinutes(parseISO(locations[i - 1].recorded_at), parseISO(stopStartTime))
+      const stopDuration = safeDifferenceInMinutes(locations[i - 1].recorded_at, stopStartTime)
       if (stopDuration >= minDurationMinutes) {
         stops.push({
           startIndex: stopStartIndex,
@@ -153,10 +176,7 @@ function detectStops(locations: Location[], minDurationMinutes: number = 5, maxD
   }
 
   // Check final potential stop
-  const lastStopDuration = differenceInMinutes(
-    parseISO(locations[locations.length - 1].recorded_at),
-    parseISO(stopStartTime)
-  )
+  const lastStopDuration = safeDifferenceInMinutes(locations[locations.length - 1].recorded_at, stopStartTime)
   if (lastStopDuration >= minDurationMinutes) {
     stops.push({
       startIndex: stopStartIndex,
@@ -187,15 +207,21 @@ function calculateStats(locations: Location[]): RouteStats {
       locations[i].latitude,
       locations[i].longitude
     )
-    if (locations[i].speed > maxSpeed) {
-      maxSpeed = locations[i].speed
+    if ((locations[i].speed || 0) > maxSpeed) {
+      maxSpeed = locations[i].speed || 0
     }
   }
 
-  const totalDuration = differenceInMinutes(
-    parseISO(locations[locations.length - 1].recorded_at),
-    parseISO(locations[0].recorded_at)
-  )
+  let totalDuration = 0
+  try {
+    const firstDate = locations[0].recorded_at
+    const lastDate = locations[locations.length - 1].recorded_at
+    if (firstDate && lastDate) {
+      totalDuration = differenceInMinutes(parseISO(lastDate), parseISO(firstDate))
+    }
+  } catch {
+    totalDuration = 0
+  }
 
   const avgSpeed = totalDuration > 0 ? (totalDistance / totalDuration) * 60 : 0
 
@@ -222,6 +248,16 @@ function MapBoundsFitter({ locations }: { locations: Location[] }) {
   return null
 }
 
+// Safe date formatting helper
+function safeFormatDate(dateStr: string | undefined | null, formatStr: string, fallback: string = '-'): string {
+  if (!dateStr) return fallback
+  try {
+    return format(parseISO(dateStr), formatStr, { locale: tr })
+  } catch {
+    return fallback
+  }
+}
+
 // Timeline position marker
 function TimelineMarker({ position, locations }: { position: number; locations: Location[] }) {
   const map = useMap()
@@ -230,13 +266,17 @@ function TimelineMarker({ position, locations }: { position: number; locations: 
   useEffect(() => {
     if (locations.length > 0 && index >= 0) {
       const loc = locations[index]
-      map.flyTo([loc.latitude, loc.longitude], map.getZoom(), { duration: 0.3 })
+      if (loc?.latitude && loc?.longitude) {
+        map.flyTo([loc.latitude, loc.longitude], map.getZoom(), { duration: 0.3 })
+      }
     }
   }, [index, locations, map])
 
   if (locations.length === 0 || index < 0) return null
 
   const loc = locations[index]
+  if (!loc?.latitude || !loc?.longitude) return null
+
   return (
     <CircleMarker
       center={[loc.latitude, loc.longitude]}
@@ -250,11 +290,11 @@ function TimelineMarker({ position, locations }: { position: number; locations: 
     >
       <Popup>
         <div className="text-sm">
-          <strong>Zaman:</strong> {format(parseISO(loc.recorded_at), 'dd MMM HH:mm:ss', { locale: tr })}
+          <strong>Zaman:</strong> {safeFormatDate(loc.recorded_at, 'dd MMM HH:mm:ss')}
           <br />
-          <strong>Hız:</strong> {Math.round(loc.speed)} km/s
+          <strong>Hız:</strong> {Math.round(loc.speed || 0)} km/s
           <br />
-          <strong>Batarya:</strong> {loc.battery_level}%
+          <strong>Batarya:</strong> {loc.battery_level ?? '-'}%
         </div>
       </Popup>
     </CircleMarker>
@@ -578,7 +618,7 @@ export default function DriverRoutePage() {
                 <div className="text-sm">
                   <strong className="text-green-600">Başlangıç</strong>
                   <br />
-                  {format(parseISO(locations[0].recorded_at), 'dd MMM yyyy HH:mm', { locale: tr })}
+                  {safeFormatDate(locations[0].recorded_at, 'dd MMM yyyy HH:mm')}
                 </div>
               </Popup>
             </CircleMarker>
@@ -598,7 +638,7 @@ export default function DriverRoutePage() {
                 <div className="text-sm">
                   <strong className="text-red-600">Bitiş</strong>
                   <br />
-                  {format(parseISO(locations[locations.length - 1].recorded_at), 'dd MMM yyyy HH:mm', { locale: tr })}
+                  {safeFormatDate(locations[locations.length - 1].recorded_at, 'dd MMM yyyy HH:mm')}
                 </div>
               </Popup>
             </CircleMarker>
@@ -626,8 +666,8 @@ export default function DriverRoutePage() {
                     </span>
                     <br />
                     <span className="text-xs text-gray-500">
-                      {format(parseISO(stop.startTime), 'HH:mm', { locale: tr })} -{' '}
-                      {format(parseISO(stop.endTime), 'HH:mm', { locale: tr })}
+                      {safeFormatDate(stop.startTime, 'HH:mm')} -{' '}
+                      {safeFormatDate(stop.endTime, 'HH:mm')}
                     </span>
                   </div>
                 </Popup>
@@ -676,8 +716,7 @@ export default function DriverRoutePage() {
             {/* Timeline slider */}
             <div className="flex-1 flex items-center gap-3">
               <span className="text-sm text-gray-500 min-w-[100px]">
-                {locations.length > 0 &&
-                  format(parseISO(locations[0].recorded_at), 'dd MMM HH:mm', { locale: tr })}
+                {locations.length > 0 && safeFormatDate(locations[0].recorded_at, 'dd MMM HH:mm')}
               </span>
               <input
                 type="range"
@@ -689,8 +728,7 @@ export default function DriverRoutePage() {
                 className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
               />
               <span className="text-sm text-gray-500 min-w-[100px] text-right">
-                {locations.length > 0 &&
-                  format(parseISO(locations[locations.length - 1].recorded_at), 'dd MMM HH:mm', { locale: tr })}
+                {locations.length > 0 && safeFormatDate(locations[locations.length - 1].recorded_at, 'dd MMM HH:mm')}
               </span>
             </div>
 

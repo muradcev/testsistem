@@ -173,7 +173,7 @@ function clusterStops(stops: Stop[]): ClusteredStop[] {
     }
 
     grid[key].stops.push(stop)
-    grid[key].totalDuration += stop.duration_minutes
+    grid[key].totalDuration += stop.duration_minutes || 0
     if (!grid[key].uniqueDrivers.includes(stop.driver_id)) {
       grid[key].uniqueDrivers.push(stop.driver_id)
     }
@@ -343,7 +343,7 @@ export default function StopsPage() {
   // İstatistikler
   const stats = useMemo(() => {
     const uniqueDrivers = new Set(stops.map(s => s.driver_id))
-    const totalDuration = stops.reduce((sum, s) => sum + s.duration_minutes, 0)
+    const totalDuration = stops.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
     const hotSpots = clusteredStops.filter(c => c.uniqueDrivers.length > 1).length
 
     return {
@@ -858,7 +858,7 @@ export default function StopsPage() {
                           <br />
                           {formatDuration(stop.duration_minutes)}
                           <br />
-                          {new Date(stop.started_at).toLocaleString('tr-TR')}
+                          {stop.started_at ? new Date(stop.started_at).toLocaleString('tr-TR') : '-'}
                         </div>
                       </Popup>
                     </Circle>
@@ -884,7 +884,7 @@ export default function StopsPage() {
                           <br />
                           Süre: {formatDuration(stop.duration_minutes)}
                           <br />
-                          {new Date(stop.started_at).toLocaleString('tr-TR')}
+                          {stop.started_at ? new Date(stop.started_at).toLocaleString('tr-TR') : '-'}
                         </div>
                       </Popup>
                     </Marker>
@@ -910,7 +910,7 @@ export default function StopsPage() {
                 <li className="flex justify-between"><span>Toplam Durak:</span> <strong>{selectedCluster.stops.length}</strong></li>
                 <li className="flex justify-between"><span>Farklı Sürücü:</span> <strong>{selectedCluster.uniqueDrivers.length}</strong></li>
                 <li className="flex justify-between"><span>Toplam Bekleme:</span> <strong>{formatDuration(selectedCluster.totalDuration)}</strong></li>
-                <li className="flex justify-between"><span>Ort. Bekleme:</span> <strong>{formatDuration(Math.round(selectedCluster.totalDuration / selectedCluster.stops.length))}</strong></li>
+                <li className="flex justify-between"><span>Ort. Bekleme:</span> <strong>{formatDuration(selectedCluster.stops.length > 0 ? Math.round(selectedCluster.totalDuration / selectedCluster.stops.length) : 0)}</strong></li>
               </ul>
             </div>
             <div className="md:col-span-2">
@@ -928,14 +928,15 @@ export default function StopsPage() {
                   <tbody>
                     {Array.from(new Set(selectedCluster.stops.map(s => s.driver_id))).map(driverId => {
                       const driverStops = selectedCluster.stops.filter(s => s.driver_id === driverId)
-                      const totalDuration = driverStops.reduce((sum, s) => sum + s.duration_minutes, 0)
-                      const lastVisit = new Date(Math.max(...driverStops.map(s => new Date(s.started_at).getTime())))
+                      const totalDuration = driverStops.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
+                      const validDates = driverStops.filter(s => s.started_at).map(s => new Date(s.started_at).getTime())
+                      const lastVisit = validDates.length > 0 ? new Date(Math.max(...validDates)) : null
                       return (
                         <tr key={driverId} className="border-b">
                           <td className="px-3 py-2 font-medium">{driverStops[0].driver_name}</td>
                           <td className="px-3 py-2">{driverStops.length}</td>
                           <td className="px-3 py-2">{formatDuration(totalDuration)}</td>
-                          <td className="px-3 py-2 text-gray-500">{lastVisit.toLocaleDateString('tr-TR')}</td>
+                          <td className="px-3 py-2 text-gray-500">{lastVisit ? lastVisit.toLocaleDateString('tr-TR') : '-'}</td>
                         </tr>
                       )
                     })}
@@ -962,7 +963,7 @@ export default function StopsPage() {
                 {selectedStop.province}, {selectedStop.district}
               </p>
               <p className="text-sm text-gray-500">
-                {new Date(selectedStop.started_at).toLocaleString('tr-TR')}
+                {selectedStop.started_at ? new Date(selectedStop.started_at).toLocaleString('tr-TR') : '-'}
               </p>
             </div>
 
