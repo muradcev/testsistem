@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
 import '../services/background_location_service.dart';
 import '../config/constants.dart';
@@ -239,6 +240,33 @@ class AuthProvider extends ChangeNotifier {
         deviceOSVersion = iosInfo.systemVersion;
       }
 
+      // Konum izin durumunu kontrol et
+      String locationPermission = 'unknown';
+      bool backgroundLocationEnabled = false;
+      try {
+        final permission = await Geolocator.checkPermission();
+        switch (permission) {
+          case LocationPermission.always:
+            locationPermission = 'always';
+            backgroundLocationEnabled = true;
+            break;
+          case LocationPermission.whileInUse:
+            locationPermission = 'while_in_use';
+            backgroundLocationEnabled = false;
+            break;
+          case LocationPermission.denied:
+            locationPermission = 'denied';
+            break;
+          case LocationPermission.deniedForever:
+            locationPermission = 'denied_forever';
+            break;
+          default:
+            locationPermission = 'unknown';
+        }
+      } catch (e) {
+        debugPrint('Failed to check location permission: $e');
+      }
+
       await _apiService.sendDeviceInfo({
         'app_version': packageInfo.version,
         'app_build_number': int.tryParse(packageInfo.buildNumber) ?? 0,
@@ -246,8 +274,8 @@ class AuthProvider extends ChangeNotifier {
         'device_os': deviceOS,
         'device_os_version': deviceOSVersion,
         'push_enabled': true,
-        'location_permission': 'unknown',
-        'background_location_enabled': false,
+        'location_permission': locationPermission,
+        'background_location_enabled': backgroundLocationEnabled,
       });
 
       debugPrint('Device info sent successfully');
