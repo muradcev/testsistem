@@ -190,6 +190,11 @@ class NotificationService {
       _fcmToken = await _firebaseMessaging?.getToken();
       debugPrint('FCM Token: $_fcmToken');
 
+      // Send token to server immediately after getting it
+      if (_fcmToken != null) {
+        await _sendFcmTokenToServer(_fcmToken!);
+      }
+
       // Listen for token refresh
       _firebaseMessaging?.onTokenRefresh.listen((newToken) {
         _fcmToken = newToken;
