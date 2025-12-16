@@ -133,12 +133,14 @@ const turkeyRegions: Record<string, string[]> = {
 
 export default function QuestionsPage() {
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'pending' | 'history' | 'bulk' | 'drivers'>('pending')
+  const [activeTab, setActiveTab] = useState<'pending' | 'history' | 'bulk' | 'drivers' | 'scheduled'>('pending')
   const [selectedDriver, setSelectedDriver] = useState<Driver | DriverOnTrip | IdleDriver | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
   const [selectedDriversForBulk, setSelectedDriversForBulk] = useState<string[]>([])
+  const [historyFilterDriver, setHistoryFilterDriver] = useState<string>('all')
+  const [historyFilterDate, setHistoryFilterDate] = useState<string>('all')
 
   // Onay bekleyen sorular
   const { data: pendingData, isLoading: pendingLoading } = useQuery({
@@ -177,8 +179,15 @@ export default function QuestionsPage() {
   // Cevaplanan sorular
   const { data: answeredData, isLoading: answeredLoading } = useQuery({
     queryKey: ['answered-questions'],
-    queryFn: () => questionsApi.getAnswered(50, 0),
+    queryFn: () => questionsApi.getAnswered(100, 0),
     enabled: activeTab === 'history',
+  })
+
+  // Zamanlanmış sorular (approved ama henüz gönderilmemiş)
+  const { data: scheduledData } = useQuery({
+    queryKey: ['scheduled-questions'],
+    queryFn: () => questionsApi.getPendingApproval(),
+    enabled: activeTab === 'scheduled',
   })
 
   // Onaylama mutation
@@ -248,10 +257,62 @@ export default function QuestionsPage() {
 
   const pendingQuestions = (pendingData?.data?.questions || []) as Question[]
   const answeredQuestions = (answeredData?.data?.questions || []) as AnsweredQuestion[]
+  const scheduledQuestions = ((scheduledData?.data?.questions || []) as Question[]).filter(q => q.status === 'approved')
   const driversOnTrip = (driversOnTripData?.data?.drivers || []) as DriverOnTrip[]
   const idleDrivers = (idleDriversData?.data?.drivers || []) as IdleDriver[]
   const allDrivers = (allDriversData?.data?.drivers || []) as Driver[]
   const stats = statsData?.data?.stats || {}
+
+  // History filtering
+  const filteredAnsweredQuestions = answeredQuestions.filter(q => {
+    // Driver filter
+    if (historyFilterDriver !== 'all' && q.driver_id !== historyFilterDriver) {
+      return false
+    }
+    // Date filter
+    if (historyFilterDate !== 'all') {
+      const answerDate = new Date(q.answered_at)
+      const now = new Date()
+      if (historyFilterDate === 'today') {
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        if (answerDate < today) return false
+      } else if (historyFilterDate === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        if (answerDate < weekAgo) return false
+      } else if (historyFilterDate === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        if (answerDate < monthAgo) return false
+      }
+    }
+    return true
+  })
+
+  // Get unique drivers from answered questions
+  const uniqueDriversInHistory = Array.from(
+    new Map(answeredQuestions.map(q => [q.driver_id, { id: q.driver_id, name: q.driver_name, surname: q.driver_surname }])).values()
+  )
+
+  // Group questions by driver for summary
+  const questionsByDriver = answeredQuestions.reduce((acc, q) => {
+    if (!acc[q.driver_id]) {
+      acc[q.driver_id] = {
+        driver_id: q.driver_id,
+        driver_name: q.driver_name,
+        driver_surname: q.driver_surname,
+        driver_phone: q.driver_phone,
+        driver_province: q.driver_province,
+        total_questions: 0,
+        answered_questions: 0,
+        last_answer_at: q.answered_at,
+      }
+    }
+    acc[q.driver_id].total_questions++
+    acc[q.driver_id].answered_questions++
+    if (new Date(q.answered_at) > new Date(acc[q.driver_id].last_answer_at)) {
+      acc[q.driver_id].last_answer_at = q.answered_at
+    }
+    return acc
+  }, {} as Record<string, { driver_id: string; driver_name: string; driver_surname: string; driver_phone: string; driver_province: string; total_questions: number; answered_questions: number; last_answer_at: string }>)
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -354,6 +415,19 @@ export default function QuestionsPage() {
               <UsersIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Toplu Gönder</span>
               <span className="sm:hidden">Toplu</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('scheduled')}
+              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
+                activeTab === 'scheduled'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <ClockIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Zamanlanmış</span>
+              <span className="sm:hidden">Zamanlı</span>
+              ({scheduledQuestions.length})
             </button>
             <button
               onClick={() => setActiveTab('drivers')}
@@ -579,23 +653,88 @@ export default function QuestionsPage() {
           {/* History Tab */}
           {activeTab === 'history' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <ChatBubbleLeftRightIcon className="h-5 w-5 text-purple-500" />
-                Cevaplanan Sorular ({answeredQuestions.length})
-              </h3>
+              {/* Header with filters */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-purple-500" />
+                  Soru Geçmişi ({filteredAnsweredQuestions.length}/{answeredQuestions.length})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {/* Driver Filter */}
+                  <select
+                    value={historyFilterDriver}
+                    onChange={(e) => setHistoryFilterDriver(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    <option value="all">Tüm Şoförler</option>
+                    {uniqueDriversInHistory.map(d => (
+                      <option key={d.id} value={d.id}>{d.name} {d.surname}</option>
+                    ))}
+                  </select>
+                  {/* Date Filter */}
+                  <select
+                    value={historyFilterDate}
+                    onChange={(e) => setHistoryFilterDate(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    <option value="all">Tüm Zamanlar</option>
+                    <option value="today">Bugün</option>
+                    <option value="week">Son 7 Gün</option>
+                    <option value="month">Son 30 Gün</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Driver Summary Cards */}
+              {historyFilterDriver === 'all' && Object.keys(questionsByDriver).length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+                  {Object.values(questionsByDriver).map(driver => (
+                    <div
+                      key={driver.driver_id}
+                      className="bg-gradient-to-br from-purple-50 to-white border border-purple-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => setHistoryFilterDriver(driver.driver_id)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                            {driver.driver_name.charAt(0)}{driver.driver_surname.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">{driver.driver_name} {driver.driver_surname}</p>
+                            <p className="text-xs text-gray-500">{driver.driver_phone}</p>
+                          </div>
+                        </div>
+                        <span className="text-lg font-bold text-purple-600">{driver.answered_questions}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>{driver.driver_province || '-'}</span>
+                        <span>Son: {new Date(driver.last_answer_at).toLocaleDateString('tr-TR')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {answeredLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                 </div>
-              ) : answeredQuestions.length === 0 ? (
+              ) : filteredAnsweredQuestions.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                  <p>Henüz cevaplanan soru yok</p>
+                  <p>Filtrelere uygun soru bulunamadı</p>
+                  {(historyFilterDriver !== 'all' || historyFilterDate !== 'all') && (
+                    <button
+                      onClick={() => { setHistoryFilterDriver('all'); setHistoryFilterDate('all'); }}
+                      className="mt-2 text-primary-600 hover:underline text-sm"
+                    >
+                      Filtreleri Temizle
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {answeredQuestions.map((q) => (
+                  {filteredAnsweredQuestions.map((q) => (
                     <div key={q.answer_id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                         <div className="flex-1">
@@ -623,7 +762,12 @@ export default function QuestionsPage() {
                           </div>
 
                           <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                            <span>👤 {q.driver_name} {q.driver_surname}</span>
+                            <span
+                              className="cursor-pointer hover:text-primary-600"
+                              onClick={() => setHistoryFilterDriver(q.driver_id)}
+                            >
+                              👤 {q.driver_name} {q.driver_surname}
+                            </span>
                             {q.driver_province && <span>📍 {q.driver_province}</span>}
                             <span>📱 {q.driver_phone}</span>
                           </div>
@@ -632,6 +776,64 @@ export default function QuestionsPage() {
                             Cevaplandı: {new Date(q.answered_at).toLocaleString('tr-TR')}
                           </p>
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Scheduled Tab */}
+          {activeTab === 'scheduled' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <ClockIcon className="h-5 w-5 text-blue-500" />
+                  Zamanlanmış Sorular ({scheduledQuestions.length})
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Onaylanmış ve gönderilmeyi bekleyen sorular
+                </p>
+              </div>
+
+              {scheduledQuestions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <ClockIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                  <p>Zamanlanmış soru bulunmuyor</p>
+                  <p className="text-sm mt-1">Onaylanmış sorular burada görünecek</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {scheduledQuestions.map((q) => (
+                    <div key={q.id} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">
+                              ⏳ Gönderilecek
+                            </span>
+                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                              {questionTypes.find(t => t.id === q.question_type)?.name || q.question_type}
+                            </span>
+                          </div>
+                          <p className="font-medium text-gray-900 mb-2">{q.question_text}</p>
+                          <p className="text-xs text-gray-500">
+                            👤 {q.driver_name} {q.driver_surname}
+                            {q.driver_province && ` | 📍 ${q.driver_province}`}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Oluşturulma: {new Date(q.created_at).toLocaleString('tr-TR')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => sendMutation.mutate(q.id)}
+                          disabled={sendMutation.isPending}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                        >
+                          <PaperAirplaneIcon className="h-4 w-4" />
+                          Şimdi Gönder
+                        </button>
                       </div>
                     </div>
                   ))}
