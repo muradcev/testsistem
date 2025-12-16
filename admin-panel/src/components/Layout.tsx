@@ -22,6 +22,7 @@ import {
   DocumentTextIcon,
   PhoneIcon,
   BookOpenIcon,
+  SignalIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Şoförler', href: '/drivers', icon: UserGroupIcon },
   { name: 'Son Konumlar', href: '/driver-locations', icon: MapPinIcon },
   { name: 'Canlı Harita', href: '/live-map', icon: MapIcon },
+  { name: 'Canlı Takip', href: '/live-tracking', icon: SignalIcon },
   { name: 'Isı Haritası', href: '/heat-map', icon: FireIcon },
   { name: 'Durak Yönetimi', href: '/stops', icon: TruckIcon },
   { name: 'Arama Geçmişi', href: '/call-logs', icon: PhoneIcon },

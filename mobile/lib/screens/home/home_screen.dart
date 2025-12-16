@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/questions_provider.dart';
@@ -8,6 +10,7 @@ import '../../providers/vehicle_provider.dart';
 import '../../services/location_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/call_tracking_service.dart';
+import '../../services/hybrid_location_service.dart';
 import '../../config/theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,20 +20,72 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _vehicleCheckDone = false;
   bool _questionsDialogShown = false;
+  Timer? _foregroundCheckTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initLocation();
+      _initHybridLocation();
       _loadQuestionsAndShowDialog();
       _sendFcmToken();
       _checkVehicles();
       _startCallTracking();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _foregroundCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Uygulama ön plana geldiğinde foreground flag'i kontrol et
+      _checkForegroundFlag();
+    }
+  }
+
+  /// Hibrit konum servisini başlat
+  Future<void> _initHybridLocation() async {
+    debugPrint('[HomeScreen] Initializing hybrid location service...');
+    try {
+      await HybridLocationService.initialize();
+      await HybridLocationService.startWorkManagerMode();
+      debugPrint('[HomeScreen] Hybrid location service started in WorkManager mode');
+
+      // Periyodik olarak foreground flag'i kontrol et (uygulama açıkken)
+      _foregroundCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        _checkForegroundFlag();
+      });
+    } catch (e) {
+      debugPrint('[HomeScreen] Hybrid location service init error: $e');
+    }
+  }
+
+  /// WorkManager'dan foreground moduna geçiş flag'ini kontrol et
+  Future<void> _checkForegroundFlag() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final shouldStartForeground = prefs.getBool('should_start_foreground') ?? false;
+
+      if (shouldStartForeground && !HybridLocationService.isForegroundMode) {
+        debugPrint('[HomeScreen] Speed threshold reached, switching to Foreground mode');
+        await HybridLocationService.startForegroundMode();
+        await prefs.setBool('should_start_foreground', false);
+      }
+    } catch (e) {
+      debugPrint('[HomeScreen] Foreground flag check error: $e');
+    }
   }
 
   Future<void> _startCallTracking() async {

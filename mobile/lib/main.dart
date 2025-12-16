@@ -20,7 +20,7 @@ import 'providers/theme_provider.dart';
 import 'services/api_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
-import 'services/background_location_service.dart';
+import 'services/hybrid_location_service.dart';
 import 'services/error_reporting_service.dart';
 import 'services/cache_service.dart';
 import 'services/call_tracking_service.dart';
@@ -64,11 +64,12 @@ void main() async {
       DeviceOrientation.portraitDown,
     ]);
 
-    // Initialize background location service
+    // Initialize hybrid location service (WorkManager + Foreground Service)
     try {
-      await BackgroundLocationService.initialize();
+      await HybridLocationService.initialize();
+      debugPrint('Hybrid location service initialized');
     } catch (e) {
-      debugPrint('Background location service initialization failed: $e');
+      debugPrint('Hybrid location service initialization failed: $e');
       ErrorReportingService.reportError(e, StackTrace.current);
     }
 

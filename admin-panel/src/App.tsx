@@ -9,6 +9,7 @@ import DriverRoutesPage from './pages/DriverRoutesPage'
 import DriverRoutePage from './pages/DriverRoutePage'
 import DriverLocationsPage from './pages/DriverLocationsPage'
 import LiveMapPage from './pages/LiveMapPage'
+import LiveTrackingPage from './pages/LiveTrackingPage'
 import HeatMapPage from './pages/HeatMapPage'
 import SurveysPage from './pages/SurveysPage'
 import SettingsPage from './pages/SettingsPage'
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="drivers/:id/route" element={<DriverRoutePage />} />
         <Route path="driver-locations" element={<DriverLocationsPage />} />
         <Route path="live-map" element={<LiveMapPage />} />
+        <Route path="live-tracking" element={<LiveTrackingPage />} />
         <Route path="heat-map" element={<HeatMapPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="reports" element={<ReportsPage />} />
