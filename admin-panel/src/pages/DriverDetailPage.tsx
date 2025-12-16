@@ -163,10 +163,19 @@ function groupStopsByProximity(stops: Stop[], radiusMeters: number = 500): Group
 }
 
 interface Location {
+  id: number
   latitude: number
   longitude: number
-  timestamp: string
   speed: number
+  accuracy: number
+  altitude: number
+  heading: number
+  is_moving: boolean
+  activity_type: string
+  battery_level?: number
+  phone_in_use: boolean
+  recorded_at: string
+  created_at: string
 }
 
 interface Trip {
@@ -902,7 +911,7 @@ export default function DriverDetailPage() {
                   <div>
                     <strong>{driver.name} {driver.surname}</strong>
                     <br />
-                    Son konum: {new Date(lastLocation.timestamp).toLocaleString('tr-TR')}
+                    Son konum: {new Date(lastLocation.recorded_at).toLocaleString('tr-TR')}
                     <br />
                     Hız: {lastLocation.speed.toFixed(1)} km/h
                   </div>
@@ -1025,7 +1034,7 @@ export default function DriverDetailPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {locations.slice(0, 20).map((loc, index) => {
-                  const date = new Date(loc.timestamp)
+                  const date = new Date(loc.recorded_at)
                   return (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-900">
