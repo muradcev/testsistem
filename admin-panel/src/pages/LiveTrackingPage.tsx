@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { locationsApi, driversApi } from '../services/api'
 import { Link } from 'react-router-dom'
