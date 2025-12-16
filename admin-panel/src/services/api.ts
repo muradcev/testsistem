@@ -352,10 +352,15 @@ export const driverHomesApi = {
 export const stopsApi = {
   getAll: (params?: { limit?: number; offset?: number; location_type?: string }) =>
     api.get('/admin/stops', { params }),
+  getById: (stopId: string) => api.get(`/admin/stops/${stopId}`),
   getUncategorized: (params?: { limit?: number; offset?: number }) =>
     api.get('/admin/stops/uncategorized', { params }),
   updateType: (stopId: string, locationType: string) =>
     api.put(`/admin/stops/${stopId}`, { location_type: locationType }),
+  delete: (stopId: string) => api.delete(`/admin/stops/${stopId}`),
+  bulkDelete: (ids: string[]) => api.post('/admin/stops/bulk-delete', { ids }),
+  bulkUpdateType: (ids: string[], locationType: string) =>
+    api.put('/admin/stops/bulk-update', { ids, location_type: locationType }),
   getLocationTypes: () => api.get('/admin/stops/location-types'),
   detectForDriver: (driverId: string, params?: { start_date?: string; end_date?: string }) =>
     api.post(`/admin/stops/detect/${driverId}`, null, { params }),

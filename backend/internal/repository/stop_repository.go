@@ -320,6 +320,51 @@ func (r *StopRepository) GetAllStops(ctx context.Context, limit, offset int, loc
 	return stops, total, nil
 }
 
+// Delete removes a stop by ID
+func (r *StopRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM stops WHERE id = $1`
+	result, err := r.db.Pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("stop not found")
+	}
+
+	return nil
+}
+
+// BulkDelete removes multiple stops by IDs
+func (r *StopRepository) BulkDelete(ctx context.Context, ids []uuid.UUID) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	query := `DELETE FROM stops WHERE id = ANY($1)`
+	result, err := r.db.Pool.Exec(ctx, query, ids)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected(), nil
+}
+
+// BulkUpdateLocationType updates location type for multiple stops
+func (r *StopRepository) BulkUpdateLocationType(ctx context.Context, ids []uuid.UUID, locationType string) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	query := `UPDATE stops SET location_type = $1, updated_at = $2 WHERE id = ANY($3)`
+	result, err := r.db.Pool.Exec(ctx, query, locationType, time.Now(), ids)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected(), nil
+}
+
 func (r *StopRepository) GetStopAnalysis(ctx context.Context, startDate, endDate time.Time) ([]models.StopAnalysis, error) {
 	query := `
 		SELECT

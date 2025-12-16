@@ -257,3 +257,166 @@ func (h *StopHandler) GetLocationTypes(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"location_types": types})
 }
+
+// GetStopByID returns a single stop by ID
+func (h *StopHandler) GetStopByID(c *gin.Context) {
+	ctx := c.Request.Context()
+	stopID := c.Param("id")
+
+	id, err := uuid.Parse(stopID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz durak ID"})
+		return
+	}
+
+	stop, err := h.stopRepo.GetByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Durak alınamadı"})
+		return
+	}
+
+	if stop == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Durak bulunamadı"})
+		return
+	}
+
+	// Get driver info
+	driver, _ := h.driverRepo.GetByID(ctx, stop.DriverID)
+	driverName := ""
+	if driver != nil {
+		driverName = driver.Name + " " + driver.Surname
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"stop": map[string]interface{}{
+			"id":               stop.ID,
+			"driver_id":        stop.DriverID,
+			"driver_name":      driverName,
+			"latitude":         stop.Latitude,
+			"longitude":        stop.Longitude,
+			"location_type":    stop.LocationType,
+			"location_label":   models.LocationTypeLabels[stop.LocationType],
+			"address":          stop.Address,
+			"province":         stop.Province,
+			"district":         stop.District,
+			"started_at":       stop.StartedAt,
+			"ended_at":         stop.EndedAt,
+			"duration_minutes": stop.DurationMinutes,
+			"created_at":       stop.CreatedAt,
+		},
+	})
+}
+
+// DeleteStop deletes a single stop
+func (h *StopHandler) DeleteStop(c *gin.Context) {
+	ctx := c.Request.Context()
+	stopID := c.Param("id")
+
+	id, err := uuid.Parse(stopID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz durak ID"})
+		return
+	}
+
+	err = h.stopRepo.Delete(ctx, id)
+	if err != nil {
+		if err.Error() == "stop not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Durak bulunamadı"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Durak silinemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Durak silindi"})
+}
+
+// BulkDeleteStops deletes multiple stops
+func (h *StopHandler) BulkDeleteStops(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var req struct {
+		IDs []string `json:"ids" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri"})
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "En az bir durak ID gerekli"})
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.IDs))
+	for _, idStr := range req.IDs {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz durak ID: " + idStr})
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	deleted, err := h.stopRepo.BulkDelete(ctx, ids)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Duraklar silinemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Duraklar silindi",
+		"deleted": deleted,
+	})
+}
+
+// BulkUpdateStopType updates location type for multiple stops
+func (h *StopHandler) BulkUpdateStopType(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var req struct {
+		IDs          []string `json:"ids" binding:"required"`
+		LocationType string   `json:"location_type" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri"})
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "En az bir durak ID gerekli"})
+		return
+	}
+
+	// Validate location type
+	locationType := models.LocationType(req.LocationType)
+	if _, exists := models.LocationTypeLabels[locationType]; !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz durak tipi"})
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.IDs))
+	for _, idStr := range req.IDs {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz durak ID: " + idStr})
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	updated, err := h.stopRepo.BulkUpdateLocationType(ctx, ids, req.LocationType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Duraklar güncellenemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "Duraklar güncellendi",
+		"updated":        updated,
+		"location_type":  locationType,
+		"location_label": models.LocationTypeLabels[locationType],
+	})
+}

@@ -321,6 +321,46 @@ export default function StopsPage() {
     },
   })
 
+  // Delete stop mutation
+  const deleteStopMutation = useMutation({
+    mutationFn: (stopId: string) => api.delete(`/admin/stops/${stopId}`),
+    onSuccess: () => {
+      toast.success('Durak silindi')
+      queryClient.invalidateQueries({ queryKey: ['stops'] })
+      setSelectedStop(null)
+      setSelectedCluster(null)
+    },
+    onError: () => {
+      toast.error('Durak silinemedi')
+    },
+  })
+
+  // Bulk delete stops mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => api.post('/admin/stops/bulk-delete', { ids }),
+    onSuccess: (res) => {
+      toast.success(`${res.data.deleted} durak silindi`)
+      queryClient.invalidateQueries({ queryKey: ['stops'] })
+      setSelectedCluster(null)
+    },
+    onError: () => {
+      toast.error('Duraklar silinemedi')
+    },
+  })
+
+  // Bulk update stop type mutation
+  const bulkUpdateMutation = useMutation({
+    mutationFn: ({ ids, locationType }: { ids: string[]; locationType: string }) =>
+      api.put('/admin/stops/bulk-update', { ids, location_type: locationType }),
+    onSuccess: (res) => {
+      toast.success(`${res.data.updated} durak güncellendi`)
+      queryClient.invalidateQueries({ queryKey: ['stops'] })
+    },
+    onError: () => {
+      toast.error('Duraklar güncellenemedi')
+    },
+  })
+
   const locationTypes: LocationType[] = typesData?.data?.location_types || []
   const stops: Stop[] = stopsData?.data?.stops || []
   const homes: DriverHome[] = homesData?.data?.homes || []
@@ -899,10 +939,52 @@ export default function StopsPage() {
       {/* Cluster Detail Panel */}
       {selectedCluster && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <MapPinIcon className="h-5 w-5 text-blue-600" />
-            {selectedCluster.province}, {selectedCluster.district} - Detaylı Analiz
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <MapPinIcon className="h-5 w-5 text-blue-600" />
+              {selectedCluster.province}, {selectedCluster.district} - Detaylı Analiz
+            </h3>
+            <div className="flex items-center gap-2">
+              <select
+                onChange={(e) => {
+                  if (e.target.value && confirm(`Bu kümedeki ${selectedCluster.stops.length} durağın tipini değiştirmek istediğinize emin misiniz?`)) {
+                    bulkUpdateMutation.mutate({
+                      ids: selectedCluster.stops.map(s => s.id),
+                      locationType: e.target.value,
+                    })
+                  }
+                  e.target.value = ''
+                }}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2"
+                disabled={bulkUpdateMutation.isPending}
+              >
+                <option value="">Toplu Tip Değiştir</option>
+                {locationTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {locationTypeIcons[type.value]} {type.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  if (confirm(`Bu kümedeki ${selectedCluster.stops.length} durağı silmek istediğinize emin misiniz?`)) {
+                    bulkDeleteMutation.mutate(selectedCluster.stops.map(s => s.id))
+                  }
+                }}
+                disabled={bulkDeleteMutation.isPending}
+                className="flex items-center gap-1 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+              >
+                <TrashIcon className="h-4 w-4" />
+                {bulkDeleteMutation.isPending ? 'Siliniyor...' : 'Tümünü Sil'}
+              </button>
+              <button
+                onClick={() => setSelectedCluster(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <h4 className="font-medium text-gray-700 mb-2">Özet</h4>
@@ -1001,12 +1083,26 @@ export default function StopsPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => setSelectedStop(null)}
-              className="w-full py-2 text-gray-500 hover:text-gray-700"
-            >
-              İptal
-            </button>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setSelectedStop(null)}
+                className="flex-1 py-2 text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm('Bu durağı silmek istediğinize emin misiniz?')) {
+                    deleteStopMutation.mutate(selectedStop.id)
+                  }
+                }}
+                disabled={deleteStopMutation.isPending}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <TrashIcon className="h-4 w-4" />
+                {deleteStopMutation.isPending ? 'Siliniyor...' : 'Sil'}
+              </button>
+            </div>
           </div>
         </div>
       )}

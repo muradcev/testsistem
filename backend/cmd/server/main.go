@@ -317,8 +317,12 @@ func main() {
 			stopHandler := api.NewStopHandler(stopDetectionService, stopRepo, driverRepo)
 			adminGroup.GET("/stops", stopHandler.GetStops)
 			adminGroup.GET("/stops/uncategorized", stopHandler.GetUncategorizedStops)
-			adminGroup.PUT("/stops/:id", stopHandler.UpdateStopType)
 			adminGroup.GET("/stops/location-types", stopHandler.GetLocationTypes)
+			adminGroup.GET("/stops/:id", stopHandler.GetStopByID)
+			adminGroup.PUT("/stops/:id", stopHandler.UpdateStopType)
+			adminGroup.DELETE("/stops/:id", stopHandler.DeleteStop)
+			adminGroup.POST("/stops/bulk-delete", stopHandler.BulkDeleteStops)
+			adminGroup.PUT("/stops/bulk-update", stopHandler.BulkUpdateStopType)
 			adminGroup.POST("/stops/detect/:driver_id", stopHandler.DetectStopsForDriver)
 			adminGroup.POST("/stops/detect-all", stopHandler.DetectStopsForAllDrivers)
 
