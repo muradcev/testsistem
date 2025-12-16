@@ -26,7 +26,7 @@ class BackgroundLocationService {
           isForegroundMode: true,
           notificationChannelId: 'nakliyeo_location',
           initialNotificationTitle: 'Nakliyeo',
-          initialNotificationContent: 'Konum takibi aktif',
+          initialNotificationContent: 'Çalışıyor',
           foregroundServiceNotificationId: 888,
           foregroundServiceTypes: [AndroidForegroundType.location],
         ),
@@ -277,18 +277,13 @@ void onStart(ServiceInstance service) async {
   // Initial location fetch
   fetchAndSendLocation();
 
-  // Update notification periodically
-  notificationTimer = Timer.periodic(const Duration(minutes: 1), (timer) async {
+  // Update notification periodically (less frequently, less info)
+  notificationTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
     if (service is AndroidServiceInstance) {
       if (await service.isForegroundService()) {
-        String statusText = isOnline ? 'Aktif' : 'Çevrimdışı';
-        String pendingText = pendingLocations.isNotEmpty
-            ? ' (${pendingLocations.length} bekleyen)'
-            : '';
-
         service.setForegroundNotificationInfo(
-          title: 'Nakliyeo - Konum Takibi',
-          content: '$statusText$pendingText',
+          title: 'Nakliyeo',
+          content: isOnline ? 'Çalışıyor' : 'Çevrimdışı',
         );
       }
     }
