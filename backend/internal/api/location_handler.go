@@ -57,6 +57,16 @@ func (h *LocationHandler) SaveLocation(c *gin.Context) {
 
 	fmt.Printf("[LocationHandler] SaveLocation - Saved successfully\n")
 
+	// Sürücünün son konum bilgisini güncelle
+	status := "stationary"
+	if req.IsMoving {
+		status = "moving"
+	}
+	if err := h.driverService.UpdateLocation(c.Request.Context(), userID, req.Latitude, req.Longitude, status); err != nil {
+		fmt.Printf("[LocationHandler] SaveLocation - Error updating driver location: %v\n", err)
+		// Hata olsa bile devam et, konum zaten kaydedildi
+	}
+
 	// WebSocket üzerinden konum güncellemesi yayınla
 	if h.wsHub != nil {
 		driver, _ := h.driverService.GetByID(c.Request.Context(), userID)
@@ -102,6 +112,19 @@ func (h *LocationHandler) SaveBatchLocations(c *gin.Context) {
 	if err := h.locationService.SaveBatchLocations(c.Request.Context(), userID, req.Locations); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Sürücünün son konum bilgisini en son konum ile güncelle
+	if len(req.Locations) > 0 {
+		lastLoc := req.Locations[len(req.Locations)-1]
+		status := "stationary"
+		if lastLoc.IsMoving {
+			status = "moving"
+		}
+		if err := h.driverService.UpdateLocation(c.Request.Context(), userID, lastLoc.Latitude, lastLoc.Longitude, status); err != nil {
+			// Hata olsa bile devam et
+			fmt.Printf("[LocationHandler] SaveBatchLocations - Error updating driver location: %v\n", err)
+		}
 	}
 
 	// Toplu konumlardan en son olanı WebSocket üzerinden yayınla

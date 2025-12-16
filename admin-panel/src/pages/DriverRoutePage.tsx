@@ -344,10 +344,20 @@ export default function DriverRoutePage() {
     }
   }, [isPlaying, playSpeed, locations.length])
 
-  // Current time indicator
-  const currentTimeIndex = Math.min(Math.floor(timelinePosition * (locations.length - 1)), locations.length - 1)
-  const currentTime =
-    locations.length > 0 ? format(parseISO(locations[currentTimeIndex]?.recorded_at), 'dd MMM HH:mm', { locale: tr }) : ''
+  // Current time indicator - guard against empty locations array
+  const currentTimeIndex = locations.length > 0
+    ? Math.min(Math.floor(timelinePosition * (locations.length - 1)), locations.length - 1)
+    : 0
+  const currentTime = useMemo(() => {
+    if (locations.length === 0 || currentTimeIndex < 0) return ''
+    const location = locations[currentTimeIndex]
+    if (!location?.recorded_at) return ''
+    try {
+      return format(parseISO(location.recorded_at), 'dd MMM HH:mm', { locale: tr })
+    } catch {
+      return ''
+    }
+  }, [locations, currentTimeIndex])
 
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${minutes} dk`

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { driversApi, notificationsApi, driverHomesApi } from '../services/api'
@@ -94,6 +94,72 @@ function formatTimeElapsed(dateString: string | null | undefined): string {
   if (diffHours < 24) return `${diffHours} saat önce`
   if (diffDays < 7) return `${diffDays} gün önce`
   return date.toLocaleDateString('tr-TR')
+}
+
+// Calculate distance between two coordinates in meters
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000 // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+// Group stops within 500m radius
+interface GroupedStop {
+  id: string
+  latitude: number
+  longitude: number
+  province?: string
+  district?: string
+  total_duration_minutes: number
+  stop_count: number
+  stops: Stop[]
+}
+
+function groupStopsByProximity(stops: Stop[], radiusMeters: number = 500): GroupedStop[] {
+  const groups: GroupedStop[] = []
+  const used = new Set<string>()
+
+  for (const stop of stops) {
+    if (used.has(stop.id)) continue
+
+    const group: GroupedStop = {
+      id: stop.id,
+      latitude: stop.latitude,
+      longitude: stop.longitude,
+      province: stop.province,
+      district: stop.district,
+      total_duration_minutes: stop.duration_minutes,
+      stop_count: 1,
+      stops: [stop],
+    }
+
+    used.add(stop.id)
+
+    // Find all stops within radius
+    for (const other of stops) {
+      if (used.has(other.id)) continue
+      const distance = calculateDistanceMeters(stop.latitude, stop.longitude, other.latitude, other.longitude)
+      if (distance <= radiusMeters) {
+        group.total_duration_minutes += other.duration_minutes
+        group.stop_count++
+        group.stops.push(other)
+        used.add(other.id)
+      }
+    }
+
+    groups.push(group)
+  }
+
+  // Sort by total duration descending
+  return groups.sort((a, b) => b.total_duration_minutes - a.total_duration_minutes)
 }
 
 interface Location {
@@ -366,11 +432,11 @@ export default function DriverDetailPage() {
   const surveyResponses: SurveyResponse[] = responsesData?.data?.survey_responses || []
   const questionResponses: QuestionResponse[] = responsesData?.data?.question_responses || []
 
-  // Get frequently visited stops (unknown type, sorted by duration)
-  const frequentStops = stops
-    .filter(s => s.location_type === 'unknown')
-    .sort((a, b) => b.duration_minutes - a.duration_minutes)
-    .slice(0, 10)
+  // Get frequently visited stops (unknown type, grouped by 500m proximity)
+  const frequentStops = useMemo(() => {
+    const unknownStops = stops.filter(s => s.location_type === 'unknown')
+    return groupStopsByProximity(unknownStops, 500).slice(0, 10)
+  }, [stops])
 
   const handleSendNotification = async () => {
     if (!notifTitle || !notifBody) {
@@ -395,14 +461,16 @@ export default function DriverDetailPage() {
     }
   }
 
-  const handleSetStopAsHome = (stop: Stop) => {
+  const handleSetStopAsHome = (groupedStop: GroupedStop) => {
+    // Use the first stop from the group for details
+    const stop = groupedStop.stops[0]
     setSelectedStop(stop)
     setHomeForm({
       name: 'Ev',
-      latitude: stop.latitude,
-      longitude: stop.longitude,
-      province: stop.province || '',
-      district: stop.district || '',
+      latitude: groupedStop.latitude,
+      longitude: groupedStop.longitude,
+      province: groupedStop.province || '',
+      district: groupedStop.district || '',
       radius: 200,
     })
     setShowHomeModal(true)
@@ -717,26 +785,29 @@ export default function DriverDetailPage() {
                 Bu noktalardan birini ev olarak işaretleyebilirsiniz
               </p>
               <ul className="space-y-2 max-h-48 overflow-y-auto">
-                {frequentStops.map((stop) => (
+                {frequentStops.map((groupedStop) => (
                   <li
-                    key={stop.id}
+                    key={groupedStop.id}
                     className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
                   >
                     <div className="flex-1 min-w-0">
-                      {stop.province || stop.district ? (
-                        <p className="font-medium truncate">{stop.province || ''}{stop.province && stop.district ? ', ' : ''}{stop.district || ''}</p>
+                      {groupedStop.province || groupedStop.district ? (
+                        <p className="font-medium truncate">{groupedStop.province || ''}{groupedStop.province && groupedStop.district ? ', ' : ''}{groupedStop.district || ''}</p>
                       ) : (
                         <p className="font-medium text-gray-600 text-xs">
-                          📍 {stop.latitude.toFixed(5)}, {stop.longitude.toFixed(5)}
+                          📍 {groupedStop.latitude.toFixed(5)}, {groupedStop.longitude.toFixed(5)}
                         </p>
                       )}
                       <p className="text-xs text-gray-500">
-                        {formatDuration(stop.duration_minutes)} bekledi
+                        {formatDuration(groupedStop.total_duration_minutes)} bekledi
+                        {groupedStop.stop_count > 1 && (
+                          <span className="ml-1 text-blue-600">({groupedStop.stop_count} durak, 500m içinde)</span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                       <a
-                        href={`https://www.google.com/maps?q=${stop.latitude},${stop.longitude}`}
+                        href={`https://www.google.com/maps?q=${groupedStop.latitude},${groupedStop.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"
@@ -745,7 +816,7 @@ export default function DriverDetailPage() {
                         <MapPinIcon className="h-4 w-4" />
                       </a>
                       <button
-                        onClick={() => handleSetStopAsHome(stop)}
+                        onClick={() => handleSetStopAsHome(groupedStop)}
                         className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs"
                       >
                         <HomeIcon className="h-3 w-3" />
@@ -870,11 +941,11 @@ export default function DriverDetailPage() {
                 />
               </div>
             ))}
-            {/* Frequent Stops with 500m radius - Common Places */}
-            {frequentStops.slice(0, 5).map((stop, index) => (
-              <div key={`stop-${stop.id}`}>
+            {/* Frequent Stops with 500m radius - Common Places (Grouped) */}
+            {frequentStops.slice(0, 5).map((groupedStop, index) => (
+              <div key={`stop-${groupedStop.id}`}>
                 <Circle
-                  center={[stop.latitude, stop.longitude]}
+                  center={[groupedStop.latitude, groupedStop.longitude]}
                   radius={500}
                   pathOptions={{
                     color: '#f59e0b',
@@ -887,25 +958,37 @@ export default function DriverDetailPage() {
                     <div className="text-sm">
                       <strong>📍 Sık Durulan Yer #{index + 1}</strong>
                       <br />
-                      {stop.province && `${stop.province}, `}{stop.district}
+                      {groupedStop.province && `${groupedStop.province}, `}{groupedStop.district}
                       <br />
-                      Toplam: {formatDuration(stop.duration_minutes)} bekleme
+                      Toplam: {formatDuration(groupedStop.total_duration_minutes)} bekleme
+                      {groupedStop.stop_count > 1 && (
+                        <>
+                          <br />
+                          <span className="text-blue-600">{groupedStop.stop_count} durak gruplanmış</span>
+                        </>
+                      )}
                       <br />
                       <span className="text-xs text-gray-500">500m yarıçap</span>
                     </div>
                   </Popup>
                 </Circle>
-                <Marker position={[stop.latitude, stop.longitude]}>
+                <Marker position={[groupedStop.latitude, groupedStop.longitude]}>
                   <Popup>
                     <div className="text-sm">
                       <strong>📍 Sık Durulan Yer #{index + 1}</strong>
                       <br />
-                      {stop.province && `${stop.province}, `}{stop.district}
+                      {groupedStop.province && `${groupedStop.province}, `}{groupedStop.district}
                       <br />
-                      Toplam: {formatDuration(stop.duration_minutes)} bekleme
+                      Toplam: {formatDuration(groupedStop.total_duration_minutes)} bekleme
+                      {groupedStop.stop_count > 1 && (
+                        <>
+                          <br />
+                          <span className="text-blue-600">{groupedStop.stop_count} durak gruplanmış</span>
+                        </>
+                      )}
                       <br />
                       <a
-                        href={`https://www.google.com/maps?q=${stop.latitude},${stop.longitude}`}
+                        href={`https://www.google.com/maps?q=${groupedStop.latitude},${groupedStop.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline text-xs"

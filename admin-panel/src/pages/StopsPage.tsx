@@ -149,8 +149,8 @@ const locationTypeIcons: Record<string, string> = {
   unknown: '❓',
 }
 
-// Grid boyutu (yaklaşık 500m)
-const CLUSTER_GRID_SIZE = 0.005
+// Grid boyutu (yaklaşık 250m) - konum hassasiyeti düşük olabilir
+const CLUSTER_GRID_SIZE = 0.0025
 
 function clusterStops(stops: Stop[]): ClusteredStop[] {
   const grid: Record<string, ClusteredStop> = {}
@@ -355,10 +355,11 @@ export default function StopsPage() {
     }
   }, [stops, clusteredStops])
 
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) return `${minutes} dk`
+  const formatDuration = (minutes: number | undefined | null) => {
+    if (minutes == null || isNaN(minutes)) return '-'
+    if (minutes < 60) return `${Math.round(minutes)} dk`
     const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
+    const mins = Math.round(minutes % 60)
     return `${hours}s ${mins}dk`
   }
 
@@ -412,11 +413,15 @@ export default function StopsPage() {
   // Exclude 'home' from location types when categorizing
   const categorizableTypes = locationTypes.filter(t => t.value !== 'home')
 
-  const defaultCenter: [number, number] = filter === 'homes' && homes.length > 0
-    ? [homes[0].latitude, homes[0].longitude]
-    : clusteredStops.length > 0
-      ? [clusteredStops[0].lat, clusteredStops[0].lng]
-      : [39.0, 35.0]
+  const defaultCenter: [number, number] = useMemo(() => {
+    if (filter === 'homes' && homes.length > 0 && homes[0]?.latitude && homes[0]?.longitude) {
+      return [homes[0].latitude, homes[0].longitude]
+    }
+    if (clusteredStops.length > 0 && clusteredStops[0]?.lat && clusteredStops[0]?.lng) {
+      return [clusteredStops[0].lat, clusteredStops[0].lng]
+    }
+    return [39.0, 35.0] // Turkey center as fallback
+  }, [filter, homes, clusteredStops])
 
   // Show error state
   const hasError = stopsError || homesError || typesError
@@ -730,7 +735,7 @@ export default function StopsPage() {
                       {stop.province || 'Konum'}, {stop.district || ''}
                     </p>
                     <p className="text-xs">
-                      {new Date(stop.started_at).toLocaleString('tr-TR')}
+                      {stop.started_at ? new Date(stop.started_at).toLocaleString('tr-TR') : '-'}
                     </p>
                   </div>
                 </button>
