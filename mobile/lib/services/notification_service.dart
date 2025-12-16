@@ -187,12 +187,16 @@ class NotificationService {
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
       // Get FCM token
+      debugPrint('[FCM] Getting FCM token from Firebase...');
       _fcmToken = await _firebaseMessaging?.getToken();
-      debugPrint('FCM Token: $_fcmToken');
+      debugPrint('[FCM] FCM Token received: ${_fcmToken != null ? _fcmToken!.substring(0, 30) + "..." : "NULL"}');
 
       // Send token to server immediately after getting it
       if (_fcmToken != null) {
+        debugPrint('[FCM] Attempting to send token to server...');
         await _sendFcmTokenToServer(_fcmToken!);
+      } else {
+        debugPrint('[FCM] WARNING: Could not get FCM token from Firebase');
       }
 
       // Listen for token refresh
@@ -356,22 +360,26 @@ class NotificationService {
   }
 
   Future<void> sendFcmTokenToServer() async {
+    debugPrint('[FCM] sendFcmTokenToServer called, token: ${_fcmToken != null ? "EXISTS" : "NULL"}');
     if (_fcmToken != null) {
       await _sendFcmTokenToServer(_fcmToken!);
+    } else {
+      debugPrint('[FCM] WARNING: FCM token is null, cannot send to server');
     }
   }
 
   Future<void> _sendFcmTokenToServer(String token) async {
+    debugPrint('[FCM] _sendFcmTokenToServer called with token: ${token.substring(0, 20)}...');
     if (_apiService == null) {
-      debugPrint('ApiService not set, cannot send FCM token');
+      debugPrint('[FCM] ERROR: ApiService not set, cannot send FCM token');
       return;
     }
 
     try {
       await _apiService!.updateFcmToken(token);
-      debugPrint('FCM token sent to server');
+      debugPrint('[FCM] SUCCESS: FCM token sent to server');
     } catch (e) {
-      debugPrint('Failed to send FCM token: $e');
+      debugPrint('[FCM] ERROR: Failed to send FCM token: $e');
     }
   }
 
