@@ -149,8 +149,8 @@ const locationTypeIcons: Record<string, string> = {
   unknown: '❓',
 }
 
-// Grid boyutu (yaklaşık 250m) - konum hassasiyeti düşük olabilir
-const CLUSTER_GRID_SIZE = 0.0025
+// Grid boyutu (yaklaşık 200m) - 200 metre içindeki duraklar birleştirilir
+const CLUSTER_GRID_SIZE = 0.002
 
 function clusterStops(stops: Stop[]): ClusteredStop[] {
   const grid: Record<string, ClusteredStop> = {}
