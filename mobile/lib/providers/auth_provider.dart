@@ -219,22 +219,25 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _sendDeviceInfo() async {
+  Future<void> _sendDeviceInfo({String? fcmToken}) async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final deviceInfo = DeviceInfoPlugin();
 
       String deviceModel = '';
+      String deviceBrand = '';
       String deviceOS = '';
       String deviceOSVersion = '';
 
       if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
-        deviceModel = '${androidInfo.manufacturer} ${androidInfo.model}';
+        deviceBrand = androidInfo.brand;
+        deviceModel = androidInfo.model;
         deviceOS = 'android';
         deviceOSVersion = androidInfo.version.release;
       } else if (Platform.isIOS) {
         final iosInfo = await deviceInfo.iosInfo;
+        deviceBrand = 'Apple';
         deviceModel = iosInfo.model;
         deviceOS = 'ios';
         deviceOSVersion = iosInfo.systemVersion;
@@ -267,21 +270,32 @@ class AuthProvider extends ChangeNotifier {
         debugPrint('Failed to check location permission: $e');
       }
 
-      await _apiService.sendDeviceInfo({
+      final data = {
         'app_version': packageInfo.version,
         'app_build_number': int.tryParse(packageInfo.buildNumber) ?? 0,
-        'device_model': deviceModel,
+        'device_model': '$deviceBrand $deviceModel',
         'device_os': deviceOS,
         'device_os_version': deviceOSVersion,
         'push_enabled': true,
         'location_permission': locationPermission,
         'background_location_enabled': backgroundLocationEnabled,
-      });
+      };
 
-      debugPrint('Device info sent successfully');
+      // FCM token varsa ekle
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        data['fcm_token'] = fcmToken;
+      }
+
+      await _apiService.sendDeviceInfo(data);
+      debugPrint('[Auth] Device info sent successfully');
     } catch (e) {
-      debugPrint('Failed to send device info: $e');
+      debugPrint('[Auth] Failed to send device info: $e');
     }
+  }
+
+  /// FCM token ile birlikte device info gönder (NotificationService'den çağrılır)
+  Future<void> sendDeviceInfoWithFcmToken(String fcmToken) async {
+    await _sendDeviceInfo(fcmToken: fcmToken);
   }
 
   String _parseError(dynamic e) {
