@@ -171,7 +171,7 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		CallLogEnabled:            driver.CallLogEnabled,
 		SurveysEnabled:            driver.SurveysEnabled,
 		QuestionsEnabled:          driver.QuestionsEnabled,
-		FCMToken:                  func() string { if driver.FCMToken != nil { return *driver.FCMToken } return "" }(),
+		FCMToken:                  getFCMToken(driver.FCMToken),
 		Vehicles:                  vehicles,
 		Trailers:                  trailers,
 	}
@@ -926,4 +926,12 @@ func (h *ReportHandler) GetSurveyAnalysis(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"response_rate": responseRate,
 	})
+}
+
+// getFCMToken - FCM token pointer'ını string'e çevirir
+func getFCMToken(token *string) string {
+	if token != nil {
+		return *token
+	}
+	return ""
 }
