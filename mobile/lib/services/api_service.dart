@@ -203,6 +203,11 @@ class ApiService {
     return _dio.post(ApiConstants.register, data: data);
   }
 
+  /// Telefon numarasının kayıtlı olup olmadığını kontrol eder
+  Future<Response> checkPhoneExists(String phone) async {
+    return _dio.post(ApiConstants.checkPhone, data: {'phone': phone});
+  }
+
   Future<Response> sendOtp(String phone) async {
     return _dio.post(ApiConstants.sendOtp, data: {'phone': phone});
   }

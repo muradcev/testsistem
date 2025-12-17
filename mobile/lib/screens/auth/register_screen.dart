@@ -23,7 +23,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoadingProvinces = true;
+  bool _isCheckingPhone = false;
   String? _provincesError;
+  String? _phoneError;
 
   List<String> _provinces = [];
   List<String> _districts = [];
@@ -282,10 +284,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     flex: _currentStep == 0 ? 1 : 1,
                     child: Consumer<AuthProvider>(
                       builder: (context, auth, _) {
+                        final isLoading = auth.isLoading || _isCheckingPhone;
                         return SizedBox(
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: auth.isLoading ? null : _onNextPressed,
+                            onPressed: isLoading ? null : _onNextPressed,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
@@ -295,7 +298,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
                             ),
-                            child: auth.isLoading
+                            child: isLoading
                                 ? const SizedBox(
                                     height: 24,
                                     width: 24,
@@ -414,9 +417,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (value.length < 10) {
               return 'Geçerli bir telefon numarası girin';
             }
+            if (_phoneError != null) {
+              return _phoneError;
+            }
             return null;
           },
         ),
+        if (_phoneError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  _phoneError!,
+                  style: const TextStyle(color: AppColors.error, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -689,7 +709,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _onNextPressed() {
+  Future<void> _onNextPressed() async {
     // Validate current step
     bool isValid = true;
 
@@ -700,6 +720,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _phoneController.text.length < 10) {
         isValid = false;
         _formKey.currentState!.validate();
+      } else {
+        // Telefon numarası kontrolü yap
+        isValid = await _checkPhoneNumber();
       }
     } else if (_currentStep == 1) {
       if (_selectedProvince == null || _selectedDistrict == null) {
@@ -722,6 +745,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         _register();
       }
+    }
+  }
+
+  /// Telefon numarasının kayıtlı olup olmadığını kontrol eder
+  Future<bool> _checkPhoneNumber() async {
+    if (!mounted) return false;
+
+    setState(() {
+      _isCheckingPhone = true;
+      _phoneError = null;
+    });
+
+    try {
+      final apiService = context.read<ApiService>();
+      final response = await apiService.checkPhoneExists(_phoneController.text.trim());
+
+      if (!mounted) return false;
+
+      final exists = response.data['exists'] == true;
+
+      if (exists) {
+        setState(() {
+          _phoneError = 'Bu telefon numarası zaten kayıtlı';
+          _isCheckingPhone = false;
+        });
+        // Hata mesajını göster
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Text('Bu telefon numarası zaten kayıtlı'),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        return false;
+      }
+
+      setState(() {
+        _isCheckingPhone = false;
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Phone check error: $e');
+      if (!mounted) return false;
+
+      setState(() {
+        _isCheckingPhone = false;
+      });
+      // API hatası olsa bile devam etmesine izin ver, kayıt sırasında tekrar kontrol edilecek
+      return true;
     }
   }
 }

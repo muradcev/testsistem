@@ -131,6 +131,7 @@ func main() {
 		authHandler := api.NewAuthHandler(authService)
 		apiGroup.POST("/auth/register", authRateLimit, authHandler.Register)
 		apiGroup.POST("/auth/login", authRateLimit, authHandler.Login)
+		apiGroup.POST("/auth/check-phone", authRateLimit, authHandler.CheckPhoneExists)
 		apiGroup.POST("/auth/send-otp", authRateLimit, authHandler.SendOTP)
 		apiGroup.POST("/auth/verify-otp", authRateLimit, authHandler.VerifyOTP)
 		apiGroup.POST("/auth/refresh", authHandler.RefreshToken)

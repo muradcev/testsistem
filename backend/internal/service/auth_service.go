@@ -196,6 +196,15 @@ func (s *AuthService) IsSMSVerificationEnabled(ctx context.Context) (bool, error
 	return setting.Value == "true", nil
 }
 
+// CheckPhoneExists - Telefon numarasının kayıtlı olup olmadığını kontrol eder
+func (s *AuthService) CheckPhoneExists(ctx context.Context, phone string) (bool, error) {
+	driver, err := s.driverRepo.GetByPhone(ctx, phone)
+	if err != nil {
+		return false, err
+	}
+	return driver != nil, nil
+}
+
 func (s *AuthService) generateDriverTokens(driver *models.Driver) (*models.AuthResponse, error) {
 	claims := &models.TokenClaims{
 		UserID: driver.ID,

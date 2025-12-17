@@ -106,7 +106,7 @@ func NewSettingsRepository(db *PostgresDB) *SettingsRepository {
 }
 
 func (r *SettingsRepository) Get(ctx context.Context, key string) (*models.Setting, error) {
-	query := `SELECT key, value, description, updated_at FROM settings WHERE key = $1`
+	query := `SELECT key, value, COALESCE(description, ''), updated_at FROM settings WHERE key = $1`
 
 	var setting models.Setting
 	err := r.db.Pool.QueryRow(ctx, query, key).Scan(
@@ -124,7 +124,7 @@ func (r *SettingsRepository) Get(ctx context.Context, key string) (*models.Setti
 }
 
 func (r *SettingsRepository) GetAll(ctx context.Context) ([]models.Setting, error) {
-	query := `SELECT key, value, description, updated_at FROM settings ORDER BY key`
+	query := `SELECT key, value, COALESCE(description, ''), updated_at FROM settings ORDER BY key`
 
 	rows, err := r.db.Pool.Query(ctx, query)
 	if err != nil {

@@ -103,6 +103,28 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "SMS servisi devre dışı"})
 }
 
+// CheckPhoneExists - Telefon numarasının kayıtlı olup olmadığını kontrol eder
+func (h *AuthHandler) CheckPhoneExists(c *gin.Context) {
+	var req struct {
+		Phone string `json:"phone" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Telefon numarası gerekli"})
+		return
+	}
+
+	exists, err := h.authService.CheckPhoneExists(c.Request.Context(), req.Phone)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kontrol yapılamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"exists":  exists,
+		"message": map[bool]string{true: "Bu telefon numarası zaten kayıtlı", false: "Telefon numarası kullanılabilir"}[exists],
+	})
+}
+
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var req models.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

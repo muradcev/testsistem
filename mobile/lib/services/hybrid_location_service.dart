@@ -14,15 +14,42 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:ui';
 
 import '../config/constants.dart';
+import '../providers/config_provider.dart';
 
-// Sabitler
+// Sabitler (varsayılan değerler - sunucudan gelen config yoksa kullanılır)
 const String _workManagerTaskName = 'nakliyeo_location_check';
 const String _workManagerTaskTag = 'location';
-const double _speedThresholdKmh = 30.0; // 30 km/s üzeri = Foreground mod (bildirim göster)
-const double _speedStopThresholdKmh = 25.0; // 25 km/s altı = WorkManager moduna dön (bildirim gizle)
-const int _workManagerIntervalMinutes = 15; // WorkManager aralığı (hareketsiz)
-const int _foregroundIntervalSeconds = 30; // 30 saniye = Foreground mod aralığı (hızlı sürüş)
-const int _slowSpeedCheckCount = 2; // 2 x 30sn = 1 dakika düşük hız = WorkManager'a dön
+
+// Varsayılan değerler (sunucudan config gelmezse kullanılır)
+const double _defaultSpeedThresholdKmh = 30.0;
+const double _defaultSpeedStopThresholdKmh = 25.0;
+const int _defaultWorkManagerIntervalMinutes = 15;
+const int _defaultForegroundIntervalSeconds = 30;
+const int _slowSpeedCheckCount = 2; // 2 x interval = düşük hız kontrolü
+
+/// Config değerlerini SharedPreferences'tan oku
+class _RemoteConfig {
+  static Future<double> getSpeedThreshold(SharedPreferences prefs) async {
+    return (prefs.getInt(MobileConfigKeys.fastMovingThresholdKmh) ?? _defaultSpeedThresholdKmh.toInt()).toDouble();
+  }
+
+  static Future<double> getSpeedStopThreshold(SharedPreferences prefs) async {
+    final threshold = await getSpeedThreshold(prefs);
+    return threshold - 5.0; // Histerezis için 5 km/s düşük
+  }
+
+  static int getForegroundInterval(SharedPreferences prefs) {
+    return prefs.getInt(MobileConfigKeys.fastMovingIntervalSeconds) ?? _defaultForegroundIntervalSeconds;
+  }
+
+  static int getWorkManagerInterval(SharedPreferences prefs) {
+    return prefs.getInt(MobileConfigKeys.heartbeatIntervalMinutes) ?? _defaultWorkManagerIntervalMinutes;
+  }
+
+  static int getMaxOfflineLocations(SharedPreferences prefs) {
+    return prefs.getInt(MobileConfigKeys.maxOfflineLocations) ?? 500;
+  }
+}
 
 /// Hibrit Konum Servisi
 /// - Hız < 30 km/s: WorkManager modu (15 dk'da bir, bildirim yok)
@@ -72,11 +99,15 @@ class HybridLocationService {
     // Önce foreground service'i durdur (eğer çalışıyorsa)
     await stopForegroundMode();
 
+    // Config'den interval al
+    final prefs = await SharedPreferences.getInstance();
+    final intervalMinutes = _RemoteConfig.getWorkManagerInterval(prefs);
+
     // WorkManager periyodik görevini kaydet
     await Workmanager().registerPeriodicTask(
       _workManagerTaskName,
       _workManagerTaskName,
-      frequency: const Duration(minutes: _workManagerIntervalMinutes),
+      frequency: Duration(minutes: intervalMinutes),
       tag: _workManagerTaskTag,
       constraints: Constraints(
         networkType: NetworkType.not_required,
@@ -89,7 +120,7 @@ class HybridLocationService {
     );
 
     _isForegroundMode = false;
-    debugPrint('[HybridLocation] WorkManager mode started (every $_workManagerIntervalMinutes min)');
+    debugPrint('[HybridLocation] WorkManager mode started (every $intervalMinutes min - from config)');
   }
 
   /// Foreground modunu başlat (hızlı sürüş için)
@@ -228,9 +259,12 @@ void workManagerCallbackDispatcher() {
         return true;
       }
 
-      // Hız kontrolü - 35 km/s üzerinde mi? (GPS gürültüsünü önlemek için biraz yüksek eşik)
-      if (speedKmh >= _speedThresholdKmh) {
-        debugPrint('[WorkManager] Speed >= $_speedThresholdKmh km/h, switching to Foreground mode');
+      // Config'den hız eşiğini al
+      final speedThreshold = await _RemoteConfig.getSpeedThreshold(prefs);
+
+      // Hız kontrolü - threshold üzerinde mi?
+      if (speedKmh >= speedThreshold) {
+        debugPrint('[WorkManager] Speed >= $speedThreshold km/h (from config), switching to Foreground mode');
         // Foreground moduna geç (bu WorkManager içinden yapılamaz, flag kaydet)
         await prefs.setBool('should_start_foreground', true);
         // Konumu yine de gönder
@@ -298,7 +332,9 @@ Future<void> _sendLocation(Position position, String accessToken, SharedPreferen
       final pendingJson = prefs.getString('pending_locations') ?? '[]';
       List<dynamic> pending = json.decode(pendingJson);
       pending.add(locationData);
-      if (pending.length > 500) pending.removeAt(0);
+      // Config'den max offline locations al
+      final maxOffline = _RemoteConfig.getMaxOfflineLocations(prefs);
+      if (pending.length > maxOffline) pending.removeAt(0);
       await prefs.setString('pending_locations', json.encode(pending));
       return;
     }
@@ -435,9 +471,14 @@ void _onForegroundStart(ServiceInstance service) async {
   Timer? locationTimer;
   int slowSpeedCount = 0; // Yavaş hız sayacı
 
-  // Prefs'ten token al
+  // Prefs'ten token ve config al
   final prefs = await SharedPreferences.getInstance();
   accessToken = prefs.getString(StorageKeys.accessToken);
+
+  // Config değerlerini al
+  final speedStopThreshold = await _RemoteConfig.getSpeedStopThreshold(prefs);
+  final foregroundInterval = _RemoteConfig.getForegroundInterval(prefs);
+  debugPrint('[Foreground] Config: speedStopThreshold=$speedStopThreshold km/h, interval=${foregroundInterval}s');
 
   if (accessToken != null && accessToken.isNotEmpty) {
     dio = Dio(BaseOptions(
@@ -489,13 +530,13 @@ void _onForegroundStart(ServiceInstance service) async {
       debugPrint('[Foreground] Speed: ${speedKmh.toStringAsFixed(1)} km/h');
 
       // Hız kontrolü - durdurma için daha düşük eşik kullan (histerezis)
-      if (speedKmh < _speedStopThresholdKmh) {
+      if (speedKmh < speedStopThreshold) {
         slowSpeedCount++;
-        debugPrint('[Foreground] Slow speed count: $slowSpeedCount (speed: ${speedKmh.toStringAsFixed(1)} < $_speedStopThresholdKmh)');
+        debugPrint('[Foreground] Slow speed count: $slowSpeedCount (speed: ${speedKmh.toStringAsFixed(1)} < $speedStopThreshold)');
 
-        // 1 dakika (2 x 30sn) yavaş hız = WorkManager'a dön
+        // Yavaş hız sayacı doldu = WorkManager'a dön
         if (slowSpeedCount >= _slowSpeedCheckCount) {
-          debugPrint('[Foreground] Speed low for 1 min, switching to WorkManager mode');
+          debugPrint('[Foreground] Speed low for ${_slowSpeedCheckCount * foregroundInterval}s, switching to WorkManager mode');
           await prefs.setBool('should_start_foreground', false);
           locationTimer?.cancel();
           service.invoke('stop');
@@ -545,10 +586,12 @@ void _onForegroundStart(ServiceInstance service) async {
     }
   }
 
-  // Her 5 dakikada konum gönder (Foreground modunda)
-  locationTimer = Timer.periodic(const Duration(seconds: _foregroundIntervalSeconds), (_) {
+  // Config'den gelen aralıkta konum gönder (Foreground modunda)
+  locationTimer = Timer.periodic(Duration(seconds: foregroundInterval), (_) {
     sendLocation();
   });
+
+  debugPrint('[Foreground] Timer started with ${foregroundInterval}s interval (from config)');
 
   // İlk konumu hemen gönder
   sendLocation();
