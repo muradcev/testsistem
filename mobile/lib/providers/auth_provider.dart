@@ -1,12 +1,9 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
 import '../services/background_location_service.dart';
+import '../services/device_info_service.dart';
 import '../config/constants.dart';
 import '../config/router.dart';
 
@@ -39,9 +36,11 @@ class AuthProvider extends ChangeNotifier {
 
     if (_isLoggedIn) {
       await loadProfile();
-      await _sendDeviceInfo();
+      // DeviceInfoService uzerinden cihaz bilgisi gonderilecek (FCM token ile birlikte)
+      // NotificationService FCM token aldiginda otomatik DeviceInfoService'e iletecek
+      debugPrint('[Auth] User is logged in, device info will be sent via DeviceInfoService');
+
       // Arka plan servisini başlat
-      final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(StorageKeys.accessToken);
       if (token != null) {
         await _startBackgroundLocationService(token);
@@ -76,8 +75,12 @@ class AuthProvider extends ChangeNotifier {
       // Router'ı bilgilendir
       authNotifier.setLoggedIn(true);
 
-      // Cihaz bilgisini gonder
-      await _sendDeviceInfo();
+      // DeviceInfoService'e ApiService'i bagla ve bilgileri gonder
+      // FCM token NotificationService tarafindan DeviceInfoService'e iletilecek
+      final deviceInfoService = DeviceInfoService.instance;
+      deviceInfoService.setApiService(_apiService);
+      await deviceInfoService.sendAllInfo(force: true);
+      debugPrint('[Auth] Device info sent via DeviceInfoService');
 
       // Arka plan konum servisini başlat ve token gönder
       await _startBackgroundLocationService(data['auth']['access_token']);
@@ -219,83 +222,16 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _sendDeviceInfo({String? fcmToken}) async {
+  /// Cihaz bilgisini DeviceInfoService uzerinden gonder
+  Future<void> refreshDeviceInfo() async {
     try {
-      final packageInfo = await PackageInfo.fromPlatform();
-      final deviceInfo = DeviceInfoPlugin();
-
-      String deviceModel = '';
-      String deviceBrand = '';
-      String deviceOS = '';
-      String deviceOSVersion = '';
-
-      if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        deviceBrand = androidInfo.brand;
-        deviceModel = androidInfo.model;
-        deviceOS = 'android';
-        deviceOSVersion = androidInfo.version.release;
-      } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        deviceBrand = 'Apple';
-        deviceModel = iosInfo.model;
-        deviceOS = 'ios';
-        deviceOSVersion = iosInfo.systemVersion;
-      }
-
-      // Konum izin durumunu kontrol et
-      String locationPermission = 'unknown';
-      bool backgroundLocationEnabled = false;
-      try {
-        final permission = await Geolocator.checkPermission();
-        switch (permission) {
-          case LocationPermission.always:
-            locationPermission = 'always';
-            backgroundLocationEnabled = true;
-            break;
-          case LocationPermission.whileInUse:
-            locationPermission = 'while_in_use';
-            backgroundLocationEnabled = false;
-            break;
-          case LocationPermission.denied:
-            locationPermission = 'denied';
-            break;
-          case LocationPermission.deniedForever:
-            locationPermission = 'denied_forever';
-            break;
-          default:
-            locationPermission = 'unknown';
-        }
-      } catch (e) {
-        debugPrint('Failed to check location permission: $e');
-      }
-
-      final data = {
-        'app_version': packageInfo.version,
-        'app_build_number': int.tryParse(packageInfo.buildNumber) ?? 0,
-        'device_model': '$deviceBrand $deviceModel',
-        'device_os': deviceOS,
-        'device_os_version': deviceOSVersion,
-        'push_enabled': true,
-        'location_permission': locationPermission,
-        'background_location_enabled': backgroundLocationEnabled,
-      };
-
-      // FCM token varsa ekle
-      if (fcmToken != null && fcmToken.isNotEmpty) {
-        data['fcm_token'] = fcmToken;
-      }
-
-      await _apiService.sendDeviceInfo(data);
-      debugPrint('[Auth] Device info sent successfully');
+      final deviceInfoService = DeviceInfoService.instance;
+      deviceInfoService.setApiService(_apiService);
+      await deviceInfoService.sendAllInfo(force: true);
+      debugPrint('[Auth] Device info refreshed via DeviceInfoService');
     } catch (e) {
-      debugPrint('[Auth] Failed to send device info: $e');
+      debugPrint('[Auth] Failed to refresh device info: $e');
     }
-  }
-
-  /// FCM token ile birlikte device info gönder (NotificationService'den çağrılır)
-  Future<void> sendDeviceInfoWithFcmToken(String fcmToken) async {
-    await _sendDeviceInfo(fcmToken: fcmToken);
   }
 
   String _parseError(dynamic e) {

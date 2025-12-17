@@ -24,6 +24,7 @@ import 'services/hybrid_location_service.dart';
 import 'services/error_reporting_service.dart';
 import 'services/cache_service.dart';
 import 'services/call_tracking_service.dart';
+import 'services/device_info_service.dart';
 
 void main() async {
   await runZonedGuarded(() async {
@@ -79,10 +80,14 @@ void main() async {
     final notificationService = NotificationService();
     final cacheService = CacheService();
     final callTrackingService = CallTrackingService(apiService);
+    final deviceInfoService = DeviceInfoService.instance;
     await cacheService.init();
 
-    // Connect notification service to API service for FCM token sending
-    notificationService.setApiService(apiService);
+    // Connect DeviceInfoService to ApiService
+    deviceInfoService.setApiService(apiService);
+
+    // Connect notification service to DeviceInfoService for FCM token
+    notificationService.setDeviceInfoService(deviceInfoService);
 
     // Set navigation callback for notification taps
     notificationService.setNavigationCallback((route) {
@@ -104,6 +109,7 @@ void main() async {
           Provider<NotificationService>.value(value: notificationService),
           Provider<CacheService>.value(value: cacheService),
           Provider<CallTrackingService>.value(value: callTrackingService),
+          Provider<DeviceInfoService>.value(value: deviceInfoService),
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ChangeNotifierProvider(create: (_) => AuthProvider(apiService)),
           ChangeNotifierProvider(create: (_) => LocationProvider(locationService, apiService)),

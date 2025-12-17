@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
+import 'device_info_service.dart';
 import '../config/constants.dart';
 
 // Background message handler - must be top-level function
@@ -95,12 +96,19 @@ class NotificationService {
   String? _fcmToken;
   String? _fcmError;
   ApiService? _apiService;
+  DeviceInfoService? _deviceInfoService;
 
   String? get fcmToken => _fcmToken;
   String? get fcmError => _fcmError;
 
   void setApiService(ApiService apiService) {
     _apiService = apiService;
+  }
+
+  /// DeviceInfoService'i ayarla - FCM token bu servis uzerinden gonderilecek
+  void setDeviceInfoService(DeviceInfoService deviceInfoService) {
+    _deviceInfoService = deviceInfoService;
+    debugPrint('[FCM] DeviceInfoService set');
   }
 
   Future<void> initialize() async {
@@ -381,17 +389,27 @@ class NotificationService {
 
   Future<void> _sendFcmTokenToServer(String token) async {
     debugPrint('[FCM] _sendFcmTokenToServer called with token: ${token.substring(0, 20)}...');
+
+    // Oncelikle DeviceInfoService uzerinden gonder (tum bilgilerle birlikte)
+    if (_deviceInfoService != null) {
+      debugPrint('[FCM] Sending via DeviceInfoService (with all device info)...');
+      await _deviceInfoService!.setFcmToken(token);
+      _fcmError = null;
+      return;
+    }
+
+    // Fallback: Eski yontem - sadece FCM token gonder
     if (_apiService == null) {
       _fcmError = 'ApiService not set';
-      debugPrint('[FCM] ERROR: ApiService not set, cannot send FCM token');
+      debugPrint('[FCM] ERROR: Neither DeviceInfoService nor ApiService set');
       return;
     }
 
     try {
-      debugPrint('[FCM] Calling API to update FCM token...');
+      debugPrint('[FCM] Fallback: Calling API to update FCM token directly...');
       final response = await _apiService!.updateFcmToken(token);
       debugPrint('[FCM] SUCCESS: FCM token sent to server. Response: ${response.statusCode}');
-      _fcmError = null; // Clear any previous error
+      _fcmError = null;
     } catch (e) {
       _fcmError = 'Token gönderme hatası: $e';
       debugPrint('[FCM] ERROR: Failed to send FCM token: $e');

@@ -1,15 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../config/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
@@ -19,7 +15,7 @@ import '../../services/location_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/call_tracking_service.dart';
 import '../../services/hybrid_location_service.dart';
-import '../../services/api_service.dart';
+import '../../services/device_info_service.dart';
 import '../../config/theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -43,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _initHybridLocation();
       _loadQuestionsAndShowDialog();
       _sendFcmToken();
-      _sendDeviceInfoAndPermissions(); // Cihaz bilgisi ve izin durumları
+      _refreshDeviceInfo(); // Cihaz bilgisi + izinler + FCM token (tek noktadan)
       _checkVehicles();
       _startCallTracking();
     });
@@ -62,7 +58,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // Kullanıcı telefonu eline aldı - Foreground modundan çık
       _onPhonePickedUp();
+      // İzinleri yenile (kullanici ayarlardan izin degistirmis olabilir)
+      _onAppResumed();
     }
+  }
+
+  /// Uygulama on plana geldiginde izinleri yenile
+  Future<void> _onAppResumed() async {
+    debugPrint('[HomeScreen] App resumed, refreshing device info...');
+    final deviceInfoService = context.read<DeviceInfoService>();
+    await deviceInfoService.onAppResumed();
+  }
+
+  /// DeviceInfoService uzerinden cihaz bilgisi + izinleri gonder
+  Future<void> _refreshDeviceInfo() async {
+    if (!mounted) return;
+    debugPrint('[HomeScreen] Refreshing device info via DeviceInfoService...');
+    final deviceInfoService = context.read<DeviceInfoService>();
+    await deviceInfoService.sendAllInfo();
   }
 
   /// Kullanıcı telefonu eline aldığında çağrılır
@@ -329,97 +342,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       debugPrint('[HomeScreen] FCM token sent successfully');
     } catch (e) {
       debugPrint('[HomeScreen] Failed to send FCM token: $e');
-    }
-  }
-
-  /// Cihaz bilgisi ve izin durumlarını backend'e gönder
-  Future<void> _sendDeviceInfoAndPermissions() async {
-    if (!mounted) return;
-
-    try {
-      debugPrint('[HomeScreen] Collecting device info and permissions...');
-      final apiService = context.read<ApiService>();
-      final notificationService = context.read<NotificationService>();
-
-      // Paket bilgisi al
-      final packageInfo = await PackageInfo.fromPlatform();
-
-      // Cihaz bilgisi al
-      final deviceInfo = DeviceInfoPlugin();
-      String deviceModel = 'Unknown';
-      String deviceOS = Platform.operatingSystem;
-      String deviceOSVersion = 'Unknown';
-      String deviceBrand = 'Unknown';
-
-      if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        deviceModel = androidInfo.model;
-        deviceOSVersion = androidInfo.version.release;
-        deviceBrand = androidInfo.brand;
-        debugPrint('[HomeScreen] Android: $deviceBrand $deviceModel (Android $deviceOSVersion)');
-      } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        deviceModel = iosInfo.model;
-        deviceOSVersion = iosInfo.systemVersion;
-        deviceBrand = 'Apple';
-        debugPrint('[HomeScreen] iOS: $deviceBrand $deviceModel (iOS $deviceOSVersion)');
-      }
-
-      // İzin durumlarını al
-      final locationPermission = await Permission.location.status;
-      final locationAlwaysPermission = await Permission.locationAlways.status;
-      final contactsPermission = await Permission.contacts.status;
-      final phonePermission = await Permission.phone.status;
-      final notificationPermission = await Permission.notification.status;
-
-      // FCM token durumu
-      final fcmToken = notificationService.fcmToken;
-
-      debugPrint('[HomeScreen] Permissions - Location: $locationPermission, LocationAlways: $locationAlwaysPermission, Contacts: $contactsPermission, Phone: $phonePermission, Notification: $notificationPermission');
-      debugPrint('[HomeScreen] FCM Token: ${fcmToken != null ? "EXISTS" : "NULL"}');
-
-      // Backend'e gönder
-      final data = {
-        'app_version': packageInfo.version,
-        'app_build_number': int.tryParse(packageInfo.buildNumber) ?? 0,
-        'device_model': '$deviceBrand $deviceModel',
-        'device_os': deviceOS,
-        'device_os_version': deviceOSVersion,
-        'push_enabled': notificationPermission.isGranted,
-        'location_permission': _permissionStatusToString(locationPermission),
-        'background_location_enabled': locationAlwaysPermission.isGranted,
-        // Yeni izin alanları
-        'contacts_permission': _permissionStatusToString(contactsPermission),
-        'phone_permission': _permissionStatusToString(phonePermission),
-        'notification_permission': _permissionStatusToString(notificationPermission),
-        // FCM token da gönder
-        'fcm_token': fcmToken ?? '',
-      };
-
-      debugPrint('[HomeScreen] Sending device info: $data');
-      final response = await apiService.sendDeviceInfo(data);
-      debugPrint('[HomeScreen] Device info sent, status: ${response.statusCode}');
-
-    } catch (e, stackTrace) {
-      debugPrint('[HomeScreen] Failed to send device info: $e');
-      debugPrint('[HomeScreen] StackTrace: $stackTrace');
-    }
-  }
-
-  String _permissionStatusToString(PermissionStatus status) {
-    switch (status) {
-      case PermissionStatus.granted:
-        return 'granted';
-      case PermissionStatus.denied:
-        return 'denied';
-      case PermissionStatus.permanentlyDenied:
-        return 'permanently_denied';
-      case PermissionStatus.restricted:
-        return 'restricted';
-      case PermissionStatus.limited:
-        return 'limited';
-      case PermissionStatus.provisional:
-        return 'provisional';
     }
   }
 
