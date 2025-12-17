@@ -67,7 +67,7 @@ Future<void> _sendLocationToServer(Position position) async {
       'heading': position.heading,
       'is_moving': position.speed > 1,
       'activity_type': position.speed > 5 ? 'driving' : 'still',
-      'recorded_at': DateTime.now().toIso8601String(),
+      'recorded_at': DateTime.now().toUtc().toIso8601String(),
     };
 
     final response = await http.post(
@@ -293,7 +293,7 @@ class NotificationService {
           'heading': position.heading,
           'is_moving': position.speed > 1,
           'activity_type': position.speed > 5 ? 'driving' : 'still',
-          'recorded_at': DateTime.now().toIso8601String(),
+          'recorded_at': DateTime.now().toUtc().toIso8601String(),
         });
         debugPrint('Location request - Sent to server successfully');
       } else {

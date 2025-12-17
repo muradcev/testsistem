@@ -289,7 +289,7 @@ Future<void> _sendLocation(Position position, String accessToken, SharedPreferen
       'activity_type': position.speed * 3.6 > 30 ? 'driving' : (position.speed > 2 ? 'moving' : 'still'),
       'battery_level': batteryLevel,
       'phone_in_use': phoneInUse,
-      'recorded_at': DateTime.now().toIso8601String(),
+      'recorded_at': DateTime.now().toUtc().toIso8601String(),
     };
 
     if (!isOnline) {
@@ -525,7 +525,7 @@ void _onForegroundStart(ServiceInstance service) async {
         'activity_type': 'driving',
         'battery_level': batteryLevel,
         'phone_in_use': false, // Foreground modunda telefon kullanılmıyor (sürüş halinde)
-        'recorded_at': DateTime.now().toIso8601String(),
+        'recorded_at': DateTime.now().toUtc().toIso8601String(),
       };
 
       if (dio != null) {

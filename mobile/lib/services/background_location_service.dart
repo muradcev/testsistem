@@ -194,7 +194,7 @@ void onStart(ServiceInstance service) async {
         'is_moving': position.speed > 2,
         'activity_type': position.speed > 5 ? 'driving' : 'still',
         'battery_level': batteryLevel,
-        'recorded_at': DateTime.now().toIso8601String(),
+        'recorded_at': DateTime.now().toUtc().toIso8601String(),
       };
 
       // Add to pending queue
