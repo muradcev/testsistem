@@ -230,13 +230,13 @@ class NotificationService {
       // Handle notification tap when app is in background
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
-      // Check if app was opened from a notification
+      // Check if app was opened from a notification (terminated state)
       final initialMessage = await _firebaseMessaging?.getInitialMessage();
       if (initialMessage != null) {
-        // Delay to ensure navigation callback is set
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          _handleNotificationTap(initialMessage);
-        });
+        debugPrint('[FCM] App opened from terminated state via notification');
+        debugPrint('[FCM] Initial message data: ${initialMessage.data}');
+        // Store as pending - will be processed when navigation callback is set
+        _pendingNavigationMessage = initialMessage;
       }
 
     } catch (e, stackTrace) {
@@ -318,34 +318,50 @@ class NotificationService {
 
   void setNavigationCallback(Function(String route) callback) {
     onNavigate = callback;
-    // If there's a pending message, handle it now
+    // If there's a pending message, handle it after a delay to ensure UI is ready
     if (_pendingNavigationMessage != null) {
-      debugPrint('Processing pending notification message');
-      _handleNotificationTap(_pendingNavigationMessage!);
+      debugPrint('[FCM] Pending notification found, will process after delay');
+      final message = _pendingNavigationMessage!;
       _pendingNavigationMessage = null;
+      // Wait for app to fully initialize before navigating
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        debugPrint('[FCM] Processing pending notification message now');
+        _handleNotificationTap(message);
+      });
     }
   }
 
   void _handleNotificationTap(RemoteMessage message) {
-    debugPrint('Notification tapped: ${message.data}');
+    debugPrint('[FCM] Notification tapped: ${message.data}');
     final type = message.data['type'];
 
     // If navigation callback is not set yet, store the message for later
     if (onNavigate == null) {
-      debugPrint('Navigation callback not set, storing message for later');
+      debugPrint('[FCM] Navigation callback not set, storing message for later');
       _pendingNavigationMessage = message;
       return;
     }
 
-    if (type == 'question') {
-      debugPrint('Navigating to /questions');
-      onNavigate?.call('/questions');
-    } else if (type == 'survey') {
-      final surveyId = message.data['survey_id'];
-      if (surveyId != null) {
-        debugPrint('Navigating to /survey/$surveyId');
-        onNavigate?.call('/survey/$surveyId');
+    try {
+      if (type == 'question') {
+        debugPrint('[FCM] Navigating to /questions');
+        onNavigate?.call('/questions');
+      } else if (type == 'survey') {
+        final surveyId = message.data['survey_id'];
+        if (surveyId != null) {
+          debugPrint('[FCM] Navigating to /survey/$surveyId');
+          onNavigate?.call('/survey/$surveyId');
+        } else {
+          debugPrint('[FCM] Survey ID missing, navigating to home');
+          onNavigate?.call('/');
+        }
+      } else {
+        // Unknown type or no type - just open the app (home screen)
+        debugPrint('[FCM] Unknown notification type: $type, navigating to home');
+        onNavigate?.call('/');
       }
+    } catch (e) {
+      debugPrint('[FCM] Navigation error: $e');
     }
   }
 
