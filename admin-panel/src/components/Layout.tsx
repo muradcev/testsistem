@@ -25,6 +25,8 @@ import {
   SignalIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  RectangleStackIcon,
+  MegaphoneIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -66,7 +68,9 @@ const navigationGroups: NavGroup[] = [
     name: 'İletişim',
     icon: PhoneIcon,
     items: [
+      { name: 'Duyurular', href: '/announcements', icon: MegaphoneIcon },
       { name: 'Akıllı Sorular', href: '/questions', icon: QuestionMarkCircleIcon },
+      { name: 'Soru Tasarımcısı', href: '/question-designer', icon: RectangleStackIcon },
       { name: 'Anketler', href: '/surveys', icon: ClipboardDocumentListIcon },
       { name: 'Arama Geçmişi', href: '/call-logs', icon: PhoneIcon },
       { name: 'Rehber', href: '/contacts', icon: BookOpenIcon },

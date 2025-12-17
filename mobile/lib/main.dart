@@ -17,6 +17,7 @@ import 'providers/location_provider.dart';
 import 'providers/vehicle_provider.dart';
 import 'providers/questions_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/announcements_provider.dart';
 import 'services/api_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
@@ -118,6 +119,7 @@ void main() async {
           ChangeNotifierProvider(create: (_) => LocationProvider(locationService, apiService)),
           ChangeNotifierProvider(create: (_) => VehicleProvider(apiService, cacheService)),
           ChangeNotifierProvider(create: (_) => QuestionsProvider(apiService, cacheService)),
+          ChangeNotifierProvider(create: (_) => AnnouncementsProvider(apiService)),
         ],
         child: const NakliyeoApp(),
       ),

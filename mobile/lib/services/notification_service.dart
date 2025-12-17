@@ -231,6 +231,11 @@ class NotificationService {
   String _getRouteForMessage(RemoteMessage message) {
     final type = message.data['type'];
     if (type == 'question') {
+      final questionId = message.data['question_id'];
+      if (questionId != null && questionId.isNotEmpty) {
+        // Bildirimden geldi - doğrudan o soruyu aç
+        return '/questions?id=$questionId';
+      }
       return '/questions';
     } else if (type == 'survey') {
       final surveyId = message.data['survey_id'];
@@ -288,7 +293,15 @@ class NotificationService {
   void _processLocalNotificationPayload(String payload) {
     debugPrint('[Notification] Processing payload: $payload');
 
-    if (payload.startsWith('question:') || payload == 'question') {
+    if (payload.startsWith('question:')) {
+      final questionId = payload.replaceFirst('question:', '');
+      if (questionId.isNotEmpty) {
+        debugPrint('[Notification] Navigating to /questions?id=$questionId');
+        onNavigate?.call('/questions?id=$questionId');
+      } else {
+        onNavigate?.call('/questions');
+      }
+    } else if (payload == 'question') {
       debugPrint('[Notification] Navigating to /questions');
       onNavigate?.call('/questions');
     } else if (payload.startsWith('survey:')) {

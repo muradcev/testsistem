@@ -16,6 +16,7 @@ import SettingsPage from './pages/SettingsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import AppConfigPage from './pages/AppConfigPage'
 import QuestionsPage from './pages/QuestionsPage'
+import QuestionDesignerPage from './pages/QuestionDesignerPage'
 import NotificationTemplatesPage from './pages/NotificationTemplatesPage'
 import ReportsPage from './pages/ReportsPage'
 import ErrorMonitoringPage from './pages/ErrorMonitoringPage'
@@ -23,6 +24,7 @@ import StopsPage from './pages/StopsPage'
 import AuditLogsPage from './pages/AuditLogsPage'
 import CallLogsPage from './pages/CallLogsPage'
 import ContactsPage from './pages/ContactsPage'
+import AnnouncementsPage from './pages/AnnouncementsPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -57,12 +59,14 @@ export default function App() {
         <Route path="stops" element={<StopsPage />} />
         <Route path="surveys" element={<SurveysPage />} />
         <Route path="questions" element={<QuestionsPage />} />
+        <Route path="question-designer" element={<QuestionDesignerPage />} />
         <Route path="notification-templates" element={<NotificationTemplatesPage />} />
         <Route path="app-config" element={<AppConfigPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
         <Route path="call-logs" element={<CallLogsPage />} />
         <Route path="contacts" element={<ContactsPage />} />
+        <Route path="announcements" element={<AnnouncementsPage />} />
       </Route>
     </Routes>
   )

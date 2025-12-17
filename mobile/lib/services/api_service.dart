@@ -297,6 +297,15 @@ class ApiService {
     return _dio.post(ApiConstants.answerQuestion(questionId), data: data);
   }
 
+  // Announcements (Duyurular)
+  Future<Response> getAnnouncements() async {
+    return _dio.get(ApiConstants.announcements);
+  }
+
+  Future<Response> dismissAnnouncement(String announcementId) async {
+    return _dio.post(ApiConstants.dismissAnnouncement(announcementId));
+  }
+
   // Generic methods
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     return _dio.get(path, queryParameters: queryParameters);

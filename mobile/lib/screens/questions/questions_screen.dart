@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../providers/questions_provider.dart';
 import '../../services/hybrid_location_service.dart';
 
 class QuestionsScreen extends StatefulWidget {
-  const QuestionsScreen({super.key});
+  final String? questionId;
+
+  const QuestionsScreen({super.key, this.questionId});
 
   @override
   State<QuestionsScreen> createState() => _QuestionsScreenState();
 }
 
 class _QuestionsScreenState extends State<QuestionsScreen> {
+  Question? _targetQuestion;
+  bool _showSingleQuestion = false;
+
   @override
   void initState() {
     super.initState();
@@ -22,10 +28,73 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   Future<void> _loadQuestions() async {
     if (!mounted) return;
     await context.read<QuestionsProvider>().loadPendingQuestions();
+
+    // Bildirimden gelen questionId varsa o soruyu bul ve goster
+    if (widget.questionId != null && widget.questionId!.isNotEmpty && mounted) {
+      final provider = context.read<QuestionsProvider>();
+      final question = provider.questions.firstWhere(
+        (q) => q.id == widget.questionId,
+        orElse: () => Question(
+          id: '',
+          questionText: '',
+          questionType: '',
+          priority: 0,
+        ),
+      );
+
+      if (question.id.isNotEmpty) {
+        setState(() {
+          _targetQuestion = question;
+          _showSingleQuestion = true;
+        });
+      }
+    }
+  }
+
+  void _closeSingleQuestion() {
+    setState(() {
+      _showSingleQuestion = false;
+      _targetQuestion = null;
+    });
+    // Liste ekranina don
+    _loadQuestions();
+  }
+
+  void _goBackToHome() {
+    context.go('/home');
   }
 
   @override
   Widget build(BuildContext context) {
+    // Tek soru gosterimi - bildirimden gelindi
+    if (_showSingleQuestion && _targetQuestion != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Soruyu Cevapla'),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: _goBackToHome,
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: _QuestionCard(
+            question: _targetQuestion!,
+            onAnswered: () {
+              // Cevaplandiktan sonra listeye don veya ana sayfaya git
+              final provider = context.read<QuestionsProvider>();
+              if (provider.questions.isEmpty) {
+                _goBackToHome();
+              } else {
+                _closeSingleQuestion();
+              }
+            },
+          ),
+        ),
+      );
+    }
+
+    // Normal liste gosterimi
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sorular'),

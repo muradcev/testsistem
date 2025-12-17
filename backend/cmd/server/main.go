@@ -69,6 +69,7 @@ func main() {
 	questionsRepo := repository.NewQuestionsRepository(db)
 	driverHomeRepo := repository.NewDriverHomeRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
+	announcementRepo := repository.NewAnnouncementRepository(db)
 
 	// Service'ler
 	authService := service.NewAuthService(driverRepo, adminRepo, settingsRepo)
@@ -188,6 +189,11 @@ func main() {
 			driverQuestionsHandler := api.NewQuestionsHandler(questionsRepo, driverRepo, notificationService)
 			driverGroup.GET("/questions/pending", driverQuestionsHandler.GetPendingQuestionsForDriver)
 			driverGroup.POST("/questions/:id/answer", driverQuestionsHandler.AnswerQuestion)
+
+			// Announcements (Duyurular - Şoför tarafı)
+			driverAnnouncementHandler := api.NewAnnouncementHandler(announcementRepo, driverRepo, auditRepo)
+			driverGroup.GET("/announcements", driverAnnouncementHandler.GetActiveAnnouncements)
+			driverGroup.POST("/announcements/:id/dismiss", driverAnnouncementHandler.DismissAnnouncement)
 		}
 
 		// Protected admin routes
@@ -391,6 +397,16 @@ func main() {
 			adminGroup.GET("/audit-logs", auditHandler.GetAuditLogs)
 			adminGroup.GET("/audit-logs/stats", auditHandler.GetAuditStats)
 			adminGroup.DELETE("/audit-logs/cleanup", auditHandler.CleanupOldLogs)
+
+			// Announcements (Duyurular - Admin tarafı)
+			announcementHandler := api.NewAnnouncementHandler(announcementRepo, driverRepo, auditRepo)
+			adminGroup.GET("/announcements", announcementHandler.GetAnnouncements)
+			adminGroup.GET("/announcements/stats", announcementHandler.GetAnnouncementStats)
+			adminGroup.POST("/announcements", announcementHandler.CreateAnnouncement)
+			adminGroup.GET("/announcements/:id", announcementHandler.GetAnnouncementByID)
+			adminGroup.PUT("/announcements/:id", announcementHandler.UpdateAnnouncement)
+			adminGroup.DELETE("/announcements/:id", announcementHandler.DeleteAnnouncement)
+			adminGroup.POST("/announcements/:id/toggle", announcementHandler.ToggleAnnouncementActive)
 		}
 
 		// Public app config (mobil uygulama için)

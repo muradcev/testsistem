@@ -382,3 +382,42 @@ export const contactsApi = {
   bulkDelete: (contactIds: string[]) =>
     api.post('/admin/contacts/bulk-delete', { contact_ids: contactIds }),
 }
+
+// Announcements (Duyurular - Dinamik Anasayfa İçerikleri)
+export const announcementsApi = {
+  getAll: (params?: { limit?: number; offset?: number; is_active?: boolean; type?: string }) =>
+    api.get('/admin/announcements', { params }),
+  getById: (id: string) => api.get(`/admin/announcements/${id}`),
+  getStats: () => api.get('/admin/announcements/stats'),
+  create: (data: {
+    title: string
+    content: string
+    image_url?: string
+    link_url?: string
+    link_text?: string
+    type: string
+    priority?: number
+    is_dismissable?: boolean
+    start_at?: string
+    end_at?: string
+    target_type: string
+    target_data?: string
+  }) => api.post('/admin/announcements', data),
+  update: (id: string, data: {
+    title?: string
+    content?: string
+    image_url?: string
+    link_url?: string
+    link_text?: string
+    type?: string
+    priority?: number
+    is_active?: boolean
+    is_dismissable?: boolean
+    start_at?: string
+    end_at?: string
+    target_type?: string
+    target_data?: string
+  }) => api.put(`/admin/announcements/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/announcements/${id}`),
+  toggle: (id: string) => api.post(`/admin/announcements/${id}/toggle`),
+}

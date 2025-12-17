@@ -1,7 +1,7 @@
 name: nakliyeo_mobil
 description: Nakliyeo Mobil - Şoför Takip Uygulaması
 publish_to: 'none'
-version: 1.0.40+40
+version: 1.0.42+42
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

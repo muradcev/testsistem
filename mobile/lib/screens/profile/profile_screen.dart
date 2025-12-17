@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vehicle_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/location_provider.dart';
 import '../../services/notification_service.dart';
 import '../../config/theme.dart';
 import '../../config/constants.dart';
@@ -660,13 +661,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
         content: Builder(
           builder: (context) {
             final notificationService = context.read<NotificationService>();
+            final locationProvider = context.read<LocationProvider>();
             final fcmToken = notificationService.fcmToken;
             final fcmError = notificationService.fcmError;
+            final isTracking = locationProvider.isTracking;
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Sürüm: $_appVersion'),
+                const SizedBox(height: 12),
+                // Konum Takibi Durumu
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isTracking
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.gps_fixed,
+                        size: 20,
+                        color: isTracking ? Colors.green : Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Konum Takibi: ${isTracking ? "Aktif" : "Pasif"}',
+                        style: TextStyle(
+                          color: isTracking ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [

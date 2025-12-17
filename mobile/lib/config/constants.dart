@@ -32,6 +32,10 @@ class ApiConstants {
   static const String questionsPending = '/driver/questions/pending';
   static String answerQuestion(String id) => '/driver/questions/$id/answer';
 
+  // Announcements (Duyurular)
+  static const String announcements = '/driver/announcements';
+  static String dismissAnnouncement(String id) => '/driver/announcements/$id/dismiss';
+
   static const String provinces = '/locations/provinces';
   static String districts(String province) => '/locations/districts/$province';
   static String neighborhoods(String province, String district) =>

@@ -179,7 +179,11 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/questions',
           name: 'questions',
-          builder: (context, state) => const QuestionsScreen(),
+          builder: (context, state) {
+            // Bildirimden gelen question_id varsa aktar
+            final questionId = state.uri.queryParameters['id'];
+            return QuestionsScreen(questionId: questionId);
+          },
         ),
         GoRoute(
           path: '/map',

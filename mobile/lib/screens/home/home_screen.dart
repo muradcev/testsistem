@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/questions_provider.dart';
 import '../../providers/vehicle_provider.dart';
-import '../../services/location_service.dart';
+import '../../providers/announcements_provider.dart';
 import '../../services/notification_service.dart';
 import '../../services/call_tracking_service.dart';
 import '../../services/hybrid_location_service.dart';
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _initLocation();
       _initHybridLocation();
       _loadQuestionsAndShowDialog();
+      _loadAnnouncements();
       _sendFcmToken();
       _refreshDeviceInfo();
       _checkVehicles();
@@ -255,6 +257,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await context.read<QuestionsProvider>().loadPendingQuestions();
   }
 
+  Future<void> _loadAnnouncements() async {
+    if (!mounted) return;
+    await context.read<AnnouncementsProvider>().loadAnnouncements();
+  }
+
   Future<void> _sendFcmToken() async {
     if (!mounted) return;
     // Send FCM token to server after login with retry
@@ -387,62 +394,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 16),
 
-              // Status card
-              Consumer<LocationProvider>(
-                builder: (context, location, _) {
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                _getStatusIcon(location.currentStatus),
-                                color: _getStatusColor(location.currentStatus),
-                                size: 28,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Durum',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getStatusColor(location.currentStatus).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  _getStatusText(location.currentStatus),
-                                  style: TextStyle(
-                                    color: _getStatusColor(location.currentStatus),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _buildInfoItem(
-                            context,
-                            Icons.gps_fixed,
-                            'Konum Takibi',
-                            location.isTracking ? 'Aktif' : 'Pasif',
-                            location.isTracking ? AppColors.success : AppColors.error,
-                          ),
-                        ],
-                      ),
-                    ),
+              // Announcements section
+              Consumer<AnnouncementsProvider>(
+                builder: (context, announcements, _) {
+                  if (!announcements.hasAnnouncements) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      ...announcements.announcements.map((announcement) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildAnnouncementCard(announcement),
+                        );
+                      }),
+                    ],
                   );
                 },
               ),
-              const SizedBox(height: 16),
 
               // Pending questions card
               Consumer<QuestionsProvider>(
@@ -539,41 +508,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoItem(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: color,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -697,39 +631,137 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  IconData _getStatusIcon(DriverStatus status) {
-    switch (status) {
-      case DriverStatus.home:
-        return Icons.home;
-      case DriverStatus.driving:
-        return Icons.directions_car;
-      case DriverStatus.stopped:
-      case DriverStatus.unknown:
-        return Icons.pause_circle;
+  Widget _buildAnnouncementCard(announcement) {
+    Color bgColor;
+    Color iconColor;
+    IconData icon;
+
+    switch (announcement.type) {
+      case 'warning':
+        bgColor = Colors.orange.shade50;
+        iconColor = Colors.orange.shade700;
+        icon = Icons.warning_amber_rounded;
+        break;
+      case 'success':
+        bgColor = Colors.green.shade50;
+        iconColor = Colors.green.shade700;
+        icon = Icons.check_circle_outline;
+        break;
+      case 'promotion':
+        bgColor = Colors.purple.shade50;
+        iconColor = Colors.purple.shade700;
+        icon = Icons.local_offer;
+        break;
+      default: // info
+        bgColor = Colors.blue.shade50;
+        iconColor = Colors.blue.shade700;
+        icon = Icons.info_outline;
     }
+
+    return Card(
+      color: bgColor,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: iconColor.withValues(alpha: 0.2)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        announcement.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        announcement.content,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (announcement.isDismissable)
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    color: Colors.grey.shade600,
+                    onPressed: () => _dismissAnnouncement(announcement.id),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
+            // Image
+            if (announcement.imageUrl != null) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  announcement.imageUrl!,
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                ),
+              ),
+            ],
+            // Link button
+            if (announcement.linkUrl != null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _openLink(announcement.linkUrl!),
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: Text(announcement.linkText ?? 'Detaylar'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: iconColor,
+                    side: BorderSide(color: iconColor.withValues(alpha: 0.5)),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
-  Color _getStatusColor(DriverStatus status) {
-    switch (status) {
-      case DriverStatus.home:
-        return AppColors.success;
-      case DriverStatus.driving:
-        return AppColors.primary;
-      case DriverStatus.stopped:
-      case DriverStatus.unknown:
-        return AppColors.warning;
-    }
+  Future<void> _dismissAnnouncement(String announcementId) async {
+    final provider = context.read<AnnouncementsProvider>();
+    await provider.dismissAnnouncement(announcementId);
   }
 
-  String _getStatusText(DriverStatus status) {
-    switch (status) {
-      case DriverStatus.home:
-        return 'Evde';
-      case DriverStatus.driving:
-        return 'Seferde';
-      case DriverStatus.stopped:
-      case DriverStatus.unknown:
-        return 'Mola';
+  Future<void> _openLink(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Could not launch URL: $e');
     }
   }
 }
