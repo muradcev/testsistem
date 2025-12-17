@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     end_at TIMESTAMP WITH TIME ZONE, -- Ne zaman gosterilmeyi bitirsin
     target_type VARCHAR(50) NOT NULL DEFAULT 'all', -- all, province, specific_drivers
     target_data JSONB, -- province listesi veya driver ID listesi
-    created_by UUID NOT NULL REFERENCES admins(id),
+    created_by UUID NOT NULL REFERENCES admin_users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
