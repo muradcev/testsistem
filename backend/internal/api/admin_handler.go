@@ -7,6 +7,7 @@ import (
 
 	"nakliyeo-mobil/internal/models"
 	"nakliyeo-mobil/internal/service"
+	"nakliyeo-mobil/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -162,6 +163,7 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		LastLongitude:             driver.LastLongitude,
 		CreatedAt:                 driver.CreatedAt,
 		UpdatedAt:                 driver.UpdatedAt,
+		CreatedAtTR:               utils.FormatTurkey(driver.CreatedAt, "02.01.2006 15:04"),
 		AppVersion:                driver.AppVersion,
 		DeviceModel:               driver.DeviceModel,
 		DeviceOS:                  driver.DeviceOS,
@@ -174,6 +176,14 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		FCMToken:                  getFCMToken(driver.FCMToken),
 		Vehicles:                  vehicles,
 		Trailers:                  trailers,
+	}
+
+	// Türkiye saati formatları
+	if driver.LastLocationAt != nil {
+		response.LastLocationAtTR = utils.FormatTurkey(*driver.LastLocationAt, "02.01.2006 15:04")
+	}
+	if driver.LastActiveAt != nil {
+		response.LastActiveAtTR = utils.FormatTurkey(*driver.LastActiveAt, "02.01.2006 15:04")
 	}
 
 	c.JSON(http.StatusOK, response)

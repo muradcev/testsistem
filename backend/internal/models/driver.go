@@ -169,6 +169,11 @@ type DriverDetailResponse struct {
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
 
+	// Türkiye saati formatında zaman alanları (display için)
+	LastLocationAtTR string `json:"last_location_at_tr,omitempty"`
+	LastActiveAtTR   string `json:"last_active_at_tr,omitempty"`
+	CreatedAtTR      string `json:"created_at_tr,omitempty"`
+
 	// Uygulama bilgileri
 	AppVersion                *string    `json:"app_version,omitempty"`
 	DeviceModel               *string    `json:"device_model,omitempty"`

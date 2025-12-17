@@ -18,8 +18,8 @@ import '../config/constants.dart';
 // Sabitler
 const String _workManagerTaskName = 'nakliyeo_location_check';
 const String _workManagerTaskTag = 'location';
-const double _speedThresholdKmh = 35.0; // 35 km/s üzeri = Foreground mod (GPS gürültüsünü önlemek için biraz yüksek)
-const double _speedStopThresholdKmh = 25.0; // 25 km/s altı = WorkManager moduna dön
+const double _speedThresholdKmh = 30.0; // 30 km/s üzeri = Foreground mod (bildirim göster)
+const double _speedStopThresholdKmh = 25.0; // 25 km/s altı = WorkManager moduna dön (bildirim gizle)
 const int _workManagerIntervalMinutes = 15; // WorkManager aralığı (hareketsiz)
 const int _foregroundIntervalSeconds = 30; // 30 saniye = Foreground mod aralığı (hızlı sürüş)
 const int _slowSpeedCheckCount = 2; // 2 x 30sn = 1 dakika düşük hız = WorkManager'a dön
@@ -27,6 +27,7 @@ const int _slowSpeedCheckCount = 2; // 2 x 30sn = 1 dakika düşük hız = WorkM
 /// Hibrit Konum Servisi
 /// - Hız < 30 km/s: WorkManager modu (15 dk'da bir, bildirim yok)
 /// - Hız >= 30 km/s: Foreground modu (30 sn'de bir, bildirim var)
+/// - Hız 25-30 arası: Histerezis bölgesi (ani mod değişimi engellenir)
 class HybridLocationService {
   static bool _isInitialized = false;
   static bool _isForegroundMode = false;
