@@ -29,10 +29,17 @@ func (r *LocationRepository) SetRedis(redis *RedisClient) {
 func (r *LocationRepository) Create(ctx context.Context, location *models.Location) error {
 	location.CreatedAt = time.Now()
 
+	// Duplikat önleme: Aynı driver_id ve recorded_at ile kayıt varsa kaydetme
+	// 1 saniye içindeki kayıtları duplikat say
 	query := `
 		INSERT INTO locations (driver_id, vehicle_id, latitude, longitude, speed, accuracy,
 			altitude, heading, is_moving, activity_type, battery_level, phone_in_use, recorded_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+		WHERE NOT EXISTS (
+			SELECT 1 FROM locations
+			WHERE driver_id = $1
+			AND recorded_at BETWEEN $13 - INTERVAL '1 second' AND $13 + INTERVAL '1 second'
+		)
 		RETURNING id
 	`
 
@@ -43,6 +50,11 @@ func (r *LocationRepository) Create(ctx context.Context, location *models.Locati
 		location.RecordedAt, location.CreatedAt,
 	).Scan(&location.ID)
 
+	// Duplikat durumunda ErrNoRows döner, bu normal
+	if err == pgx.ErrNoRows {
+		return nil // Duplikat - sessizce atla
+	}
+
 	return err
 }
 
@@ -52,10 +64,16 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 	}
 
 	batch := &pgx.Batch{}
+	// Duplikat önleme: Aynı driver_id ve recorded_at ile kayıt varsa kaydetme
 	query := `
 		INSERT INTO locations (driver_id, vehicle_id, latitude, longitude, speed, accuracy,
 			altitude, heading, is_moving, activity_type, battery_level, phone_in_use, recorded_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+		WHERE NOT EXISTS (
+			SELECT 1 FROM locations
+			WHERE driver_id = $1
+			AND recorded_at BETWEEN $13 - INTERVAL '1 second' AND $13 + INTERVAL '1 second'
+		)
 	`
 
 	now := time.Now()
@@ -71,6 +89,7 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 	results := r.db.Pool.SendBatch(ctx, batch)
 	defer results.Close()
 
+	// Duplikat durumunda bazı insertler 0 row affected olabilir, bu normal
 	for i := 0; i < len(locations); i++ {
 		if _, err := results.Exec(); err != nil {
 			return fmt.Errorf("failed to insert location %d: %w", i, err)

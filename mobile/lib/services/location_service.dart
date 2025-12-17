@@ -46,7 +46,8 @@ class LocationData {
     'is_moving': isMoving,
     'activity_type': activityType.name,
     'battery_level': batteryLevel,
-    'recorded_at': recordedAt.toIso8601String(),
+    // UTC olarak gönder - timezone karışıklığını önle
+    'recorded_at': recordedAt.toUtc().toIso8601String(),
   };
 
   factory LocationData.fromJson(Map<String, dynamic> json) {

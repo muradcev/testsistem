@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { questionsApi, driversApi } from '../services/api'
 import toast from 'react-hot-toast'
@@ -15,8 +15,30 @@ import {
   UsersIcon,
   ChatBubbleLeftRightIcon,
   MapPinIcon,
+  QuestionMarkCircleIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline'
+import {
+  PageHeader,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Modal,
+  EmptyState,
+  LoadingSpinner,
+  StatCard,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  SearchInput,
+  Select,
+} from '../components/ui'
 import { turkeyProvinces } from '../data/turkeyLocations'
+import clsx from 'clsx'
 
 interface Driver {
   id: string
@@ -104,119 +126,111 @@ interface FollowUpQuestion {
 }
 
 const questionTypes = [
-  { id: 'yes_no', name: 'Evet/Hayır' },
-  { id: 'multiple_choice', name: 'Çoktan Seçmeli' },
+  { id: 'yes_no', name: 'Evet/Hayir' },
+  { id: 'multiple_choice', name: 'Coktan Secmeli' },
   { id: 'text', name: 'Metin' },
-  { id: 'number', name: 'Sayı' },
+  { id: 'number', name: 'Sayi' },
   { id: 'price', name: 'Fiyat (TL)' },
-  { id: 'province', name: 'İl Seçimi' },
-  { id: 'province_district', name: 'İl-İlçe Seçimi' },
+  { id: 'province', name: 'Il Secimi' },
+  { id: 'province_district', name: 'Il-Ilce Secimi' },
 ]
 
-const statusLabels: Record<string, { label: string; color: string }> = {
-  draft: { label: 'Taslak', color: 'bg-gray-100 text-gray-800' },
-  pending_approval: { label: 'Onay Bekliyor', color: 'bg-yellow-100 text-yellow-800' },
-  approved: { label: 'Onaylandı', color: 'bg-blue-100 text-blue-800' },
-  sent: { label: 'Gönderildi', color: 'bg-green-100 text-green-800' },
-  answered: { label: 'Cevaplandı', color: 'bg-purple-100 text-purple-800' },
-  expired: { label: 'Süresi Doldu', color: 'bg-red-100 text-red-800' },
-  rejected: { label: 'Reddedildi', color: 'bg-red-100 text-red-800' },
+const statusConfig: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'error' | 'info' }> = {
+  draft: { label: 'Taslak', variant: 'default' },
+  pending_approval: { label: 'Onay Bekliyor', variant: 'warning' },
+  approved: { label: 'Onaylandi', variant: 'info' },
+  sent: { label: 'Gonderildi', variant: 'success' },
+  answered: { label: 'Cevaplandi', variant: 'success' },
+  expired: { label: 'Suresi Doldu', variant: 'error' },
+  rejected: { label: 'Reddedildi', variant: 'error' },
 }
 
-// Türkiye bölgeleri
 const turkeyRegions: Record<string, string[]> = {
-  'Tümü': [],
-  'Marmara': ['İstanbul', 'Kocaeli', 'Bursa', 'Balıkesir', 'Çanakkale', 'Edirne', 'Kırklareli', 'Tekirdağ', 'Sakarya', 'Yalova', 'Bilecik'],
-  'Ege': ['İzmir', 'Aydın', 'Denizli', 'Muğla', 'Manisa', 'Afyonkarahisar', 'Kütahya', 'Uşak'],
-  'Akdeniz': ['Antalya', 'Adana', 'Mersin', 'Hatay', 'Kahramanmaraş', 'Osmaniye', 'Burdur', 'Isparta'],
-  'İç Anadolu': ['Ankara', 'Konya', 'Kayseri', 'Eskişehir', 'Sivas', 'Yozgat', 'Kırıkkale', 'Aksaray', 'Niğde', 'Nevşehir', 'Kırşehir', 'Karaman', 'Çankırı'],
-  'Karadeniz': ['Samsun', 'Trabzon', 'Ordu', 'Giresun', 'Rize', 'Artvin', 'Gümüşhane', 'Bayburt', 'Tokat', 'Amasya', 'Çorum', 'Sinop', 'Kastamonu', 'Bartın', 'Karabük', 'Zonguldak', 'Bolu', 'Düzce'],
-  'Doğu Anadolu': ['Erzurum', 'Van', 'Malatya', 'Elazığ', 'Ağrı', 'Kars', 'Iğdır', 'Ardahan', 'Muş', 'Bitlis', 'Bingöl', 'Tunceli', 'Erzincan'],
-  'Güneydoğu Anadolu': ['Gaziantep', 'Diyarbakır', 'Şanlıurfa', 'Mardin', 'Batman', 'Siirt', 'Şırnak', 'Adıyaman', 'Kilis'],
+  'Tumu': [],
+  'Marmara': ['Istanbul', 'Kocaeli', 'Bursa', 'Balikesir', 'Canakkale', 'Edirne', 'Kirklareli', 'Tekirdag', 'Sakarya', 'Yalova', 'Bilecik'],
+  'Ege': ['Izmir', 'Aydin', 'Denizli', 'Mugla', 'Manisa', 'Afyonkarahisar', 'Kutahya', 'Usak'],
+  'Akdeniz': ['Antalya', 'Adana', 'Mersin', 'Hatay', 'Kahramanmaras', 'Osmaniye', 'Burdur', 'Isparta'],
+  'Ic Anadolu': ['Ankara', 'Konya', 'Kayseri', 'Eskisehir', 'Sivas', 'Yozgat', 'Kirikkale', 'Aksaray', 'Nigde', 'Nevsehir', 'Kirsehir', 'Karaman', 'Cankiri'],
+  'Karadeniz': ['Samsun', 'Trabzon', 'Ordu', 'Giresun', 'Rize', 'Artvin', 'Gumushane', 'Bayburt', 'Tokat', 'Amasya', 'Corum', 'Sinop', 'Kastamonu', 'Bartin', 'Karabuk', 'Zonguldak', 'Bolu', 'Duzce'],
+  'Dogu Anadolu': ['Erzurum', 'Van', 'Malatya', 'Elazig', 'Agri', 'Kars', 'Igdir', 'Ardahan', 'Mus', 'Bitlis', 'Bingol', 'Tunceli', 'Erzincan'],
+  'Guneydogu Anadolu': ['Gaziantep', 'Diyarbakir', 'Sanliurfa', 'Mardin', 'Batman', 'Siirt', 'Sirnak', 'Adiyaman', 'Kilis'],
 }
 
 export default function QuestionsPage() {
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'pending' | 'history' | 'bulk' | 'drivers' | 'scheduled'>('pending')
+  const [activeTab, setActiveTab] = useState('pending')
   const [selectedDriver, setSelectedDriver] = useState<Driver | DriverOnTrip | IdleDriver | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
   const [selectedDriversForBulk, setSelectedDriversForBulk] = useState<string[]>([])
-  const [historyFilterDriver, setHistoryFilterDriver] = useState<string>('all')
-  const [historyFilterDate, setHistoryFilterDate] = useState<string>('all')
+  const [historySearch, setHistorySearch] = useState('')
+  const [historyFilterDriver, setHistoryFilterDriver] = useState('all')
+  const [historyFilterDate, setHistoryFilterDate] = useState('all')
 
-  // Onay bekleyen sorular
+  // Queries
   const { data: pendingData, isLoading: pendingLoading } = useQuery({
     queryKey: ['pending-questions'],
     queryFn: () => questionsApi.getPendingApproval(),
     enabled: activeTab === 'pending',
   })
 
-  // Seferdeki şoförler
   const { data: driversOnTripData } = useQuery({
     queryKey: ['drivers-on-trip'],
     queryFn: () => questionsApi.getDriversOnTrip(),
     enabled: activeTab === 'drivers',
   })
 
-  // Beklemedeki şoförler
   const { data: idleDriversData } = useQuery({
     queryKey: ['idle-drivers'],
     queryFn: () => questionsApi.getIdleDrivers(),
     enabled: activeTab === 'drivers',
   })
 
-  // Tüm şoförler
   const { data: allDriversData } = useQuery({
     queryKey: ['all-drivers'],
     queryFn: () => driversApi.getAll({ limit: 100 }),
     enabled: activeTab === 'bulk',
   })
 
-  // İstatistikler
   const { data: statsData } = useQuery({
     queryKey: ['question-stats'],
     queryFn: () => questionsApi.getStats(),
   })
 
-  // Cevaplanan sorular
   const { data: answeredData, isLoading: answeredLoading } = useQuery({
     queryKey: ['answered-questions'],
     queryFn: () => questionsApi.getAnswered(100, 0),
     enabled: activeTab === 'history',
   })
 
-  // Zamanlanmış sorular (approved ama henüz gönderilmemiş)
   const { data: scheduledData } = useQuery({
     queryKey: ['scheduled-questions'],
     queryFn: () => questionsApi.getPendingApproval(),
     enabled: activeTab === 'scheduled',
   })
 
-  // Onaylama mutation
+  // Mutations
   const approveMutation = useMutation({
     mutationFn: ({ id, approved, reason }: { id: string; approved: boolean; reason?: string }) =>
       questionsApi.approve(id, approved, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-questions'] })
       queryClient.invalidateQueries({ queryKey: ['question-stats'] })
-      toast.success('İşlem başarılı')
+      toast.success('Islem basarili')
     },
-    onError: () => toast.error('İşlem başarısız'),
+    onError: () => toast.error('Islem basarisiz'),
   })
 
-  // Gönderme mutation
   const sendMutation = useMutation({
     mutationFn: (id: string) => questionsApi.send(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-questions'] })
-      toast.success('Soru gönderildi')
+      toast.success('Soru gonderildi')
     },
-    onError: () => toast.error('Gönderilemedi'),
+    onError: () => toast.error('Gonderilemedi'),
   })
 
-  // Silme mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => questionsApi.delete(id),
     onSuccess: () => {
@@ -224,23 +238,21 @@ export default function QuestionsPage() {
       queryClient.invalidateQueries({ queryKey: ['question-stats'] })
       toast.success('Soru silindi')
     },
-    onError: () => toast.error('Silinemedi - Sadece taslak durumundaki sorular silinebilir'),
+    onError: () => toast.error('Silinemedi'),
   })
 
-  // Güncelleme mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
       questionsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-questions'] })
-      toast.success('Soru güncellendi')
+      toast.success('Soru guncellendi')
       setShowEditModal(false)
       setEditingQuestion(null)
     },
-    onError: () => toast.error('Güncellenemedi'),
+    onError: () => toast.error('Guncellenemedi'),
   })
 
-  // Toplu soru oluşturma mutation
   const bulkCreateMutation = useMutation({
     mutationFn: (data: {
       driver_ids: string[]
@@ -253,12 +265,13 @@ export default function QuestionsPage() {
       queryClient.invalidateQueries({ queryKey: ['pending-questions'] })
       queryClient.invalidateQueries({ queryKey: ['question-stats'] })
       const count = response?.data?.created_count || selectedDriversForBulk.length
-      toast.success(`${count} şoföre soru gönderildi`)
+      toast.success(`${count} sofore soru gonderildi`)
       setSelectedDriversForBulk([])
     },
-    onError: () => toast.error('Toplu soru gönderilemedi'),
+    onError: () => toast.error('Toplu soru gonderilemedi'),
   })
 
+  // Data
   const pendingQuestions = (pendingData?.data?.questions || []) as Question[]
   const answeredQuestions = (answeredData?.data?.questions || []) as AnsweredQuestion[]
   const scheduledQuestions = ((scheduledData?.data?.questions || []) as Question[]).filter(q => q.status === 'approved')
@@ -267,598 +280,377 @@ export default function QuestionsPage() {
   const allDrivers = (allDriversData?.data?.drivers || []) as Driver[]
   const stats = statsData?.data?.stats || {}
 
-  // History filtering
-  const filteredAnsweredQuestions = answeredQuestions.filter(q => {
-    // Driver filter
-    if (historyFilterDriver !== 'all' && q.driver_id !== historyFilterDriver) {
-      return false
-    }
-    // Date filter
-    if (historyFilterDate !== 'all') {
-      const answerDate = new Date(q.answered_at)
-      const now = new Date()
-      if (historyFilterDate === 'today') {
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        if (answerDate < today) return false
-      } else if (historyFilterDate === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        if (answerDate < weekAgo) return false
-      } else if (historyFilterDate === 'month') {
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        if (answerDate < monthAgo) return false
+  // Filtered history
+  const filteredAnsweredQuestions = useMemo(() => {
+    return answeredQuestions.filter(q => {
+      if (historySearch) {
+        const search = historySearch.toLowerCase()
+        if (!q.question_text.toLowerCase().includes(search) &&
+            !q.driver_name.toLowerCase().includes(search) &&
+            !q.driver_surname.toLowerCase().includes(search) &&
+            !q.answer_value.toLowerCase().includes(search)) {
+          return false
+        }
       }
-    }
-    return true
-  })
-
-  // Get unique drivers from answered questions
-  const uniqueDriversInHistory = Array.from(
-    new Map(answeredQuestions.map(q => [q.driver_id, { id: q.driver_id, name: q.driver_name, surname: q.driver_surname }])).values()
-  )
-
-  // Group questions by driver for summary
-  const questionsByDriver = answeredQuestions.reduce((acc, q) => {
-    if (!acc[q.driver_id]) {
-      acc[q.driver_id] = {
-        driver_id: q.driver_id,
-        driver_name: q.driver_name,
-        driver_surname: q.driver_surname,
-        driver_phone: q.driver_phone,
-        driver_province: q.driver_province,
-        total_questions: 0,
-        answered_questions: 0,
-        last_answer_at: q.answered_at,
+      if (historyFilterDriver !== 'all' && q.driver_id !== historyFilterDriver) return false
+      if (historyFilterDate !== 'all') {
+        const answerDate = new Date(q.answered_at)
+        const now = new Date()
+        if (historyFilterDate === 'today') {
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          if (answerDate < today) return false
+        } else if (historyFilterDate === 'week') {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          if (answerDate < weekAgo) return false
+        } else if (historyFilterDate === 'month') {
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          if (answerDate < monthAgo) return false
+        }
       }
-    }
-    acc[q.driver_id].total_questions++
-    acc[q.driver_id].answered_questions++
-    if (new Date(q.answered_at) > new Date(acc[q.driver_id].last_answer_at)) {
-      acc[q.driver_id].last_answer_at = q.answered_at
-    }
-    return acc
-  }, {} as Record<string, { driver_id: string; driver_name: string; driver_surname: string; driver_phone: string; driver_province: string; total_questions: number; answered_questions: number; last_answer_at: string }>)
+      return true
+    })
+  }, [answeredQuestions, historySearch, historyFilterDriver, historyFilterDate])
+
+  const uniqueDriversInHistory = useMemo(() => {
+    return Array.from(
+      new Map(answeredQuestions.map(q => [q.driver_id, { id: q.driver_id, name: q.driver_name, surname: q.driver_surname }])).values()
+    )
+  }, [answeredQuestions])
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Akıllı Soru Sistemi</h1>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs sm:text-sm self-start sm:self-auto"
-        >
-          <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-          Yeni Soru
-        </button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Akilli Soru Sistemi"
+        subtitle="Soforlere soru gonderin ve cevaplari yonetin"
+        icon={QuestionMarkCircleIcon}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+            <PlusIcon className="h-5 w-5" />
+            Yeni Soru
+          </Button>
+        }
+      />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-yellow-100 rounded-lg">
-              <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Onay Bekleyen</p>
-              <p className="text-lg sm:text-2xl font-bold">{stats.pending_approval || 0}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
-              <CheckCircleIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Cevap Oranı</p>
-              <p className="text-lg sm:text-2xl font-bold">{stats.answer_rate?.toFixed(1) || 0}%</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
-              <TruckIcon className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Seferde</p>
-              <p className="text-lg sm:text-2xl font-bold">{driversOnTrip.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
-              <UserIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Beklemede</p>
-              <p className="text-lg sm:text-2xl font-bold">{idleDrivers.length}</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Onay Bekleyen"
+          value={stats.pending_approval || 0}
+          icon={ClockIcon}
+          color="yellow"
+        />
+        <StatCard
+          title="Cevap Orani"
+          value={`%${stats.answer_rate?.toFixed(1) || 0}`}
+          icon={ChartBarIcon}
+          color="green"
+        />
+        <StatCard
+          title="Seferde"
+          value={driversOnTrip.length}
+          icon={TruckIcon}
+          color="orange"
+        />
+        <StatCard
+          title="Beklemede"
+          value={idleDrivers.length}
+          icon={UserIcon}
+          color="blue"
+        />
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="border-b border-gray-200 overflow-x-auto">
-          <nav className="flex -mb-px min-w-max">
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                activeTab === 'pending'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <ClockIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Onay Bekleyenler</span>
-              <span className="sm:hidden">Onay</span>
-              ({pendingQuestions.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                activeTab === 'history'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <ChatBubbleLeftRightIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Soru Geçmişi</span>
-              <span className="sm:hidden">Geçmiş</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('bulk')}
-              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                activeTab === 'bulk'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <UsersIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Toplu Gönder</span>
-              <span className="sm:hidden">Toplu</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('scheduled')}
-              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                activeTab === 'scheduled'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <ClockIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Zamanlanmış</span>
-              <span className="sm:hidden">Zamanlı</span>
-              ({scheduledQuestions.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('drivers')}
-              className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                activeTab === 'drivers'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <TruckIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Şoför Durumları</span>
-              <span className="sm:hidden">Şoförler</span>
-            </button>
-          </nav>
-        </div>
+      {/* Main Content */}
+      <Card>
+        <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab}>
+          <CardHeader className="border-b">
+            <TabsList className="w-full justify-start overflow-x-auto">
+              <TabsTrigger value="pending" className="gap-2">
+                <ClockIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Onay Bekleyenler</span>
+                <span className="sm:hidden">Onay</span>
+                <Badge variant="warning" size="sm">{pendingQuestions.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="history" className="gap-2">
+                <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Soru Gecmisi</span>
+                <span className="sm:hidden">Gecmis</span>
+              </TabsTrigger>
+              <TabsTrigger value="bulk" className="gap-2">
+                <UsersIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Toplu Gonder</span>
+                <span className="sm:hidden">Toplu</span>
+              </TabsTrigger>
+              <TabsTrigger value="scheduled" className="gap-2">
+                <ClockIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Zamanlanmis</span>
+                <span className="sm:hidden">Zamanlı</span>
+                <Badge variant="info" size="sm">{scheduledQuestions.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="drivers" className="gap-2">
+                <TruckIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Sofor Durumlari</span>
+                <span className="sm:hidden">Soforler</span>
+              </TabsTrigger>
+            </TabsList>
+          </CardHeader>
 
-        <div className="p-3 sm:p-6">
-          {/* Pending Tab */}
-          {activeTab === 'pending' && (
-            <div className="space-y-3 sm:space-y-4">
+          <CardContent className="p-6">
+            {/* Pending Tab */}
+            <TabsContent value="pending">
               {pendingLoading ? (
-                <div className="flex justify-center py-6 sm:py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary-600"></div>
+                <div className="flex justify-center py-12">
+                  <LoadingSpinner size="lg" />
                 </div>
               ) : pendingQuestions.length === 0 ? (
-                <div className="text-center py-6 sm:py-8 text-gray-500 text-sm">
-                  Onay bekleyen soru bulunmuyor
-                </div>
+                <EmptyState
+                  icon={CheckCircleIcon}
+                  title="Onay bekleyen soru yok"
+                  description="Tum sorular islenilmis durumda"
+                />
               ) : (
-                pendingQuestions.map((question) => (
-                  <div key={question.id} className="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
-                          <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs ${statusLabels[question.status]?.color}`}>
-                            {statusLabels[question.status]?.label}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {question.source_type === 'ai_generated' ? '🤖 AI' :
-                             question.source_type === 'rule_based' ? '📋 Kural' : '✍️ Manuel'}
-                          </span>
-                          <span className="text-xs bg-gray-100 px-1.5 sm:px-2 py-0.5 rounded hidden sm:inline">
-                            {questionTypes.find(t => t.id === question.question_type)?.name || question.question_type}
-                          </span>
-                          {question.ai_confidence && (
-                            <span className="text-xs text-blue-600 bg-blue-50 px-1.5 sm:px-2 py-0.5 rounded hidden sm:inline">
-                              %{(question.ai_confidence * 100).toFixed(0)}
-                            </span>
-                          )}
-                        </div>
-                        <p className="font-medium text-gray-900 text-sm sm:text-lg">{question.question_text}</p>
-                        {question.options && question.options.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {question.options.map((opt, idx) => (
-                              <span key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                                {opt}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                          👤 {question.driver_name} {question.driver_surname}
-                          {question.driver_province && ` | 📍 ${question.driver_province}`}
-                        </p>
-                        {question.ai_reasoning && (
-                          <p className="text-xs text-gray-400 mt-1 italic bg-gray-50 p-2 rounded hidden sm:block">
-                            💡 {question.ai_reasoning}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-400 mt-1 sm:mt-2">
-                          {new Date(question.created_at).toLocaleString('tr-TR')}
-                        </p>
-                      </div>
-                      <div className="flex sm:flex-col gap-1 sm:ml-4">
-                        {/* Düzenleme - sadece düzenlenebilir durumlar için */}
-                        {['draft', 'pending_approval', 'approved'].includes(question.status) && (
-                          <button
-                            onClick={() => {
-                              setEditingQuestion(question)
-                              setShowEditModal(true)
-                            }}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                            title="Düzenle"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </button>
-                        )}
-                        {/* Silme - sadece draft için */}
-                        {question.status === 'draft' && (
-                          <button
-                            onClick={() => {
-                              if (confirm('Bu soruyu silmek istediğinize emin misiniz?')) {
-                                deleteMutation.mutate(question.id)
-                              }
-                            }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Sil"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        )}
-                        {/* Onaylama butonları */}
-                        {question.status === 'pending_approval' && (
-                          <>
-                            <button
-                              onClick={() => approveMutation.mutate({ id: question.id, approved: true })}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                              title="Onayla"
-                            >
-                              <CheckCircleIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                const reason = prompt('Red sebebi:')
-                                if (reason) {
-                                  approveMutation.mutate({ id: question.id, approved: false, reason })
-                                }
-                              }}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                              title="Reddet"
-                            >
-                              <XCircleIcon className="h-5 w-5" />
-                            </button>
-                          </>
-                        )}
-                        {/* Gönderme - onaylanmış için */}
-                        {question.status === 'approved' && (
-                          <button
-                            onClick={() => sendMutation.mutate(question.id)}
-                            className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg"
-                            title="Şimdi Gönder"
-                          >
-                            <PaperAirplaneIcon className="h-5 w-5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {/* Drivers Tab */}
-          {activeTab === 'drivers' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* On Trip */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <TruckIcon className="h-5 w-5 text-orange-500" />
-                  Seferde Olan Şoförler
-                </h3>
-                <div className="space-y-2">
-                  {driversOnTrip.length === 0 ? (
-                    <p className="text-gray-500 text-sm">Seferde şoför yok</p>
-                  ) : (
-                    driversOnTrip.map((driver) => (
-                      <div
-                        key={driver.driver_id}
-                        className="flex items-center justify-between p-3 bg-orange-50 rounded-lg"
-                      >
-                        <div>
-                          <p className="font-medium">{driver.name} {driver.surname}</p>
-                          <p className="text-xs text-gray-500">
-                            Sefer süresi: {Math.round(driver.trip_duration_minutes)} dk
-                            {driver.current_speed && ` | Hız: ${driver.current_speed.toFixed(0)} km/s`}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedDriver(driver)
-                            setShowCreateModal(true)
-                          }}
-                          className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600"
-                        >
-                          Soru Sor
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Idle */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <ClockIcon className="h-5 w-5 text-blue-500" />
-                  Beklemede Olan Şoförler
-                </h3>
-                <div className="space-y-2">
-                  {idleDrivers.length === 0 ? (
-                    <p className="text-gray-500 text-sm">Beklemede şoför yok</p>
-                  ) : (
-                    idleDrivers.map((driver) => (
-                      <div
-                        key={driver.driver_id}
-                        className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
-                      >
-                        <div>
-                          <p className="font-medium">{driver.name} {driver.surname}</p>
-                          <p className="text-xs text-gray-500">
-                            {driver.idle_hours ? `${driver.idle_hours.toFixed(1)} saat beklemede` : 'Konum yok'}
-                            {driver.home_province && ` | ${driver.home_province}`}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedDriver(driver)
-                            setShowCreateModal(true)
-                          }}
-                          className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
-                        >
-                          Soru Sor
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* History Tab */}
-          {activeTab === 'history' && (
-            <div className="space-y-4">
-              {/* Header with filters */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-purple-500" />
-                  Soru Geçmişi ({filteredAnsweredQuestions.length}/{answeredQuestions.length})
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {/* Driver Filter */}
-                  <select
-                    value={historyFilterDriver}
-                    onChange={(e) => setHistoryFilterDriver(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-                  >
-                    <option value="all">Tüm Şoförler</option>
-                    {uniqueDriversInHistory.map(d => (
-                      <option key={d.id} value={d.id}>{d.name} {d.surname}</option>
-                    ))}
-                  </select>
-                  {/* Date Filter */}
-                  <select
-                    value={historyFilterDate}
-                    onChange={(e) => setHistoryFilterDate(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-                  >
-                    <option value="all">Tüm Zamanlar</option>
-                    <option value="today">Bugün</option>
-                    <option value="week">Son 7 Gün</option>
-                    <option value="month">Son 30 Gün</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Driver Summary Cards */}
-              {historyFilterDriver === 'all' && Object.keys(questionsByDriver).length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-                  {Object.values(questionsByDriver).map(driver => (
-                    <div
-                      key={driver.driver_id}
-                      className="bg-gradient-to-br from-purple-50 to-white border border-purple-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => setHistoryFilterDriver(driver.driver_id)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                            {driver.driver_name.charAt(0)}{driver.driver_surname.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm">{driver.driver_name} {driver.driver_surname}</p>
-                            <p className="text-xs text-gray-500">{driver.driver_phone}</p>
-                          </div>
-                        </div>
-                        <span className="text-lg font-bold text-purple-600">{driver.answered_questions}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{driver.driver_province || '-'}</span>
-                        <span>Son: {new Date(driver.last_answer_at).toLocaleDateString('tr-TR')}</span>
-                      </div>
-                    </div>
+                <div className="space-y-4">
+                  {pendingQuestions.map((question) => (
+                    <QuestionCard
+                      key={question.id}
+                      question={question}
+                      onApprove={() => approveMutation.mutate({ id: question.id, approved: true })}
+                      onReject={() => {
+                        const reason = prompt('Red sebebi:')
+                        if (reason) approveMutation.mutate({ id: question.id, approved: false, reason })
+                      }}
+                      onSend={() => sendMutation.mutate(question.id)}
+                      onEdit={() => {
+                        setEditingQuestion(question)
+                        setShowEditModal(true)
+                      }}
+                      onDelete={() => {
+                        if (confirm('Bu soruyu silmek istediginize emin misiniz?')) {
+                          deleteMutation.mutate(question.id)
+                        }
+                      }}
+                    />
                   ))}
                 </div>
               )}
+            </TabsContent>
 
-              {answeredLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            {/* History Tab */}
+            <TabsContent value="history">
+              <div className="space-y-4">
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <SearchInput
+                      value={historySearch}
+                      onChange={setHistorySearch}
+                      placeholder="Soru veya cevap ara..."
+                    />
+                  </div>
+                  <Select
+                    value={historyFilterDriver}
+                    onChange={setHistoryFilterDriver}
+                    options={[
+                      { value: 'all', label: 'Tum Soforler' },
+                      ...uniqueDriversInHistory.map(d => ({
+                        value: d.id,
+                        label: `${d.name} ${d.surname}`
+                      }))
+                    ]}
+                    className="w-48"
+                  />
+                  <Select
+                    value={historyFilterDate}
+                    onChange={setHistoryFilterDate}
+                    options={[
+                      { value: 'all', label: 'Tum Zamanlar' },
+                      { value: 'today', label: 'Bugun' },
+                      { value: 'week', label: 'Son 7 Gun' },
+                      { value: 'month', label: 'Son 30 Gun' },
+                    ]}
+                    className="w-40"
+                  />
                 </div>
-              ) : filteredAnsweredQuestions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                  <p>Filtrelere uygun soru bulunamadı</p>
-                  {(historyFilterDriver !== 'all' || historyFilterDate !== 'all') && (
-                    <button
-                      onClick={() => { setHistoryFilterDriver('all'); setHistoryFilterDate('all'); }}
-                      className="mt-2 text-primary-600 hover:underline text-sm"
-                    >
-                      Filtreleri Temizle
-                    </button>
-                  )}
-                </div>
+
+                {answeredLoading ? (
+                  <div className="flex justify-center py-12">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                ) : filteredAnsweredQuestions.length === 0 ? (
+                  <EmptyState
+                    icon={ChatBubbleLeftRightIcon}
+                    title="Cevaplanan soru bulunamadi"
+                    description="Filtreleri degistirmeyi deneyin"
+                    action={
+                      (historySearch || historyFilterDriver !== 'all' || historyFilterDate !== 'all') && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setHistorySearch('')
+                            setHistoryFilterDriver('all')
+                            setHistoryFilterDate('all')
+                          }}
+                        >
+                          Filtreleri Temizle
+                        </Button>
+                      )
+                    }
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {filteredAnsweredQuestions.map((q) => (
+                      <AnsweredQuestionCard key={q.answer_id} question={q} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Bulk Tab */}
+            <TabsContent value="bulk">
+              <BulkQuestionSender
+                allDrivers={allDrivers}
+                selectedDrivers={selectedDriversForBulk}
+                setSelectedDrivers={setSelectedDriversForBulk}
+                onSend={bulkCreateMutation.mutate}
+                isLoading={bulkCreateMutation.isPending}
+                turkeyRegions={turkeyRegions}
+              />
+            </TabsContent>
+
+            {/* Scheduled Tab */}
+            <TabsContent value="scheduled">
+              {scheduledQuestions.length === 0 ? (
+                <EmptyState
+                  icon={ClockIcon}
+                  title="Zamanlanmis soru yok"
+                  description="Onaylanan sorular burada gorunecek"
+                />
               ) : (
-                <div className="space-y-3">
-                  {filteredAnsweredQuestions.map((q) => (
-                    <div key={q.answer_id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className="px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">
-                              ✓ Cevaplandı
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {q.source_type === 'manual_bulk' ? '📢 Toplu' : '✍️ Tekil'}
-                            </span>
-                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                              {questionTypes.find(t => t.id === q.question_type)?.name || q.question_type}
-                            </span>
-                          </div>
-
-                          <p className="font-medium text-gray-900 mb-2">{q.question_text}</p>
-
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
-                            <p className="text-sm text-gray-600 mb-1">Cevap:</p>
-                            <p className="font-semibold text-green-700">
-                              {q.answer_value === 'true' ? '✅ Evet' :
-                               q.answer_value === 'false' ? '❌ Hayır' :
-                               q.answer_value}
+                <div className="space-y-4">
+                  {scheduledQuestions.map((q) => (
+                    <Card key={q.id} className="border-blue-200 bg-blue-50/50">
+                      <CardContent className="p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <Badge variant="info">Gonderilecek</Badge>
+                              <Badge variant="default" size="sm">
+                                {questionTypes.find(t => t.id === q.question_type)?.name || q.question_type}
+                              </Badge>
+                            </div>
+                            <p className="font-medium text-gray-900 mb-2">{q.question_text}</p>
+                            <p className="text-sm text-gray-500">
+                              {q.driver_name} {q.driver_surname}
+                              {q.driver_province && ` | ${q.driver_province}`}
                             </p>
                           </div>
+                          <Button
+                            onClick={() => sendMutation.mutate(q.id)}
+                            disabled={sendMutation.isPending}
+                            className="gap-2"
+                          >
+                            <PaperAirplaneIcon className="h-4 w-4" />
+                            Simdi Gonder
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
 
-                          <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                            <span
-                              className="cursor-pointer hover:text-primary-600"
-                              onClick={() => setHistoryFilterDriver(q.driver_id)}
+            {/* Drivers Tab */}
+            <TabsContent value="drivers">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* On Trip */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-orange-600">
+                      <TruckIcon className="h-5 w-5" />
+                      Seferde Olan Soforler ({driversOnTrip.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="max-h-96 overflow-y-auto">
+                    {driversOnTrip.length === 0 ? (
+                      <p className="text-gray-500 text-sm text-center py-4">Seferde sofor yok</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {driversOnTrip.map((driver) => (
+                          <div
+                            key={driver.driver_id}
+                            className="flex items-center justify-between p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+                          >
+                            <div>
+                              <p className="font-medium text-gray-900">{driver.name} {driver.surname}</p>
+                              <p className="text-xs text-gray-500">
+                                Sefer: {Math.round(driver.trip_duration_minutes)} dk
+                                {driver.current_speed && ` | ${driver.current_speed.toFixed(0)} km/s`}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedDriver(driver)
+                                setShowCreateModal(true)
+                              }}
                             >
-                              👤 {q.driver_name} {q.driver_surname}
-                            </span>
-                            {q.driver_province && <span>📍 {q.driver_province}</span>}
-                            <span>📱 {q.driver_phone}</span>
+                              Soru Sor
+                            </Button>
                           </div>
-
-                          <p className="text-xs text-gray-400 mt-2">
-                            Cevaplandı: {new Date(q.answered_at).toLocaleString('tr-TR')}
-                          </p>
-                        </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                    )}
+                  </CardContent>
+                </Card>
 
-          {/* Scheduled Tab */}
-          {activeTab === 'scheduled' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <ClockIcon className="h-5 w-5 text-blue-500" />
-                  Zamanlanmış Sorular ({scheduledQuestions.length})
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Onaylanmış ve gönderilmeyi bekleyen sorular
-                </p>
+                {/* Idle */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-600">
+                      <ClockIcon className="h-5 w-5" />
+                      Beklemede Olan Soforler ({idleDrivers.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="max-h-96 overflow-y-auto">
+                    {idleDrivers.length === 0 ? (
+                      <p className="text-gray-500 text-sm text-center py-4">Beklemede sofor yok</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {idleDrivers.map((driver) => (
+                          <div
+                            key={driver.driver_id}
+                            className="flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            <div>
+                              <p className="font-medium text-gray-900">{driver.name} {driver.surname}</p>
+                              <p className="text-xs text-gray-500">
+                                {driver.idle_hours ? `${driver.idle_hours.toFixed(1)} saat` : '-'}
+                                {driver.home_province && ` | ${driver.home_province}`}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedDriver(driver)
+                                setShowCreateModal(true)
+                              }}
+                            >
+                              Soru Sor
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-
-              {scheduledQuestions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <ClockIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                  <p>Zamanlanmış soru bulunmuyor</p>
-                  <p className="text-sm mt-1">Onaylanmış sorular burada görünecek</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {scheduledQuestions.map((q) => (
-                    <div key={q.id} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">
-                              ⏳ Gönderilecek
-                            </span>
-                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                              {questionTypes.find(t => t.id === q.question_type)?.name || q.question_type}
-                            </span>
-                          </div>
-                          <p className="font-medium text-gray-900 mb-2">{q.question_text}</p>
-                          <p className="text-xs text-gray-500">
-                            👤 {q.driver_name} {q.driver_surname}
-                            {q.driver_province && ` | 📍 ${q.driver_province}`}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Oluşturulma: {new Date(q.created_at).toLocaleString('tr-TR')}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => sendMutation.mutate(q.id)}
-                          disabled={sendMutation.isPending}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                        >
-                          <PaperAirplaneIcon className="h-4 w-4" />
-                          Şimdi Gönder
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Bulk Send Tab */}
-          {activeTab === 'bulk' && (
-            <BulkQuestionSender
-              allDrivers={allDrivers}
-              selectedDrivers={selectedDriversForBulk}
-              setSelectedDrivers={setSelectedDriversForBulk}
-              onSend={bulkCreateMutation.mutate}
-              isLoading={bulkCreateMutation.isPending}
-              turkeyRegions={turkeyRegions}
-            />
-          )}
-        </div>
-      </div>
+            </TabsContent>
+          </CardContent>
+        </Tabs>
+      </Card>
 
       {/* Create Question Modal */}
       {showCreateModal && (
@@ -892,7 +684,167 @@ export default function QuestionsPage() {
   )
 }
 
-// Create Question Modal Component
+// Question Card Component
+function QuestionCard({
+  question,
+  onApprove,
+  onReject,
+  onSend,
+  onEdit,
+  onDelete,
+}: {
+  question: Question
+  onApprove: () => void
+  onReject: () => void
+  onSend: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <Badge variant={statusConfig[question.status]?.variant || 'default'} dot>
+                {statusConfig[question.status]?.label || question.status}
+              </Badge>
+              <Badge variant="default" size="sm">
+                {question.source_type === 'ai_generated' ? 'AI' :
+                 question.source_type === 'rule_based' ? 'Kural' : 'Manuel'}
+              </Badge>
+              <Badge variant="default" size="sm">
+                {questionTypes.find(t => t.id === question.question_type)?.name || question.question_type}
+              </Badge>
+              {question.ai_confidence && (
+                <Badge variant="info" size="sm">
+                  %{(question.ai_confidence * 100).toFixed(0)} guven
+                </Badge>
+              )}
+            </div>
+
+            <p className="font-medium text-gray-900 text-lg mb-2">{question.question_text}</p>
+
+            {question.options && question.options.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-3">
+                {question.options.map((opt, idx) => (
+                  <span key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                    {opt}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <span className="flex items-center gap-1">
+                <UserIcon className="h-4 w-4" />
+                {question.driver_name} {question.driver_surname}
+              </span>
+              {question.driver_province && (
+                <span className="flex items-center gap-1">
+                  <MapPinIcon className="h-4 w-4" />
+                  {question.driver_province}
+                </span>
+              )}
+            </div>
+
+            {question.ai_reasoning && (
+              <p className="text-xs text-gray-400 mt-2 italic bg-gray-50 p-2 rounded">
+                {question.ai_reasoning}
+              </p>
+            )}
+
+            <p className="text-xs text-gray-400 mt-2">
+              {new Date(question.created_at).toLocaleString('tr-TR')}
+            </p>
+          </div>
+
+          <div className="flex lg:flex-col gap-2">
+            {['draft', 'pending_approval', 'approved'].includes(question.status) && (
+              <Button size="sm" variant="outline" onClick={onEdit} className="gap-1">
+                <PencilIcon className="h-4 w-4" />
+                <span className="hidden lg:inline">Duzenle</span>
+              </Button>
+            )}
+            {question.status === 'draft' && (
+              <Button size="sm" variant="outline" onClick={onDelete} className="gap-1 text-red-600 hover:bg-red-50">
+                <TrashIcon className="h-4 w-4" />
+                <span className="hidden lg:inline">Sil</span>
+              </Button>
+            )}
+            {question.status === 'pending_approval' && (
+              <>
+                <Button size="sm" onClick={onApprove} className="gap-1 bg-green-600 hover:bg-green-700">
+                  <CheckCircleIcon className="h-4 w-4" />
+                  <span className="hidden lg:inline">Onayla</span>
+                </Button>
+                <Button size="sm" variant="outline" onClick={onReject} className="gap-1 text-red-600 hover:bg-red-50">
+                  <XCircleIcon className="h-4 w-4" />
+                  <span className="hidden lg:inline">Reddet</span>
+                </Button>
+              </>
+            )}
+            {question.status === 'approved' && (
+              <Button size="sm" onClick={onSend} className="gap-1">
+                <PaperAirplaneIcon className="h-4 w-4" />
+                <span className="hidden lg:inline">Gonder</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Answered Question Card
+function AnsweredQuestionCard({ question }: { question: AnsweredQuestion }) {
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <Badge variant="success">Cevaplandi</Badge>
+          <Badge variant="default" size="sm">
+            {question.source_type === 'manual_bulk' ? 'Toplu' : 'Tekil'}
+          </Badge>
+          <Badge variant="default" size="sm">
+            {questionTypes.find(t => t.id === question.question_type)?.name || question.question_type}
+          </Badge>
+        </div>
+
+        <p className="font-medium text-gray-900 mb-3">{question.question_text}</p>
+
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+          <p className="text-sm text-gray-600 mb-1">Cevap:</p>
+          <p className="font-semibold text-green-700">
+            {question.answer_value === 'true' ? 'Evet' :
+             question.answer_value === 'false' ? 'Hayir' :
+             question.answer_value}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+          <span className="flex items-center gap-1">
+            <UserIcon className="h-4 w-4" />
+            {question.driver_name} {question.driver_surname}
+          </span>
+          {question.driver_province && (
+            <span className="flex items-center gap-1">
+              <MapPinIcon className="h-4 w-4" />
+              {question.driver_province}
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <ClockIcon className="h-4 w-4" />
+            {new Date(question.answered_at).toLocaleString('tr-TR')}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Create Question Modal
 function CreateQuestionModal({
   driver,
   onClose,
@@ -905,24 +857,16 @@ function CreateQuestionModal({
   const [questionText, setQuestionText] = useState('')
   const [questionType, setQuestionType] = useState('yes_no')
   const [options, setOptions] = useState<string[]>(['', ''])
-  const [followUps, setFollowUps] = useState<FollowUpQuestion[]>([])
+  const followUps: FollowUpQuestion[] = [] // Follow-up feature placeholder
   const [sendImmediately, setSendImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
 
-  // Preset questions for quick selection
   const presetQuestions = [
-    { text: 'Şu an yükünüz var mı?', type: 'yes_no', followUps: [
-      { condition: { answer: 'yes' }, question: 'Yükünüz nereye?', type: 'text' },
-      { condition: { answer: 'no' }, question: 'Yük arıyor musunuz?', type: 'yes_no' },
-    ]},
-    { text: 'Müsait misiniz?', type: 'yes_no', followUps: [
-      { condition: { answer: 'yes' }, question: 'Hangi bölgeden yük almak istersiniz?', type: 'text' },
-    ]},
-    { text: 'Son seferiniz için ne kadar ücret aldınız?', type: 'price', followUps: [] },
-    { text: 'Yol durumu nasıl?', type: 'multiple_choice', options: ['Açık', 'Yoğun', 'Çok Yoğun', 'Kapalı'], followUps: [] },
-    { text: 'Yükünüz hangi ile gidecek?', type: 'province', followUps: [] },
-    { text: 'Hangi ilden yük almak istersiniz?', type: 'province', followUps: [] },
-    { text: 'Şu an hangi il/ilçedesiniz?', type: 'province_district', followUps: [] },
+    { text: 'Su an yukunuz var mi?', type: 'yes_no' },
+    { text: 'Musait misiniz?', type: 'yes_no' },
+    { text: 'Son seferiniz icin ne kadar ucret aldiniz?', type: 'price' },
+    { text: 'Yol durumu nasil?', type: 'multiple_choice', options: ['Acik', 'Yogun', 'Cok Yogun', 'Kapali'] },
+    { text: 'Yukunuz hangi ile gidecek?', type: 'province' },
   ]
 
   const getDriverId = (): string | null => {
@@ -940,11 +884,10 @@ function CreateQuestionModal({
   const handleSubmit = async () => {
     const driverId = getDriverId()
     if (!driverId || !questionText) {
-      toast.error('Şoför ve soru metni gerekli')
+      toast.error('Sofor ve soru metni gerekli')
       return
     }
 
-    // Soru tipine göre options belirle
     let questionOptions: string[] | undefined = undefined
     if (questionType === 'multiple_choice') {
       questionOptions = options.filter(o => o)
@@ -963,284 +906,149 @@ function CreateQuestionModal({
         send_immediately: sendImmediately,
         priority: 50,
       })
-      toast.success('Soru oluşturuldu')
+      toast.success('Soru olusturuldu')
       onSuccess()
     } catch {
-      toast.error('Soru oluşturulamadı')
+      toast.error('Soru olusturulamadi')
     } finally {
       setLoading(false)
     }
   }
 
-  const selectPreset = (preset: typeof presetQuestions[0]) => {
-    setQuestionText(preset.text)
-    setQuestionType(preset.type)
-    if (preset.options) {
-      setOptions(preset.options)
-    }
-    setFollowUps(preset.followUps as FollowUpQuestion[])
-  }
-
-  const addFollowUp = () => {
-    setFollowUps([...followUps, { condition: { answer: 'yes' }, question: '', type: 'text' }])
-  }
-
-  const removeFollowUp = (index: number) => {
-    setFollowUps(followUps.filter((_, i) => i !== index))
-  }
-
-  const updateFollowUp = (index: number, field: string, value: string) => {
-    const updated = [...followUps]
-    if (field === 'condition') {
-      updated[index].condition = { answer: value }
-    } else if (field === 'question') {
-      updated[index].question = value
-    } else if (field === 'type') {
-      updated[index].type = value
-    }
-    setFollowUps(updated)
-  }
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold">
-            Yeni Soru Oluştur
-            {driver && <span className="text-gray-500 text-base ml-2">- {getDriverName()}</span>}
-          </h2>
+    <Modal isOpen onClose={onClose} title="Yeni Soru Olustur" size="lg">
+      <div className="space-y-6">
+        {driver && (
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="font-medium text-gray-900">{getDriverName()}</p>
+            <p className="text-sm text-gray-500">Bu sofore soru gonderilecek</p>
+          </div>
+        )}
+
+        {/* Preset Questions */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Hazir Sorular</label>
+          <div className="flex flex-wrap gap-2">
+            {presetQuestions.map((preset, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setQuestionText(preset.text)
+                  setQuestionType(preset.type)
+                  if (preset.options) setOptions(preset.options)
+                }}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                {preset.text}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Preset Questions */}
+        {/* Question Text */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Soru Metni *</label>
+          <textarea
+            value={questionText}
+            onChange={(e) => setQuestionText(e.target.value)}
+            rows={3}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Sorunuzu yazin..."
+          />
+        </div>
+
+        {/* Question Type */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Soru Tipi</label>
+          <select
+            value={questionType}
+            onChange={(e) => setQuestionType(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          >
+            {questionTypes.map((type) => (
+              <option key={type.id} value={type.id}>{type.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Options for multiple choice */}
+        {questionType === 'multiple_choice' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hazır Sorular
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {presetQuestions.map((preset, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => selectPreset(preset)}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200"
-                >
-                  {preset.text.substring(0, 30)}...
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Question Text */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Soru Metni *
-            </label>
-            <textarea
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              rows={2}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              placeholder="Sorunuzu yazın..."
-            />
-          </div>
-
-          {/* Question Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Soru Tipi
-            </label>
-            <select
-              value={questionType}
-              onChange={(e) => setQuestionType(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            >
-              {questionTypes.map((type) => (
-                <option key={type.id} value={type.id}>{type.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Options for multiple choice */}
-          {questionType === 'multiple_choice' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Seçenekler
-              </label>
-              <div className="space-y-2">
-                {options.map((opt, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={opt}
-                      onChange={(e) => {
-                        const newOpts = [...options]
-                        newOpts[idx] = e.target.value
-                        setOptions(newOpts)
-                      }}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
-                      placeholder={`Seçenek ${idx + 1}`}
-                    />
-                    {options.length > 2 && (
-                      <button
-                        onClick={() => setOptions(options.filter((_, i) => i !== idx))}
-                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        Sil
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  onClick={() => setOptions([...options, ''])}
-                  className="text-sm text-primary-600 hover:text-primary-700"
-                >
-                  + Seçenek Ekle
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Province selection info */}
-          {questionType === 'province' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <MapPinIcon className="h-5 w-5 text-blue-600 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-blue-800">İl Seçimi</p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    Şoför, Türkiye'nin 81 ilinden birini seçebilecek.
-                    Örnek: "İstanbul", "Ankara", "İzmir" vb.
-                  </p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {turkeyProvinces.slice(0, 8).map((p, idx) => (
-                      <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                        {p}
-                      </span>
-                    ))}
-                    <span className="text-xs text-blue-500">+{turkeyProvinces.length - 8} il daha</span>
-                  </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Secenekler</label>
+            <div className="space-y-2">
+              {options.map((opt, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={opt}
+                    onChange={(e) => {
+                      const newOpts = [...options]
+                      newOpts[idx] = e.target.value
+                      setOptions(newOpts)
+                    }}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder={`Secenek ${idx + 1}`}
+                  />
+                  {options.length > 2 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setOptions(options.filter((_, i) => i !== idx))}
+                    >
+                      Sil
+                    </Button>
+                  )}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Province-District selection info */}
-          {questionType === 'province_district' && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <MapPinIcon className="h-5 w-5 text-green-600 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-green-800">İl-İlçe Seçimi</p>
-                  <p className="text-xs text-green-600 mt-1">
-                    Şoför önce il, sonra ilçe seçecek. Daha detaylı konum bilgisi alınacak.
-                    Örnek: "İstanbul → Kadıköy", "Ankara → Çankaya" vb.
-                  </p>
-                  <div className="mt-2 text-xs text-green-700">
-                    <span className="font-medium">Toplam:</span> 81 il, 970+ ilçe
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Follow-up Questions */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Takip Soruları (Koşullu)
-              </label>
+              ))}
               <button
-                onClick={addFollowUp}
+                onClick={() => setOptions([...options, ''])}
                 className="text-sm text-primary-600 hover:text-primary-700"
               >
-                + Takip Sorusu Ekle
+                + Secenek Ekle
               </button>
             </div>
-            {followUps.length > 0 && (
-              <div className="space-y-3 border rounded-lg p-3 bg-gray-50">
-                {followUps.map((fu, idx) => (
-                  <div key={idx} className="flex flex-col gap-2 p-3 bg-white rounded border">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Eğer cevap</span>
-                      <select
-                        value={fu.condition.answer}
-                        onChange={(e) => updateFollowUp(idx, 'condition', e.target.value)}
-                        className="border border-gray-300 rounded px-2 py-1 text-sm"
-                      >
-                        <option value="yes">Evet</option>
-                        <option value="no">Hayır</option>
-                      </select>
-                      <span className="text-sm text-gray-500">ise:</span>
-                      <button
-                        onClick={() => removeFollowUp(idx)}
-                        className="ml-auto text-red-600 text-sm"
-                      >
-                        Kaldır
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={fu.question}
-                      onChange={(e) => updateFollowUp(idx, 'question', e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                      placeholder="Takip sorusu..."
-                    />
-                    <select
-                      value={fu.type}
-                      onChange={(e) => updateFollowUp(idx, 'type', e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1 text-sm"
-                    >
-                      {questionTypes.map((type) => (
-                        <option key={type.id} value={type.id}>{type.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+          </div>
+        )}
+
+        {/* Province info */}
+        {questionType === 'province' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <MapPinIcon className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Il Secimi</p>
+                <p className="text-xs text-blue-600 mt-1">Sofor, 81 ilden birini secebilecek</p>
               </div>
-            )}
+            </div>
           </div>
+        )}
 
-          {/* Send Immediately */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="sendImmediately"
-              checked={sendImmediately}
-              onChange={(e) => setSendImmediately(e.target.checked)}
-              className="rounded border-gray-300 text-primary-600"
-            />
-            <label htmlFor="sendImmediately" className="text-sm text-gray-700">
-              Hemen gönder (onay bekleme)
-            </label>
-          </div>
-        </div>
-
-        <div className="p-6 border-t flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            İptal
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !questionText || !getDriverId()}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-          >
-            {loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              <PaperAirplaneIcon className="h-5 w-5" />
-            )}
-            {sendImmediately ? 'Gönder' : 'Oluştur'}
-          </button>
+        {/* Send Immediately */}
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="sendImmediately"
+            checked={sendImmediately}
+            onChange={(e) => setSendImmediately(e.target.checked)}
+            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <label htmlFor="sendImmediately" className="text-sm text-gray-700">
+            Hemen gonder (onay bekleme)
+          </label>
         </div>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>Iptal</Button>
+        <Button onClick={handleSubmit} disabled={loading || !questionText || !getDriverId()}>
+          {loading ? <LoadingSpinner size="sm" /> : sendImmediately ? 'Gonder' : 'Olustur'}
+        </Button>
+      </div>
+    </Modal>
   )
 }
 
-// Edit Question Modal Component
+// Edit Question Modal
 function EditQuestionModal({
   question,
   onClose,
@@ -1270,128 +1078,82 @@ function EditQuestionModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
-        <div className="p-6 border-b flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Soru Düzenle</h2>
-          <span className={`px-2 py-1 rounded text-xs ${statusLabels[question.status]?.color}`}>
-            {statusLabels[question.status]?.label}
-          </span>
+    <Modal isOpen onClose={onClose} title="Soru Duzenle">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Soru Metni</label>
+          <textarea
+            value={questionText}
+            onChange={(e) => setQuestionText(e.target.value)}
+            rows={3}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+          />
         </div>
 
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Soru Metni
-            </label>
-            <textarea
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              rows={3}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Soru Tipi</label>
+          <select
+            value={questionType}
+            onChange={(e) => setQuestionType(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+          >
+            {questionTypes.map((type) => (
+              <option key={type.id} value={type.id}>{type.name}</option>
+            ))}
+          </select>
+        </div>
 
+        {questionType === 'multiple_choice' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Soru Tipi
-            </label>
-            <select
-              value={questionType}
-              onChange={(e) => setQuestionType(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            >
-              {questionTypes.map((type) => (
-                <option key={type.id} value={type.id}>{type.name}</option>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Secenekler</label>
+            <div className="space-y-2">
+              {options.map((opt, idx) => (
+                <input
+                  key={idx}
+                  type="text"
+                  value={opt}
+                  onChange={(e) => {
+                    const newOpts = [...options]
+                    newOpts[idx] = e.target.value
+                    setOptions(newOpts)
+                  }}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder={`Secenek ${idx + 1}`}
+                />
               ))}
-            </select>
-          </div>
-
-          {questionType === 'multiple_choice' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Seçenekler
-              </label>
-              <div className="space-y-2">
-                {options.map((opt, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={opt}
-                      onChange={(e) => {
-                        const newOpts = [...options]
-                        newOpts[idx] = e.target.value
-                        setOptions(newOpts)
-                      }}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
-                      placeholder={`Seçenek ${idx + 1}`}
-                    />
-                    {options.length > 2 && (
-                      <button
-                        onClick={() => setOptions(options.filter((_, i) => i !== idx))}
-                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        Sil
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  onClick={() => setOptions([...options, ''])}
-                  className="text-sm text-primary-600 hover:text-primary-700"
-                >
-                  + Seçenek Ekle
-                </button>
-              </div>
             </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Öncelik (1-100)
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={priority}
-              onChange={(e) => setPriority(parseInt(e.target.value) || 50)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            />
           </div>
+        )}
 
-          <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600">
-            <p><strong>Şoför:</strong> {question.driver_name} {question.driver_surname}</p>
-            <p><strong>Oluşturulma:</strong> {new Date(question.created_at).toLocaleString('tr-TR')}</p>
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Oncelik (1-100)</label>
+          <input
+            type="number"
+            min="1"
+            max="100"
+            value={priority}
+            onChange={(e) => setPriority(parseInt(e.target.value) || 50)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+          />
         </div>
 
-        <div className="p-6 border-t flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            İptal
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading || !questionText}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-          >
-            {isLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              <CheckCircleIcon className="h-5 w-5" />
-            )}
-            Kaydet
-          </button>
+        <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600">
+          <p><strong>Sofor:</strong> {question.driver_name} {question.driver_surname}</p>
+          <p><strong>Olusturulma:</strong> {new Date(question.created_at).toLocaleString('tr-TR')}</p>
         </div>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>Iptal</Button>
+        <Button onClick={handleSubmit} disabled={isLoading || !questionText}>
+          {isLoading ? <LoadingSpinner size="sm" /> : 'Kaydet'}
+        </Button>
+      </div>
+    </Modal>
   )
 }
 
-// Bulk Question Sender Component
+// Bulk Question Sender
 function BulkQuestionSender({
   allDrivers,
   selectedDrivers,
@@ -1410,15 +1172,27 @@ function BulkQuestionSender({
   const [questionText, setQuestionText] = useState('')
   const [questionType, setQuestionType] = useState('yes_no')
   const [options, setOptions] = useState<string[]>(['', ''])
-  const [filterRegion, setFilterRegion] = useState('Tümü')
+  const [filterRegion, setFilterRegion] = useState('Tumu')
   const [sendImmediately, setSendImmediately] = useState(true)
+  const [driverSearch, setDriverSearch] = useState('')
 
-  // Bölgeye göre filtrelenmiş şoförler
-  const filteredDrivers = allDrivers.filter(driver => {
-    if (filterRegion === 'Tümü') return true
-    const regionProvinces = turkeyRegions[filterRegion] || []
-    return driver.province && regionProvinces.includes(driver.province)
-  })
+  const filteredDrivers = useMemo(() => {
+    return allDrivers.filter(driver => {
+      if (driverSearch) {
+        const search = driverSearch.toLowerCase()
+        if (!driver.name.toLowerCase().includes(search) &&
+            !driver.surname.toLowerCase().includes(search) &&
+            !driver.phone.includes(search)) {
+          return false
+        }
+      }
+      if (filterRegion !== 'Tumu') {
+        const regionProvinces = turkeyRegions[filterRegion] || []
+        if (!driver.province || !regionProvinces.includes(driver.province)) return false
+      }
+      return true
+    })
+  }, [allDrivers, driverSearch, filterRegion, turkeyRegions])
 
   const toggleDriver = (id: string) => {
     if (selectedDrivers.includes(id)) {
@@ -1428,20 +1202,12 @@ function BulkQuestionSender({
     }
   }
 
-  const selectAll = () => {
-    setSelectedDrivers(filteredDrivers.map(d => d.id))
-  }
-
-  const deselectAll = () => {
-    setSelectedDrivers([])
-  }
+  const selectAll = () => setSelectedDrivers(filteredDrivers.map(d => d.id))
+  const deselectAll = () => setSelectedDrivers([])
 
   const handleSubmit = () => {
-    if (selectedDrivers.length === 0 || !questionText) {
-      return
-    }
+    if (selectedDrivers.length === 0 || !questionText) return
 
-    // Soru tipine göre options belirle
     let questionOptions: string[] | undefined = undefined
     if (questionType === 'multiple_choice') {
       questionOptions = options.filter(o => o)
@@ -1459,138 +1225,120 @@ function BulkQuestionSender({
     setQuestionText('')
   }
 
-  // Hazır sorular
   const presetQuestions = [
-    { text: 'Şu an müsait misiniz?', type: 'yes_no' },
-    { text: 'Yükünüz var mı?', type: 'yes_no' },
-    { text: 'Hangi bölgeden yük almak istersiniz?', type: 'text' },
-    { text: 'Yol durumu nasıl?', type: 'multiple_choice', options: ['Açık', 'Yoğun', 'Çok Yoğun', 'Kapalı'] },
-    { text: 'Yükünüz hangi ile gidecek?', type: 'province' },
-    { text: 'Hangi ilden yük almak istersiniz?', type: 'province' },
-    { text: 'Şu an hangi il/ilçedesiniz?', type: 'province_district' },
+    { text: 'Su an musait misiniz?', type: 'yes_no' },
+    { text: 'Yukunuz var mi?', type: 'yes_no' },
+    { text: 'Yukunuz hangi ile gidecek?', type: 'province' },
+    { text: 'Yol durumu nasil?', type: 'multiple_choice', options: ['Acik', 'Yogun', 'Cok Yogun', 'Kapali'] },
   ]
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <UsersIcon className="h-5 w-5 text-primary-500" />
-            Toplu Soru Gönder
-          </h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Birden fazla şoföre aynı anda soru gönderin
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm bg-primary-100 text-primary-700 px-3 py-1 rounded-full">
-            {selectedDrivers.length} şoför seçili
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sol: Şoför Seçimi */}
-        <div className="border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-medium">Şoför Seçin</h4>
-            <div className="flex items-center gap-2">
-              <select
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Driver Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Sofor Sec</span>
+            <Badge variant="info">{selectedDrivers.length} secili</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <SearchInput
+                value={driverSearch}
+                onChange={setDriverSearch}
+                placeholder="Sofor ara..."
+                className="flex-1"
+              />
+              <Select
                 value={filterRegion}
-                onChange={(e) => setFilterRegion(e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1 text-sm"
-              >
-                {Object.keys(turkeyRegions).map(region => (
-                  <option key={region} value={region}>{region}</option>
-                ))}
-              </select>
+                onChange={setFilterRegion}
+                options={Object.keys(turkeyRegions).map(r => ({ value: r, label: r }))}
+                className="w-36"
+              />
             </div>
-          </div>
 
-          <div className="flex gap-2 mb-3">
-            <button
-              onClick={selectAll}
-              className="text-xs text-primary-600 hover:text-primary-700"
-            >
-              Tümünü Seç ({filteredDrivers.length})
-            </button>
-            <span className="text-gray-300">|</span>
-            <button
-              onClick={deselectAll}
-              className="text-xs text-gray-600 hover:text-gray-700"
-            >
-              Seçimi Temizle
-            </button>
-          </div>
+            <div className="flex gap-2 text-sm">
+              <button onClick={selectAll} className="text-primary-600 hover:text-primary-700">
+                Tumunu Sec ({filteredDrivers.length})
+              </button>
+              <span className="text-gray-300">|</span>
+              <button onClick={deselectAll} className="text-gray-600 hover:text-gray-700">
+                Secimi Temizle
+              </button>
+            </div>
 
-          <div className="max-h-64 overflow-y-auto space-y-1">
-            {filteredDrivers.map((driver) => (
-              <label
-                key={driver.id}
-                className={`flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-gray-50 ${
-                  selectedDrivers.includes(driver.id) ? 'bg-primary-50' : ''
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedDrivers.includes(driver.id)}
-                  onChange={() => toggleDriver(driver.id)}
-                  className="rounded border-gray-300 text-primary-600"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{driver.name} {driver.surname}</p>
-                  <p className="text-xs text-gray-500">
-                    {driver.phone} {driver.province && `| ${driver.province}`}
-                  </p>
-                </div>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Sağ: Soru Oluşturma */}
-        <div className="border rounded-lg p-4">
-          <h4 className="font-medium mb-4">Soru</h4>
-
-          {/* Hazır Sorular */}
-          <div className="mb-4">
-            <label className="block text-sm text-gray-600 mb-2">Hazır Sorular</label>
-            <div className="flex flex-wrap gap-2">
-              {presetQuestions.map((preset, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setQuestionText(preset.text)
-                    setQuestionType(preset.type)
-                    if (preset.options) setOptions(preset.options)
-                  }}
-                  className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200"
+            <div className="max-h-64 overflow-y-auto space-y-1 border rounded-lg p-2">
+              {filteredDrivers.map((driver) => (
+                <label
+                  key={driver.id}
+                  className={clsx(
+                    'flex items-center gap-3 p-2 rounded cursor-pointer transition-colors',
+                    selectedDrivers.includes(driver.id) ? 'bg-primary-50' : 'hover:bg-gray-50'
+                  )}
                 >
-                  {preset.text.substring(0, 25)}...
-                </button>
+                  <input
+                    type="checkbox"
+                    checked={selectedDrivers.includes(driver.id)}
+                    onChange={() => toggleDriver(driver.id)}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {driver.name} {driver.surname}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {driver.phone} {driver.province && `| ${driver.province}`}
+                    </p>
+                  </div>
+                </label>
               ))}
             </div>
           </div>
+        </CardContent>
+      </Card>
 
+      {/* Question Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Soru</CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="space-y-4">
+            {/* Presets */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Soru Metni *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Hazir Sorular</label>
+              <div className="flex flex-wrap gap-2">
+                {presetQuestions.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setQuestionText(preset.text)
+                      setQuestionType(preset.type)
+                      if (preset.options) setOptions(preset.options)
+                    }}
+                    className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200"
+                  >
+                    {preset.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Soru Metni *</label>
               <textarea
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
                 rows={2}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                placeholder="Sorunuzu yazın..."
+                placeholder="Sorunuzu yazin..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Soru Tipi
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Soru Tipi</label>
               <select
                 value={questionType}
                 onChange={(e) => setQuestionType(e.target.value)}
@@ -1603,62 +1351,21 @@ function BulkQuestionSender({
             </div>
 
             {questionType === 'multiple_choice' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Seçenekler
-                </label>
-                <div className="space-y-2">
-                  {options.map((opt, idx) => (
-                    <input
-                      key={idx}
-                      type="text"
-                      value={opt}
-                      onChange={(e) => {
-                        const newOpts = [...options]
-                        newOpts[idx] = e.target.value
-                        setOptions(newOpts)
-                      }}
-                      className="w-full border border-gray-300 rounded px-3 py-1 text-sm"
-                      placeholder={`Seçenek ${idx + 1}`}
-                    />
-                  ))}
-                  <button
-                    onClick={() => setOptions([...options, ''])}
-                    className="text-xs text-primary-600"
-                  >
-                    + Seçenek Ekle
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Province selection info */}
-            {questionType === 'province' && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <MapPinIcon className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-medium text-blue-800">İl Seçimi</p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Şoförler 81 ilden birini seçebilecek
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Province-District selection info */}
-            {questionType === 'province_district' && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <MapPinIcon className="h-4 w-4 text-green-600 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-medium text-green-800">İl-İlçe Seçimi</p>
-                    <p className="text-xs text-green-600 mt-1">
-                      Şoförler önce il, sonra ilçe seçecek
-                    </p>
-                  </div>
-                </div>
+              <div className="space-y-2">
+                {options.map((opt, idx) => (
+                  <input
+                    key={idx}
+                    type="text"
+                    value={opt}
+                    onChange={(e) => {
+                      const newOpts = [...options]
+                      newOpts[idx] = e.target.value
+                      setOptions(newOpts)
+                    }}
+                    className="w-full border border-gray-300 rounded px-3 py-1 text-sm"
+                    placeholder={`Secenek ${idx + 1}`}
+                  />
+                ))}
               </div>
             )}
 
@@ -1671,25 +1378,20 @@ function BulkQuestionSender({
                 className="rounded border-gray-300 text-primary-600"
               />
               <label htmlFor="bulkSendImmediately" className="text-sm text-gray-700">
-                Hemen gönder
+                Hemen gonder
               </label>
             </div>
 
-            <button
+            <Button
               onClick={handleSubmit}
               disabled={isLoading || selectedDrivers.length === 0 || !questionText}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="w-full"
             >
-              {isLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <PaperAirplaneIcon className="h-5 w-5" />
-              )}
-              {selectedDrivers.length} Şoföre Gönder
-            </button>
+              {isLoading ? <LoadingSpinner size="sm" /> : `${selectedDrivers.length} Sofore Gonder`}
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

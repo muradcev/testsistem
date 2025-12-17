@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart' hide ActivityType;
 import '../services/location_service.dart';
 import '../services/api_service.dart';
 import '../models/cargo.dart';
@@ -16,6 +17,7 @@ class LocationProvider extends ChangeNotifier {
 
   bool _isTracking = false;
   LocationData? _currentLocation;
+  LocationData? _lastSentLocation; // Duplikat önleme için son gönderilen konum
   DriverStatus _currentStatus = DriverStatus.stopped; // Varsayılan olarak durmuş
   int _batteryLevel = 100;
   bool _isOnline = true;
@@ -50,19 +52,13 @@ class LocationProvider extends ChangeNotifier {
 
     await _locationService.startTracking();
 
-    // Location updates
+    // Location updates - sadece state güncelle, gönderimi timer yapar
     _locationSubscription = _locationService.locationStream.listen((location) {
       _currentLocation = location;
       _pendingCount = _locationService.pendingLocationCount;
       notifyListeners();
-
-      // Konumu hemen sunucuya gönder
-      _sendSingleLocation(location);
-
-      // Auto-sync when batch is ready
-      if (_pendingCount >= 10) {
-        _syncPendingLocations();
-      }
+      // NOT: Duplikat önlemek için burada gönderim yapmıyoruz
+      // Gönderim _singleLocationTimer tarafından kontrollü yapılıyor
     });
 
     // Status updates
@@ -77,16 +73,16 @@ class LocationProvider extends ChangeNotifier {
       notifyListeners();
     });
 
-    // Periodic sync based on config
+    // Periodic sync based on config - sadece batch sync için kullanılacak
     _syncTimer = Timer.periodic(
       Duration(minutes: _config.offlineSyncIntervalMinutes),
       (_) => _syncPendingLocations(),
     );
 
-    // Her 30 saniyede tek konum gönder (yedek olarak)
+    // Ana konum gönderim timer'ı - config'den interval alıyor
     _singleLocationTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => _sendCurrentLocation(),
+      Duration(seconds: _config.locationUpdateIntervalMoving),
+      (_) => _sendCurrentLocationIfChanged(),
     );
 
     _isTracking = true;
@@ -110,6 +106,34 @@ class LocationProvider extends ChangeNotifier {
   Future<void> _sendCurrentLocation() async {
     if (_currentLocation == null) return;
     await _sendSingleLocation(_currentLocation!);
+  }
+
+  /// Sadece konum değiştiyse gönder - duplikat önleme
+  Future<void> _sendCurrentLocationIfChanged() async {
+    if (_currentLocation == null) return;
+
+    // Önceki gönderimle karşılaştır
+    if (_lastSentLocation != null) {
+      final distance = Geolocator.distanceBetween(
+        _lastSentLocation!.latitude,
+        _lastSentLocation!.longitude,
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+      );
+
+      // Minimum 10 metre hareket yoksa ve aynı dakika içindeyse gönderme
+      final timeDiff = _currentLocation!.recordedAt
+          .difference(_lastSentLocation!.recordedAt)
+          .inSeconds;
+
+      if (distance < 10 && timeDiff < 60) {
+        debugPrint('Location unchanged (${distance.toStringAsFixed(1)}m, ${timeDiff}s) - skipping');
+        return;
+      }
+    }
+
+    await _sendSingleLocation(_currentLocation!);
+    _lastSentLocation = _currentLocation;
   }
 
   void stopTracking() {

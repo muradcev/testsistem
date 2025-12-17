@@ -1,13 +1,34 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { driversApi } from '../services/api'
 import {
-  MagnifyingGlassIcon,
+  UserGroupIcon,
+  DevicePhoneMobileIcon,
+  MapPinIcon,
+  FunnelIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  DevicePhoneMobileIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  TruckIcon,
+  HomeIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline'
+import {
+  PageHeader,
+  Card,
+  CardContent,
+  SearchInput,
+  Badge,
+  Select,
+  EmptyState,
+  LoadingSpinner,
+  StatCard,
+} from '../components/ui'
 import clsx from 'clsx'
 
 interface Driver {
@@ -30,7 +51,6 @@ interface Driver {
   app_status: 'active' | 'inactive' | 'stale' | 'never_installed'
 }
 
-// Time elapsed helper function
 function formatTimeElapsed(dateString: string | null): string {
   if (!dateString) return '-'
   const date = new Date(dateString)
@@ -47,44 +67,40 @@ function formatTimeElapsed(dateString: string | null): string {
   return date.toLocaleDateString('tr-TR')
 }
 
-const statusLabels: Record<string, string> = {
-  active: 'Aktif',
-  inactive: 'Pasif',
-  passive: 'Pasif',
-  on_trip: 'Seferde',
-  at_home: 'Evde',
-  no_data: 'Veri Yok',
-  stale_trip: 'Eski Veri',
+const statusConfig = {
+  active: { label: 'Aktif', variant: 'success' as const, icon: CheckCircleIcon },
+  inactive: { label: 'Pasif', variant: 'default' as const, icon: XCircleIcon },
+  passive: { label: 'Pasif', variant: 'default' as const, icon: XCircleIcon },
+  on_trip: { label: 'Seferde', variant: 'warning' as const, icon: TruckIcon },
+  at_home: { label: 'Evde', variant: 'info' as const, icon: HomeIcon },
 }
 
-const statusColors: Record<string, string> = {
-  active: 'bg-green-100 text-green-800',
-  inactive: 'bg-gray-100 text-gray-800',
-  passive: 'bg-gray-100 text-gray-800',
-  on_trip: 'bg-orange-100 text-orange-800',
-  at_home: 'bg-blue-100 text-blue-800',
-  no_data: 'bg-red-100 text-red-800',
-  stale_trip: 'bg-yellow-100 text-yellow-800',
+const appStatusConfig = {
+  active: { label: 'Aktif', variant: 'success' as const },
+  inactive: { label: 'Beklemede', variant: 'warning' as const },
+  stale: { label: 'Silinmiş Olabilir', variant: 'error' as const },
+  never_installed: { label: 'Kurulmadı', variant: 'default' as const },
 }
 
-// Uygulama durumu etiketleri
-const appStatusLabels: Record<string, string> = {
-  active: 'Aktif',
-  inactive: 'Beklemede',
-  stale: 'Silinmis Olabilir',
-  never_installed: 'Kurulmadi',
-}
-
-const appStatusColors: Record<string, string> = {
-  active: 'bg-green-100 text-green-700',
-  inactive: 'bg-yellow-100 text-yellow-700',
-  stale: 'bg-red-100 text-red-700',
-  never_installed: 'bg-gray-100 text-gray-600',
-}
+const regions = [
+  { value: 'all', label: 'Tüm Bölgeler' },
+  { value: 'marmara', label: 'Marmara', provinces: ['İstanbul', 'Kocaeli', 'Bursa', 'Balıkesir', 'Çanakkale', 'Edirne', 'Kırklareli', 'Tekirdağ', 'Sakarya', 'Yalova', 'Bilecik'] },
+  { value: 'ege', label: 'Ege', provinces: ['İzmir', 'Aydın', 'Denizli', 'Muğla', 'Manisa', 'Afyonkarahisar', 'Kütahya', 'Uşak'] },
+  { value: 'akdeniz', label: 'Akdeniz', provinces: ['Antalya', 'Adana', 'Mersin', 'Hatay', 'Kahramanmaraş', 'Osmaniye', 'Burdur', 'Isparta'] },
+  { value: 'ic_anadolu', label: 'İç Anadolu', provinces: ['Ankara', 'Konya', 'Kayseri', 'Eskişehir', 'Sivas', 'Yozgat', 'Kırıkkale', 'Aksaray', 'Niğde', 'Nevşehir', 'Kırşehir', 'Karaman', 'Çankırı'] },
+  { value: 'karadeniz', label: 'Karadeniz', provinces: ['Samsun', 'Trabzon', 'Ordu', 'Giresun', 'Rize', 'Artvin', 'Gümüşhane', 'Bayburt', 'Tokat', 'Amasya', 'Çorum', 'Sinop', 'Kastamonu', 'Bartın', 'Karabük', 'Zonguldak', 'Bolu', 'Düzce'] },
+  { value: 'dogu_anadolu', label: 'Doğu Anadolu', provinces: ['Erzurum', 'Van', 'Malatya', 'Elazığ', 'Ağrı', 'Kars', 'Iğdır', 'Ardahan', 'Muş', 'Bitlis', 'Bingöl', 'Tunceli', 'Erzincan'] },
+  { value: 'guneydogu', label: 'Güneydoğu', provinces: ['Gaziantep', 'Diyarbakır', 'Şanlıurfa', 'Mardin', 'Batman', 'Siirt', 'Şırnak', 'Adıyaman', 'Kilis'] },
+]
 
 export default function DriversPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [appStatusFilter, setAppStatusFilter] = useState('all')
+  const [regionFilter, setRegionFilter] = useState('all')
+  const [showFilters, setShowFilters] = useState(false)
   const limit = 20
 
   const { data, isLoading } = useQuery({
@@ -96,303 +112,449 @@ export default function DriversPage() {
   const total = data?.data?.total || 0
   const totalPages = Math.ceil(total / limit)
 
-  const filteredDrivers = drivers.filter(
-    (driver) =>
-      driver.name.toLowerCase().includes(search.toLowerCase()) ||
-      driver.surname.toLowerCase().includes(search.toLowerCase()) ||
-      driver.phone.includes(search)
-  )
+  // Filter logic
+  const filteredDrivers = useMemo(() => {
+    return drivers.filter((driver) => {
+      // Search filter
+      const searchMatch =
+        driver.name.toLowerCase().includes(search.toLowerCase()) ||
+        driver.surname.toLowerCase().includes(search.toLowerCase()) ||
+        driver.phone.includes(search)
+
+      if (!searchMatch) return false
+
+      // Status filter
+      if (statusFilter !== 'all' && driver.status !== statusFilter) return false
+
+      // App status filter
+      if (appStatusFilter !== 'all' && driver.app_status !== appStatusFilter) return false
+
+      // Region filter
+      if (regionFilter !== 'all') {
+        const region = regions.find(r => r.value === regionFilter)
+        if (region && region.provinces && !region.provinces.includes(driver.province)) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [drivers, search, statusFilter, appStatusFilter, regionFilter])
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    const withApp = drivers.filter(d => d.has_app).length
+    const onTrip = drivers.filter(d => d.status === 'on_trip').length
+    const atHome = drivers.filter(d => d.status === 'at_home').length
+    const active = drivers.filter(d => d.app_status === 'active').length
+    return { total: drivers.length, withApp, onTrip, atHome, active }
+  }, [drivers])
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Şoförler</h1>
-        <div className="text-sm text-gray-500">
-          Toplam: {total} şoför
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="bg-white rounded-lg shadow p-3 sm:p-4">
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Ad, soyad veya telefon ile ara..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-          />
-        </div>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="block lg:hidden space-y-3">
-        {filteredDrivers.map((driver) => (
-          <Link
-            key={driver.id}
-            to={`/drivers/${driver.id}`}
-            className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center">
-                <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary-700 font-medium text-sm">
-                    {driver.name.charAt(0)}{driver.surname.charAt(0)}
-                  </span>
-                </div>
-                <div className="ml-3">
-                  <div className="text-sm font-medium text-gray-900">
-                    {driver.name} {driver.surname}
-                  </div>
-                  <div className="text-xs text-gray-500">{driver.phone}</div>
-                </div>
-              </div>
-              <span
+    <div className="space-y-6">
+      <PageHeader
+        title="Şoförler"
+        subtitle={`Toplam ${total} şoför kayıtlı`}
+        icon={UserGroupIcon}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={clsx(
+                'flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors',
+                showFilters ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              )}
+            >
+              <FunnelIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">Filtreler</span>
+            </button>
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('list')}
                 className={clsx(
-                  'px-2 py-1 text-xs font-medium rounded-full',
-                  statusColors[driver.status] || statusColors.inactive
+                  'p-2 transition-colors',
+                  viewMode === 'list' ? 'bg-primary-50 text-primary-600' : 'bg-white text-gray-500 hover:bg-gray-50'
                 )}
               >
-                {statusLabels[driver.status] || 'Bilinmiyor'}
-              </span>
+                <ListBulletIcon className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={clsx(
+                  'p-2 transition-colors',
+                  viewMode === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-gray-500 hover:bg-gray-50'
+                )}
+              >
+                <Squares2X2Icon className="h-5 w-5" />
+              </button>
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-              <div>
-                {driver.province && driver.district
-                  ? `${driver.province}, ${driver.district}`
-                  : '-'}
+          </div>
+        }
+      />
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard
+          title="Toplam Şoför"
+          value={stats.total}
+          icon={UserGroupIcon}
+          color="primary"
+        />
+        <StatCard
+          title="Uygulama Kurulu"
+          value={stats.withApp}
+          subtitle={`%${stats.total > 0 ? Math.round((stats.withApp / stats.total) * 100) : 0}`}
+          icon={DevicePhoneMobileIcon}
+          color="green"
+        />
+        <StatCard
+          title="Aktif Kullanım"
+          value={stats.active}
+          icon={CheckCircleIcon}
+          color="blue"
+        />
+        <StatCard
+          title="Seferde"
+          value={stats.onTrip}
+          icon={TruckIcon}
+          color="orange"
+        />
+        <StatCard
+          title="Evde"
+          value={stats.atHome}
+          icon={HomeIcon}
+          color="purple"
+        />
+      </div>
+
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <SearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Ad, soyad veya telefon ile ara..."
+                />
               </div>
-              {driver.has_app && (
-                <div className="flex items-center">
-                  <DevicePhoneMobileIcon className={clsx(
-                    'h-4 w-4 mr-1',
-                    driver.device_os === 'ios' ? 'text-gray-600' : 'text-green-600'
-                  )} />
-                  <span>{driver.device_os === 'ios' ? 'iOS' : 'Android'}</span>
-                </div>
-              )}
             </div>
-            {driver.last_latitude && driver.last_longitude && (
-              <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs text-gray-500">Son konum:</span>
-                <a
-                  href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-xs text-primary-600 hover:underline"
-                >
-                  {formatTimeElapsed(driver.last_location_at)}
-                </a>
+
+            {/* Filter Options */}
+            {showFilters && (
+              <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-100">
+                <Select
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  options={[
+                    { value: 'all', label: 'Tüm Durumlar' },
+                    { value: 'active', label: 'Aktif' },
+                    { value: 'inactive', label: 'Pasif' },
+                    { value: 'on_trip', label: 'Seferde' },
+                    { value: 'at_home', label: 'Evde' },
+                  ]}
+                  className="w-40"
+                />
+                <Select
+                  value={appStatusFilter}
+                  onChange={setAppStatusFilter}
+                  options={[
+                    { value: 'all', label: 'Uygulama Durumu' },
+                    { value: 'active', label: 'Aktif' },
+                    { value: 'inactive', label: 'Beklemede' },
+                    { value: 'stale', label: 'Silinmiş Olabilir' },
+                    { value: 'never_installed', label: 'Kurulmadı' },
+                  ]}
+                  className="w-48"
+                />
+                <Select
+                  value={regionFilter}
+                  onChange={setRegionFilter}
+                  options={regions.map(r => ({ value: r.value, label: r.label }))}
+                  className="w-44"
+                />
+                {(statusFilter !== 'all' || appStatusFilter !== 'all' || regionFilter !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setStatusFilter('all')
+                      setAppStatusFilter('all')
+                      setRegionFilter('all')
+                    }}
+                    className="text-sm text-primary-600 hover:text-primary-700"
+                  >
+                    Filtreleri Temizle
+                  </button>
+                )}
               </div>
             )}
-          </Link>
-        ))}
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Desktop Table View */}
-      <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Şoför
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Telefon
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Konum
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Uygulama
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Durum
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Son Konum
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  İşlemler
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredDrivers.map((driver) => (
-                <tr key={driver.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                        <span className="text-primary-700 font-medium">
-                          {driver.name.charAt(0)}{driver.surname.charAt(0)}
-                        </span>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {driver.name} {driver.surname}
-                        </div>
-                        <div className="text-sm text-gray-500">{driver.email}</div>
-                      </div>
+      {/* Results */}
+      {filteredDrivers.length === 0 ? (
+        <EmptyState
+          icon={UserGroupIcon}
+          title="Şoför bulunamadı"
+          description="Arama kriterlerinize uygun şoför bulunmuyor."
+        />
+      ) : viewMode === 'grid' ? (
+        /* Grid View */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredDrivers.map((driver) => (
+            <Link
+              key={driver.id}
+              to={`/drivers/${driver.id}`}
+              className="group"
+            >
+              <Card className="h-full hover:shadow-lg transition-all duration-200 hover:border-primary-200">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-semibold">
+                        {driver.name.charAt(0)}{driver.surname.charAt(0)}
+                      </span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {driver.phone}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {driver.province && driver.district
-                      ? `${driver.province}, ${driver.district}`
-                      : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {driver.has_app ? (
-                      <div className="flex items-center gap-2">
-                        <DevicePhoneMobileIcon className={clsx(
-                          'h-5 w-5',
-                          driver.device_os === 'ios' ? 'text-gray-600' : 'text-green-600'
-                        )} />
-                        <div className="text-xs">
-                          <div className="font-medium text-gray-900">
-                            {driver.device_os === 'ios' ? 'iOS' : 'Android'} v{driver.app_version}
-                          </div>
-                          <span className={clsx(
-                            'px-1.5 py-0.5 text-[10px] font-medium rounded',
-                            appStatusColors[driver.app_status] || appStatusColors.inactive
-                          )}>
-                            {appStatusLabels[driver.app_status] || 'Bilinmiyor'}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors">
+                        {driver.name} {driver.surname}
+                      </h3>
+                      <p className="text-sm text-gray-500">{driver.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge variant={statusConfig[driver.status]?.variant || 'default'} dot>
+                      {statusConfig[driver.status]?.label || 'Bilinmiyor'}
+                    </Badge>
+                    {driver.has_app && (
+                      <Badge variant={appStatusConfig[driver.app_status]?.variant || 'default'} size="sm">
+                        <DevicePhoneMobileIcon className="h-3 w-3 mr-1" />
+                        {driver.device_os === 'ios' ? 'iOS' : 'Android'}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-sm">
+                    <div className="flex items-center text-gray-500">
+                      <MapPinIcon className="h-4 w-4 mr-1" />
+                      <span className="truncate">{driver.province || '-'}</span>
+                    </div>
+                    {driver.last_location_at && (
+                      <div className="flex items-center text-gray-400 text-xs">
+                        <ClockIcon className="h-3 w-3 mr-1" />
+                        {formatTimeElapsed(driver.last_location_at)}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        /* List View */
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Şoför
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Telefon
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                    Konum
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                    Uygulama
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Durum
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">
+                    Son Konum
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredDrivers.map((driver) => (
+                  <tr key={driver.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
+                          <span className="text-white font-medium text-sm">
+                            {driver.name.charAt(0)}{driver.surname.charAt(0)}
                           </span>
                         </div>
-                      </div>
-                    ) : (
-                      <span className={clsx(
-                        'px-2 py-1 text-xs font-medium rounded',
-                        appStatusColors.never_installed
-                      )}>
-                        Kurulmadi
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={clsx(
-                        'px-2 py-1 text-xs font-medium rounded-full',
-                        statusColors[driver.status] || statusColors.inactive
-                      )}
-                    >
-                      {statusLabels[driver.status] || 'Bilinmiyor'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {driver.last_latitude && driver.last_longitude ? (
-                      <div className="text-sm">
-                        <a
-                          href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary-600 hover:text-primary-800 hover:underline"
-                        >
-                          {driver.last_latitude.toFixed(4)}, {driver.last_longitude.toFixed(4)}
-                        </a>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {formatTimeElapsed(driver.last_location_at)}
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {driver.name} {driver.surname}
+                          </div>
+                          <div className="text-sm text-gray-500">{driver.email}</div>
                         </div>
                       </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">Veri yok</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link
-                      to={`/drivers/${driver.id}`}
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      Detay
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredDrivers.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            Şoför bulunamadı
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {driver.phone}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
+                      {driver.province && driver.district
+                        ? `${driver.province}, ${driver.district}`
+                        : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                      {driver.has_app ? (
+                        <div className="flex items-center gap-2">
+                          <DevicePhoneMobileIcon className={clsx(
+                            'h-5 w-5',
+                            driver.device_os === 'ios' ? 'text-gray-600' : 'text-green-600'
+                          )} />
+                          <div className="text-xs">
+                            <div className="font-medium text-gray-900">
+                              {driver.device_os === 'ios' ? 'iOS' : 'Android'} v{driver.app_version}
+                            </div>
+                            <Badge variant={appStatusConfig[driver.app_status]?.variant || 'default'} size="sm">
+                              {appStatusConfig[driver.app_status]?.label || 'Bilinmiyor'}
+                            </Badge>
+                          </div>
+                        </div>
+                      ) : (
+                        <Badge variant="default" size="sm">Kurulmadı</Badge>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant={statusConfig[driver.status]?.variant || 'default'} dot>
+                        {statusConfig[driver.status]?.label || 'Bilinmiyor'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden xl:table-cell">
+                      {driver.last_latitude && driver.last_longitude ? (
+                        <div className="text-sm">
+                          <a
+                            href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary-600 hover:text-primary-800 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {driver.last_latitude.toFixed(4)}, {driver.last_longitude.toFixed(4)}
+                          </a>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {formatTimeElapsed(driver.last_location_at)}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">Veri yok</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <Link
+                        to={`/drivers/${driver.id}`}
+                        className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-900 font-medium"
+                      >
+                        <EyeIcon className="h-4 w-4" />
+                        <span className="hidden sm:inline">Detay</span>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-
-      {/* Mobile empty state */}
-      {filteredDrivers.length === 0 && (
-        <div className="lg:hidden text-center py-12 text-gray-500 bg-white rounded-lg shadow">
-          Şoför bulunamadı
-        </div>
+        </Card>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 rounded-lg shadow">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button
-              onClick={() => setPage(Math.max(0, page - 1))}
-              disabled={page === 0}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              Önceki
-            </button>
-            <span className="flex items-center text-sm text-gray-500">
-              {page + 1} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-              disabled={page >= totalPages - 1}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              Sonraki
-            </button>
-          </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                <span className="font-medium">{page * limit + 1}</span>
-                {' - '}
-                <span className="font-medium">
-                  {Math.min((page + 1) * limit, total)}
-                </span>
-                {' / '}
-                <span className="font-medium">{total}</span> sonuç
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+        <Card>
+          <CardContent className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 flex justify-between sm:hidden">
                 <button
                   onClick={() => setPage(Math.max(0, page - 1))}
                   disabled={page === 0}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
-                  <ChevronLeftIcon className="h-5 w-5" />
+                  Önceki
                 </button>
+                <span className="flex items-center text-sm text-gray-500">
+                  {page + 1} / {totalPages}
+                </span>
                 <button
                   onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
                   disabled={page >= totalPages - 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
-                  <ChevronRightIcon className="h-5 w-5" />
+                  Sonraki
                 </button>
-              </nav>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">{page * limit + 1}</span>
+                    {' - '}
+                    <span className="font-medium">
+                      {Math.min((page + 1) * limit, total)}
+                    </span>
+                    {' / '}
+                    <span className="font-medium">{total}</span> sonuç
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button
+                      onClick={() => setPage(Math.max(0, page - 1))}
+                      disabled={page === 0}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <ChevronLeftIcon className="h-5 w-5" />
+                    </button>
+                    {[...Array(Math.min(5, totalPages))].map((_, idx) => {
+                      const pageNum = Math.max(0, Math.min(page - 2, totalPages - 5)) + idx
+                      if (pageNum >= totalPages) return null
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={clsx(
+                            'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
+                            page === pageNum
+                              ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          )}
+                        >
+                          {pageNum + 1}
+                        </button>
+                      )
+                    })}
+                    <button
+                      onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                      disabled={page >= totalPages - 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <ChevronRightIcon className="h-5 w-5" />
+                    </button>
+                  </nav>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

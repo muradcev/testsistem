@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { driversApi, notificationsApi, driverHomesApi } from '../services/api'
+import { formatTurkeyDate } from '../utils/dateUtils'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet'
 import {
   ArrowLeftIcon,
@@ -11,7 +12,6 @@ import {
   BellIcon,
   ChartBarIcon,
   HomeIcon,
-  PlusIcon,
   TrashIcon,
   PencilIcon,
   Cog6ToothIcon,
@@ -19,10 +19,30 @@ import {
   PhoneIcon,
   UserGroupIcon,
   ChatBubbleLeftRightIcon,
+  EyeIcon,
+  DevicePhoneMobileIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Modal,
+  EmptyState,
+  LoadingSpinner,
+  MiniStatCard,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '../components/ui'
+import clsx from 'clsx'
 
 // Fix for default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -61,6 +81,9 @@ interface Driver {
   last_latitude?: number
   last_longitude?: number
   last_active_at?: string
+  app_version?: string
+  device_os?: string
+  has_app?: boolean
   vehicles: Array<{
     id: string
     brand: string
@@ -89,16 +112,16 @@ function formatTimeElapsed(dateString: string | null | undefined): string {
   const diffHours = Math.floor(diffMins / 60)
   const diffDays = Math.floor(diffHours / 24)
 
-  if (diffMins < 1) return 'Az önce'
-  if (diffMins < 60) return `${diffMins} dakika önce`
-  if (diffHours < 24) return `${diffHours} saat önce`
-  if (diffDays < 7) return `${diffDays} gün önce`
+  if (diffMins < 1) return 'Az once'
+  if (diffMins < 60) return `${diffMins} dk once`
+  if (diffHours < 24) return `${diffHours} saat once`
+  if (diffDays < 7) return `${diffDays} gun once`
   return date.toLocaleDateString('tr-TR')
 }
 
 // Calculate distance between two coordinates in meters
 function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000 // Earth's radius in meters
+  const R = 6371000
   const dLat = ((lat2 - lat1) * Math.PI) / 180
   const dLon = ((lon2 - lon1) * Math.PI) / 180
   const a =
@@ -111,7 +134,6 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
   return R * c
 }
 
-// Group stops within 200m radius
 interface GroupedStop {
   id: string
   latitude: number
@@ -143,7 +165,6 @@ function groupStopsByProximity(stops: Stop[], radiusMeters: number = 500): Group
 
     used.add(stop.id)
 
-    // Find all stops within radius
     for (const other of stops) {
       if (used.has(other.id)) continue
       const distance = calculateDistanceMeters(stop.latitude, stop.longitude, other.latitude, other.longitude)
@@ -158,7 +179,6 @@ function groupStopsByProximity(stops: Stop[], radiusMeters: number = 500): Group
     groups.push(group)
   }
 
-  // Sort by total duration descending
   return groups.sort((a, b) => b.total_duration_minutes - a.total_duration_minutes)
 }
 
@@ -247,10 +267,19 @@ interface QuestionResponse {
   created_at: string
 }
 
+const statusConfig: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'error' | 'info' }> = {
+  active: { label: 'Aktif', variant: 'success' },
+  inactive: { label: 'Pasif', variant: 'default' },
+  passive: { label: 'Pasif', variant: 'default' },
+  on_trip: { label: 'Seferde', variant: 'warning' },
+  at_home: { label: 'Evde', variant: 'info' },
+}
+
 export default function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState('overview')
   const [notifTitle, setNotifTitle] = useState('')
   const [notifBody, setNotifBody] = useState('')
   const [sendingNotif, setSendingNotif] = useState(false)
@@ -258,7 +287,6 @@ export default function DriverDetailPage() {
   const [editingHome, setEditingHome] = useState<DriverHome | null>(null)
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [activeDataTab, setActiveDataTab] = useState<'callLogs' | 'contacts' | 'responses'>('callLogs')
   const [showDeleteCallLogsConfirm, setShowDeleteCallLogsConfirm] = useState(false)
   const [showDeleteContactsConfirm, setShowDeleteContactsConfirm] = useState(false)
   const [homeForm, setHomeForm] = useState({
@@ -300,28 +328,25 @@ export default function DriverDetailPage() {
     enabled: !!id,
   })
 
-  // Call logs query
   const { data: callLogsData, isLoading: callLogsLoading } = useQuery({
     queryKey: ['driver-call-logs', id],
     queryFn: () => driversApi.getCallLogs(id!, { limit: 100 }),
-    enabled: !!id,
+    enabled: !!id && activeTab === 'communication',
   })
 
-  // Contacts query
   const { data: contactsData, isLoading: contactsLoading } = useQuery({
     queryKey: ['driver-contacts', id],
     queryFn: () => driversApi.getContacts(id!, { limit: 100 }),
-    enabled: !!id,
+    enabled: !!id && activeTab === 'communication',
   })
 
-  // Responses query
   const { data: responsesData, isLoading: responsesLoading } = useQuery({
     queryKey: ['driver-responses', id],
     queryFn: () => driversApi.getResponses(id!),
-    enabled: !!id,
+    enabled: !!id && activeTab === 'responses',
   })
 
-  // Create home mutation
+  // Mutations
   const createHomeMutation = useMutation({
     mutationFn: (data: { name: string; latitude: number; longitude: number; province?: string; district?: string; radius: number }) =>
       driverHomesApi.create(id!, data),
@@ -337,57 +362,44 @@ export default function DriverDetailPage() {
     },
   })
 
-  // Update home mutation
   const updateHomeMutation = useMutation({
     mutationFn: ({ homeId, data }: { homeId: string; data: { name?: string; radius?: number; is_active?: boolean } }) =>
       driverHomesApi.update(homeId, data),
     onSuccess: () => {
-      toast.success('Ev adresi güncellendi')
+      toast.success('Ev adresi guncellendi')
       queryClient.invalidateQueries({ queryKey: ['driver-homes', id] })
       setEditingHome(null)
     },
-    onError: () => {
-      toast.error('Güncelleme başarısız')
-    },
+    onError: () => toast.error('Guncelleme basarisiz'),
   })
 
-  // Delete home mutation
   const deleteHomeMutation = useMutation({
     mutationFn: (homeId: string) => driverHomesApi.delete(homeId),
     onSuccess: () => {
       toast.success('Ev adresi silindi')
       queryClient.invalidateQueries({ queryKey: ['driver-homes', id] })
     },
-    onError: () => {
-      toast.error('Ev adresi silinemedi')
-    },
+    onError: () => toast.error('Ev adresi silinemedi'),
   })
 
-  // Update driver status mutation
   const updateStatusMutation = useMutation({
     mutationFn: (isActive: boolean) => driversApi.updateStatus(id!, isActive),
     onSuccess: (_, isActive) => {
-      toast.success(isActive ? 'Sürücü aktifleştirildi' : 'Sürücü pasifleştirildi')
+      toast.success(isActive ? 'Surucu aktiflesti' : 'Surucu pasif yapildi')
       queryClient.invalidateQueries({ queryKey: ['driver', id] })
     },
-    onError: () => {
-      toast.error('Durum güncellenemedi')
-    },
+    onError: () => toast.error('Durum guncellenemedi'),
   })
 
-  // Delete driver mutation
   const deleteDriverMutation = useMutation({
     mutationFn: () => driversApi.delete(id!),
     onSuccess: () => {
-      toast.success('Sürücü silindi')
+      toast.success('Surucu silindi')
       navigate('/drivers')
     },
-    onError: () => {
-      toast.error('Sürücü silinemedi')
-    },
+    onError: () => toast.error('Surucu silinemedi'),
   })
 
-  // Update driver features mutation
   const updateFeaturesMutation = useMutation({
     mutationFn: (features: {
       contacts_enabled?: boolean;
@@ -396,28 +408,22 @@ export default function DriverDetailPage() {
       questions_enabled?: boolean;
     }) => driversApi.updateFeatures(id!, features),
     onSuccess: () => {
-      toast.success('Özellik güncellendi')
+      toast.success('Ozellik guncellendi')
       queryClient.invalidateQueries({ queryKey: ['driver', id] })
     },
-    onError: () => {
-      toast.error('Özellik güncellenemedi')
-    },
+    onError: () => toast.error('Ozellik guncellenemedi'),
   })
 
-  // Delete call logs mutation
   const deleteCallLogsMutation = useMutation({
     mutationFn: () => driversApi.deleteCallLogs(id!),
     onSuccess: () => {
-      toast.success('Arama geçmişi silindi')
+      toast.success('Arama gecmisi silindi')
       queryClient.invalidateQueries({ queryKey: ['driver-call-logs', id] })
       setShowDeleteCallLogsConfirm(false)
     },
-    onError: () => {
-      toast.error('Arama geçmişi silinemedi')
-    },
+    onError: () => toast.error('Arama gecmisi silinemedi'),
   })
 
-  // Delete contacts mutation
   const deleteContactsMutation = useMutation({
     mutationFn: () => driversApi.deleteContacts(id!),
     onSuccess: () => {
@@ -425,9 +431,7 @@ export default function DriverDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['driver-contacts', id] })
       setShowDeleteContactsConfirm(false)
     },
-    onError: () => {
-      toast.error('Rehber silinemedi')
-    },
+    onError: () => toast.error('Rehber silinemedi'),
   })
 
   const driver: Driver | null = driverData?.data || null
@@ -441,7 +445,6 @@ export default function DriverDetailPage() {
   const surveyResponses: SurveyResponse[] = responsesData?.data?.survey_responses || []
   const questionResponses: QuestionResponse[] = responsesData?.data?.question_responses || []
 
-  // Get frequently visited stops (unknown type, grouped by 200m proximity)
   const frequentStops = useMemo(() => {
     const unknownStops = stops.filter(s => s.location_type === 'unknown')
     return groupStopsByProximity(unknownStops, 200).slice(0, 10)
@@ -449,7 +452,7 @@ export default function DriverDetailPage() {
 
   const handleSendNotification = async () => {
     if (!notifTitle || !notifBody) {
-      toast.error('Başlık ve içerik gerekli')
+      toast.error('Baslik ve icerik gerekli')
       return
     }
 
@@ -460,18 +463,17 @@ export default function DriverDetailPage() {
         title: notifTitle,
         body: notifBody,
       })
-      toast.success('Bildirim gönderildi')
+      toast.success('Bildirim gonderildi')
       setNotifTitle('')
       setNotifBody('')
     } catch {
-      toast.error('Bildirim gönderilemedi')
+      toast.error('Bildirim gonderilemedi')
     } finally {
       setSendingNotif(false)
     }
   }
 
   const handleSetStopAsHome = (groupedStop: GroupedStop) => {
-    // Use the first stop from the group for details
     const stop = groupedStop.stops[0]
     setSelectedStop(stop)
     setHomeForm({
@@ -507,19 +509,23 @@ export default function DriverDetailPage() {
   if (driverLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   if (!driver) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Şoför bulunamadı</p>
-        <Link to="/drivers" className="text-primary-600 hover:text-primary-700 mt-2 inline-block">
-          Geri dön
-        </Link>
-      </div>
+      <EmptyState
+        icon={UserGroupIcon}
+        title="Sofor bulunamadi"
+        description="Aradiginiz sofor bulunamadi"
+        action={
+          <Link to="/drivers">
+            <Button>Geri Don</Button>
+          </Link>
+        }
+      />
     )
   }
 
@@ -537,1160 +543,1017 @@ export default function DriverDetailPage() {
           <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {driver.name} {driver.surname}
-          </h1>
-          <p className="text-gray-500">{driver.phone}</p>
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">
+                {driver.name.charAt(0)}{driver.surname.charAt(0)}
+              </span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {driver.name} {driver.surname}
+              </h1>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-gray-500">{driver.phone}</span>
+                <Badge variant={statusConfig[driver.status]?.variant || 'default'} dot>
+                  {statusConfig[driver.status]?.label || driver.status}
+                </Badge>
+                {driver.has_app && (
+                  <Badge variant="success" size="sm">
+                    <DevicePhoneMobileIcon className="h-3 w-3 mr-1" />
+                    v{driver.app_version}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
         <Link
           to={`/drivers/${id}/routes`}
           className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
         >
           <ChartBarIcon className="h-5 w-5" />
-          Güzergahları Gör
+          Guzergahlar
         </Link>
       </div>
 
-      {/* Last Location Card */}
-      {driver.last_latitude && driver.last_longitude && (
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg shadow p-4 border border-blue-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500 rounded-full">
-                <MapPinIcon className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-blue-800">Son Konum</h3>
-                <p className="text-lg font-semibold text-blue-900">
-                  {driver.last_latitude.toFixed(6)}, {driver.last_longitude.toFixed(6)}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <ClockIcon className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm text-blue-700">
-                    {driver.last_location_at
-                      ? new Date(driver.last_location_at).toLocaleString('tr-TR')
-                      : '-'}
-                  </span>
-                  <span className="text-sm font-medium text-blue-800 bg-blue-200 px-2 py-0.5 rounded">
-                    {formatTimeElapsed(driver.last_location_at)}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <a
-              href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <MapPinIcon className="h-5 w-5" />
-              Haritada Gör
-            </a>
-          </div>
-        </div>
-      )}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MiniStatCard
+          title="Son Konum"
+          value={formatTimeElapsed(driver.last_location_at)}
+          icon={MapPinIcon}
+          color="blue"
+        />
+        <MiniStatCard
+          title="Toplam Sefer"
+          value={trips.length}
+          icon={TruckIcon}
+          color="orange"
+        />
+        <MiniStatCard
+          title="Arac Sayisi"
+          value={driver.vehicles?.length || 0}
+          icon={TruckIcon}
+          color="green"
+        />
+        <MiniStatCard
+          title="Kayit Tarihi"
+          value={new Date(driver.created_at).toLocaleDateString('tr-TR')}
+          icon={CalendarIcon}
+          color="purple"
+        />
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Driver Info */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Şoför Bilgileri</h2>
-          <dl className="space-y-3">
-            <div>
-              <dt className="text-sm text-gray-500">E-posta</dt>
-              <dd className="text-sm font-medium">{driver.email}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">Kayıtlı Adres</dt>
-              <dd className="text-sm font-medium">
-                {driver.district}, {driver.province}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">Kayıt Tarihi</dt>
-              <dd className="text-sm font-medium">
-                {new Date(driver.created_at).toLocaleDateString('tr-TR')}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">Durum</dt>
-              <dd>
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                  {driver.status === 'active' ? 'Aktif' :
-                   driver.status === 'on_trip' ? 'Seferde' :
-                   driver.status === 'at_home' ? 'Evde' : 'Pasif'}
-                </span>
-              </dd>
-            </div>
-          </dl>
+      {/* Main Content with Tabs */}
+      <Card>
+        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
+          <CardHeader className="border-b">
+            <TabsList className="w-full justify-start overflow-x-auto">
+              <TabsTrigger value="overview" className="gap-2">
+                <EyeIcon className="h-4 w-4" />
+                Genel Bakis
+              </TabsTrigger>
+              <TabsTrigger value="locations" className="gap-2">
+                <MapPinIcon className="h-4 w-4" />
+                Konum
+              </TabsTrigger>
+              <TabsTrigger value="vehicles" className="gap-2">
+                <TruckIcon className="h-4 w-4" />
+                Araclar
+              </TabsTrigger>
+              <TabsTrigger value="communication" className="gap-2">
+                <PhoneIcon className="h-4 w-4" />
+                Iletisim
+                <Badge variant="default" size="sm">{callLogs.length + contacts.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="responses" className="gap-2">
+                <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                Cevaplar
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-2">
+                <Cog6ToothIcon className="h-4 w-4" />
+                Ayarlar
+              </TabsTrigger>
+            </TabsList>
+          </CardHeader>
 
-          {/* Driver Management Section */}
-          <div className="mt-6 pt-4 border-t">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <Cog6ToothIcon className="h-4 w-4" />
-              Sürücü Yönetimi
-            </h3>
-            <div className="space-y-3">
-              {/* Status Toggle */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Hesap Durumu</span>
-                <button
-                  onClick={() => updateStatusMutation.mutate(!driver.is_active)}
-                  disabled={updateStatusMutation.isPending}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    driver.is_active
-                      ? 'bg-green-100 text-green-800 hover:bg-red-100 hover:text-red-800'
-                      : 'bg-red-100 text-red-800 hover:bg-green-100 hover:text-green-800'
-                  }`}
-                >
-                  {updateStatusMutation.isPending
-                    ? 'İşleniyor...'
-                    : driver.is_active
-                    ? 'Aktif - Tıkla Devre Dışı Bırak'
-                    : 'Pasif - Tıkla Aktifleştir'}
-                </button>
-              </div>
+          <CardContent className="p-6">
+            {/* Overview Tab */}
+            <TabsContent value="overview">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Driver Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Sofor Bilgileri</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <dl className="space-y-3">
+                      <div>
+                        <dt className="text-sm text-gray-500">E-posta</dt>
+                        <dd className="text-sm font-medium">{driver.email}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Kayitli Adres</dt>
+                        <dd className="text-sm font-medium">
+                          {driver.district}, {driver.province}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Cihaz</dt>
+                        <dd className="text-sm font-medium">
+                          {driver.device_os === 'ios' ? 'iPhone' : 'Android'}
+                          {driver.app_version && ` - v${driver.app_version}`}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Son Aktivite</dt>
+                        <dd className="text-sm font-medium">
+                          {formatTimeElapsed(driver.last_active_at)}
+                        </dd>
+                      </div>
+                    </dl>
+                  </CardContent>
+                </Card>
 
-              {/* Feature Toggles */}
-              <div className="pt-2 border-t space-y-2">
-                <p className="text-xs text-gray-500 font-medium">Özellik Kontrolleri</p>
-
-                {/* Contacts */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Rehber Erişimi</span>
-                  <button
-                    onClick={() => updateFeaturesMutation.mutate({ contacts_enabled: !driver.contacts_enabled })}
-                    disabled={updateFeaturesMutation.isPending}
-                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                      driver.contacts_enabled
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {driver.contacts_enabled ? 'Açık' : 'Kapalı'}
-                  </button>
-                </div>
-
-                {/* Call Log */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Arama Geçmişi</span>
-                  <button
-                    onClick={() => updateFeaturesMutation.mutate({ call_log_enabled: !driver.call_log_enabled })}
-                    disabled={updateFeaturesMutation.isPending}
-                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                      driver.call_log_enabled
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {driver.call_log_enabled ? 'Açık' : 'Kapalı'}
-                  </button>
-                </div>
-
-                {/* Surveys */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Anketler</span>
-                  <button
-                    onClick={() => updateFeaturesMutation.mutate({ surveys_enabled: !driver.surveys_enabled })}
-                    disabled={updateFeaturesMutation.isPending}
-                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                      driver.surveys_enabled
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {driver.surveys_enabled ? 'Açık' : 'Kapalı'}
-                  </button>
-                </div>
-
-                {/* Questions */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Sorular</span>
-                  <button
-                    onClick={() => updateFeaturesMutation.mutate({ questions_enabled: !driver.questions_enabled })}
-                    disabled={updateFeaturesMutation.isPending}
-                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                      driver.questions_enabled
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {driver.questions_enabled ? 'Açık' : 'Kapalı'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Delete Driver */}
-              <div className="pt-2">
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                  Sürücüyü Sil
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Driver Homes */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <HomeIcon className="h-5 w-5 text-green-600" />
-            Ev Adresleri
-            <span className="text-sm font-normal text-gray-500">({homes.length}/2)</span>
-          </h2>
-
-          {homes.length > 0 ? (
-            <ul className="space-y-3 mb-4">
-              {homes.map((home) => (
-                <li key={home.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-green-800 flex items-center gap-1">
-                        <span className="text-lg">🏠</span> {home.name}
+                {/* Last Location */}
+                {driver.last_latitude && driver.last_longitude && (
+                  <Card className="border-blue-200 bg-blue-50/50">
+                    <CardHeader>
+                      <CardTitle className="text-blue-800 flex items-center gap-2">
+                        <MapPinIcon className="h-5 w-5" />
+                        Son Konum
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-lg font-semibold text-blue-900 mb-2">
+                        {driver.last_latitude.toFixed(6)}, {driver.last_longitude.toFixed(6)}
                       </p>
-                      <p className="text-sm text-green-600">
-                        {home.province}, {home.district}
+                      <p className="text-sm text-blue-700 mb-4">
+                        {formatTimeElapsed(driver.last_location_at)}
                       </p>
-                      <p className="text-xs text-green-500">
-                        Yarıçap: {home.radius}m
-                        {!home.is_active && <span className="ml-2 text-red-500">(Pasif)</span>}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => setEditingHome(home)}
-                        className="p-1.5 text-green-600 hover:bg-green-100 rounded"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm('Bu ev adresini silmek istediğinize emin misiniz?')) {
-                            deleteHomeMutation.mutate(home.id)
-                          }
-                        }}
-                        className="p-1.5 text-red-500 hover:bg-red-100 rounded"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500 text-sm mb-4">Henüz ev adresi eklenmemiş</p>
-          )}
-
-          {/* Frequent Stops Section */}
-          {frequentStops.length > 0 && canAddHome && (
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">
-                Sık Durduğu Yerler
-              </h3>
-              <p className="text-xs text-gray-500 mb-3">
-                Bu noktalardan birini ev olarak işaretleyebilirsiniz
-              </p>
-              <ul className="space-y-2 max-h-48 overflow-y-auto">
-                {frequentStops.map((groupedStop) => (
-                  <li
-                    key={groupedStop.id}
-                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
-                  >
-                    <div className="flex-1 min-w-0">
-                      {groupedStop.province || groupedStop.district ? (
-                        <p className="font-medium truncate">{groupedStop.province || ''}{groupedStop.province && groupedStop.district ? ', ' : ''}{groupedStop.district || ''}</p>
-                      ) : (
-                        <p className="font-medium text-gray-600 text-xs">
-                          📍 {groupedStop.latitude.toFixed(5)}, {groupedStop.longitude.toFixed(5)}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-500">
-                        {formatDuration(groupedStop.total_duration_minutes)} bekledi
-                        {groupedStop.stop_count > 1 && (
-                          <span className="ml-1 text-blue-600">({groupedStop.stop_count} durak, 200m içinde)</span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                       <a
-                        href={`https://www.google.com/maps?q=${groupedStop.latitude},${groupedStop.longitude}`}
+                        href={`https://www.google.com/maps?q=${driver.last_latitude},${driver.last_longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"
-                        title="Haritada Gör"
+                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
                       >
                         <MapPinIcon className="h-4 w-4" />
+                        Haritada Gor
                       </a>
-                      <button
-                        onClick={() => handleSetStopAsHome(groupedStop)}
-                        className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs"
-                      >
-                        <HomeIcon className="h-3 w-3" />
-                        Ev Yap
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-        {/* Vehicles */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <TruckIcon className="h-5 w-5" />
-            Araçlar
-          </h2>
-          {driver.vehicles && driver.vehicles.length > 0 ? (
-            <ul className="space-y-3">
-              {driver.vehicles.map((vehicle) => (
-                <li key={vehicle.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{vehicle.brand} {vehicle.model}</p>
-                    <p className="text-sm text-gray-500">{vehicle.plate}</p>
-                  </div>
-                  {vehicle.is_active && (
-                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
-                      Aktif
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500 text-sm">Araç kaydı yok</p>
-          )}
-
-          <h3 className="text-md font-semibold mt-6 mb-3">Dorseler</h3>
-          {driver.trailers && driver.trailers.length > 0 ? (
-            <ul className="space-y-3">
-              {driver.trailers.map((trailer) => (
-                <li key={trailer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{trailer.trailer_type}</p>
-                    <p className="text-sm text-gray-500">{trailer.plate}</p>
-                  </div>
-                  {trailer.is_active && (
-                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
-                      Aktif
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500 text-sm">Dorse kaydı yok</p>
-          )}
-        </div>
-      </div>
-
-      {/* Map with Homes */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <MapPinIcon className="h-5 w-5" />
-          Konum Geçmişi ve Ev Adresleri
-        </h2>
-        <div className="h-96 rounded-lg overflow-hidden">
-          <MapContainer
-            center={lastLocation ? [lastLocation.latitude, lastLocation.longitude] : [39.925533, 32.866287]}
-            zoom={lastLocation ? 12 : 6}
-            style={{ height: '100%', width: '100%' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {/* Current Location */}
-            {lastLocation && (
-              <Marker position={[lastLocation.latitude, lastLocation.longitude]}>
-                <Popup>
-                  <div>
-                    <strong>{driver.name} {driver.surname}</strong>
-                    <br />
-                    Son konum: {new Date(lastLocation.recorded_at).toLocaleString('tr-TR')}
-                    <br />
-                    Hız: {lastLocation.speed.toFixed(1)} km/h
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-            {/* Route */}
-            {routeCoords.length > 1 && (
-              <Polyline positions={routeCoords} color="blue" weight={3} opacity={0.7} />
-            )}
-            {/* Home Locations with radius */}
-            {homes.map((home) => (
-              <div key={home.id}>
-                <Marker
-                  position={[home.latitude, home.longitude]}
-                  icon={homeIcon}
-                >
-                  <Popup>
-                    <div className="text-sm">
-                      <strong>🏠 {home.name}</strong>
-                      <br />
-                      {home.province}, {home.district}
-                      <br />
-                      Yarıçap: {home.radius}m
-                    </div>
-                  </Popup>
-                </Marker>
-                <Circle
-                  center={[home.latitude, home.longitude]}
-                  radius={home.radius}
-                  pathOptions={{
-                    color: home.is_active ? '#22c55e' : '#ef4444',
-                    fillColor: home.is_active ? '#22c55e' : '#ef4444',
-                    fillOpacity: 0.2,
-                  }}
-                />
+                {/* Homes */}
+                <Card className="border-green-200 bg-green-50/50">
+                  <CardHeader>
+                    <CardTitle className="text-green-800 flex items-center gap-2">
+                      <HomeIcon className="h-5 w-5" />
+                      Ev Adresleri ({homes.length}/2)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {homes.length > 0 ? (
+                      <ul className="space-y-2">
+                        {homes.map((home) => (
+                          <li key={home.id} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                            <div>
+                              <p className="font-medium text-green-800">🏠 {home.name}</p>
+                              <p className="text-xs text-green-600">
+                                {home.province}, {home.district} | {home.radius}m
+                              </p>
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => setEditingHome(home)}
+                                className="p-1 text-green-600 hover:bg-green-100 rounded"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm('Bu ev adresini silmek istediginize emin misiniz?')) {
+                                    deleteHomeMutation.mutate(home.id)
+                                  }
+                                }}
+                                className="p-1 text-red-500 hover:bg-red-100 rounded"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-500">Henuz ev adresi eklenmemis</p>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-            ))}
-            {/* Frequent Stops with 200m radius - Common Places (Grouped) */}
-            {frequentStops.slice(0, 5).map((groupedStop, index) => (
-              <div key={`stop-${groupedStop.id}`}>
-                <Circle
-                  center={[groupedStop.latitude, groupedStop.longitude]}
-                  radius={200}
-                  pathOptions={{
-                    color: '#f59e0b',
-                    fillColor: '#f59e0b',
-                    fillOpacity: 0.15,
-                    dashArray: '5, 5',
-                  }}
-                >
-                  <Popup>
-                    <div className="text-sm">
-                      <strong>📍 Sık Durulan Yer #{index + 1}</strong>
-                      <br />
-                      {groupedStop.province && `${groupedStop.province}, `}{groupedStop.district}
-                      <br />
-                      Toplam: {formatDuration(groupedStop.total_duration_minutes)} bekleme
-                      {groupedStop.stop_count > 1 && (
-                        <>
-                          <br />
-                          <span className="text-blue-600">{groupedStop.stop_count} durak gruplanmış</span>
-                        </>
-                      )}
-                      <br />
-                      <span className="text-xs text-gray-500">200m yarıçap</span>
-                    </div>
-                  </Popup>
-                </Circle>
-                <Marker position={[groupedStop.latitude, groupedStop.longitude]}>
-                  <Popup>
-                    <div className="text-sm">
-                      <strong>📍 Sık Durulan Yer #{index + 1}</strong>
-                      <br />
-                      {groupedStop.province && `${groupedStop.province}, `}{groupedStop.district}
-                      <br />
-                      Toplam: {formatDuration(groupedStop.total_duration_minutes)} bekleme
-                      {groupedStop.stop_count > 1 && (
-                        <>
-                          <br />
-                          <span className="text-blue-600">{groupedStop.stop_count} durak gruplanmış</span>
-                        </>
-                      )}
-                      <br />
-                      <a
-                        href={`https://www.google.com/maps?q=${groupedStop.latitude},${groupedStop.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline text-xs"
-                      >
-                        Google Maps'te Aç
-                      </a>
-                    </div>
-                  </Popup>
-                </Marker>
-              </div>
-            ))}
-          </MapContainer>
-        </div>
-      </div>
 
-      {/* Recent GPS Locations */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <MapPinIcon className="h-5 w-5 text-blue-500" />
-          Son GPS Konumları
-          <span className="text-sm font-normal text-gray-500">({locations.length} kayıt)</span>
-        </h2>
-        {locations.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saat</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Koordinat</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hız</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harita</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {locations.slice(0, 20).map((loc, index) => {
-                  const date = new Date(loc.recorded_at)
-                  return (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {date.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short' })}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-mono text-gray-700">
-                        {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          loc.speed > 50 ? 'bg-red-100 text-red-700' :
-                          loc.speed > 20 ? 'bg-yellow-100 text-yellow-700' :
-                          loc.speed > 5 ? 'bg-green-100 text-green-700' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {loc.speed.toFixed(0)} km/s
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <a
-                          href={`https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 hover:underline"
+              {/* Notification Sender */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BellIcon className="h-5 w-5" />
+                    Bildirim Gonder
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Baslik</label>
+                      <input
+                        type="text"
+                        value={notifTitle}
+                        onChange={(e) => setNotifTitle(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        placeholder="Bildirim basligi"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Icerik</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={notifBody}
+                          onChange={(e) => setNotifBody(e.target.value)}
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+                          placeholder="Bildirim icerigi"
+                        />
+                        <Button onClick={handleSendNotification} disabled={sendingNotif}>
+                          {sendingNotif ? <LoadingSpinner size="sm" /> : 'Gonder'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Locations Tab */}
+            <TabsContent value="locations">
+              <div className="space-y-6">
+                {/* Map */}
+                <div className="h-96 rounded-lg overflow-hidden border">
+                  <MapContainer
+                    center={lastLocation ? [lastLocation.latitude, lastLocation.longitude] : [39.925533, 32.866287]}
+                    zoom={lastLocation ? 12 : 6}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    {lastLocation && (
+                      <Marker position={[lastLocation.latitude, lastLocation.longitude]}>
+                        <Popup>
+                          <strong>{driver.name} {driver.surname}</strong>
+                          <br />
+                          Son: {formatTurkeyDate(lastLocation.recorded_at)}
+                          <br />
+                          Hiz: {lastLocation.speed.toFixed(1)} km/h
+                        </Popup>
+                      </Marker>
+                    )}
+                    {routeCoords.length > 1 && (
+                      <Polyline positions={routeCoords} color="blue" weight={3} opacity={0.7} />
+                    )}
+                    {homes.map((home) => (
+                      <div key={home.id}>
+                        <Marker position={[home.latitude, home.longitude]} icon={homeIcon}>
+                          <Popup>🏠 {home.name} | {home.radius}m</Popup>
+                        </Marker>
+                        <Circle
+                          center={[home.latitude, home.longitude]}
+                          radius={home.radius}
+                          pathOptions={{
+                            color: home.is_active ? '#22c55e' : '#ef4444',
+                            fillColor: home.is_active ? '#22c55e' : '#ef4444',
+                            fillOpacity: 0.2,
+                          }}
+                        />
+                      </div>
+                    ))}
+                    {frequentStops.slice(0, 5).map((groupedStop, index) => (
+                      <div key={`stop-${groupedStop.id}`}>
+                        <Circle
+                          center={[groupedStop.latitude, groupedStop.longitude]}
+                          radius={200}
+                          pathOptions={{
+                            color: '#f59e0b',
+                            fillColor: '#f59e0b',
+                            fillOpacity: 0.15,
+                            dashArray: '5, 5',
+                          }}
                         >
-                          Aç
-                        </a>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            {locations.length > 20 && (
-              <div className="mt-4 text-center">
-                <Link
-                  to={`/drivers/${id}/routes`}
-                  className="text-sm text-primary-600 hover:text-primary-800"
-                >
-                  Tüm konumları görmek için Güzergahlar sayfasına gidin →
-                </Link>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-gray-500 text-center py-8">Henüz konum verisi yok</p>
-        )}
-      </div>
-
-      {/* Driver Data Tabs - Call Logs, Contacts, Responses */}
-      <div className="bg-white rounded-lg shadow">
-        {/* Tab Headers */}
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            <button
-              onClick={() => setActiveDataTab('callLogs')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 flex items-center gap-2 ${
-                activeDataTab === 'callLogs'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <PhoneIcon className="h-5 w-5" />
-              Arama Geçmişi
-              <span className="ml-1 px-2 py-0.5 text-xs bg-gray-100 rounded-full">{callLogs.length}</span>
-            </button>
-            <button
-              onClick={() => setActiveDataTab('contacts')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 flex items-center gap-2 ${
-                activeDataTab === 'contacts'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <UserGroupIcon className="h-5 w-5" />
-              Rehber
-              <span className="ml-1 px-2 py-0.5 text-xs bg-gray-100 rounded-full">{contacts.length}</span>
-            </button>
-            <button
-              onClick={() => setActiveDataTab('responses')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 flex items-center gap-2 ${
-                activeDataTab === 'responses'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <ChatBubbleLeftRightIcon className="h-5 w-5" />
-              Cevaplar
-              <span className="ml-1 px-2 py-0.5 text-xs bg-gray-100 rounded-full">
-                {surveyResponses.length + questionResponses.length}
-              </span>
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        <div className="p-6">
-          {/* Call Logs Tab */}
-          {activeDataTab === 'callLogs' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Arama Geçmişi</h3>
-                {callLogs.length > 0 && (
-                  <button
-                    onClick={() => setShowDeleteCallLogsConfirm(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                    Tümünü Sil
-                  </button>
-                )}
-              </div>
-              {callLogsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                          <Popup>
+                            📍 Sik Durulan Yer #{index + 1}
+                            <br />
+                            {formatDuration(groupedStop.total_duration_minutes)} bekleme
+                          </Popup>
+                        </Circle>
+                      </div>
+                    ))}
+                  </MapContainer>
                 </div>
-              ) : callLogs.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Numara</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kişi</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tip</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Süre</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {callLogs.map((log) => (
-                        <tr key={log.id}>
-                          <td className="px-4 py-3 text-sm font-medium">{log.phone_number}</td>
-                          <td className="px-4 py-3 text-sm text-gray-500">{log.contact_name || '-'}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              log.call_type === 'incoming' ? 'bg-green-100 text-green-800' :
-                              log.call_type === 'outgoing' ? 'bg-blue-100 text-blue-800' :
-                              log.call_type === 'missed' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {log.call_type === 'incoming' ? 'Gelen' :
-                               log.call_type === 'outgoing' ? 'Giden' :
-                               log.call_type === 'missed' ? 'Cevapsız' : log.call_type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            {Math.floor(log.duration_seconds / 60)}:{(log.duration_seconds % 60).toString().padStart(2, '0')}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
-                            {new Date(log.call_timestamp).toLocaleString('tr-TR')}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">Arama geçmişi yok</p>
-              )}
-            </div>
-          )}
 
-          {/* Contacts Tab */}
-          {activeDataTab === 'contacts' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Rehber</h3>
-                {contacts.length > 0 && (
-                  <button
-                    onClick={() => setShowDeleteContactsConfirm(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                    Tümünü Sil
-                  </button>
-                )}
-              </div>
-              {contactsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                </div>
-              ) : contacts.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {contacts.map((contact) => (
-                    <div key={contact.id} className="p-4 bg-gray-50 rounded-lg">
-                      <p className="font-medium text-gray-900">{contact.name}</p>
-                      <div className="mt-1 space-y-1">
-                        {Array.isArray(contact.phone_numbers) && contact.phone_numbers.map((phone, i) => (
-                          <p key={i} className="text-sm text-gray-600">{phone}</p>
+                {/* Recent Locations Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Son GPS Konumlari ({locations.length} kayit)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {locations.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Koordinat</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hiz</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harita</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {locations.slice(0, 20).map((loc, index) => {
+                              const date = new Date(loc.recorded_at)
+                              return (
+                                <tr key={index} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-sm">
+                                    {formatTurkeyDate(date)}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm font-mono">
+                                    {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <Badge
+                                      variant={loc.speed > 50 ? 'error' : loc.speed > 20 ? 'warning' : 'success'}
+                                      size="sm"
+                                    >
+                                      {loc.speed.toFixed(0)} km/s
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <a
+                                      href={`https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary-600 hover:underline text-sm"
+                                    >
+                                      Ac
+                                    </a>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={MapPinIcon}
+                        title="Konum verisi yok"
+                        description="Henuz konum verisi gelmemis"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Frequent Stops */}
+                {frequentStops.length > 0 && canAddHome && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Sik Durdugu Yerler</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-500 mb-4">Bu noktalardan birini ev olarak isaretleyebilirsiniz</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {frequentStops.map((groupedStop) => (
+                          <div
+                            key={groupedStop.id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          >
+                            <div>
+                              <p className="font-medium">
+                                {groupedStop.province || groupedStop.district || `${groupedStop.latitude.toFixed(5)}, ${groupedStop.longitude.toFixed(5)}`}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatDuration(groupedStop.total_duration_minutes)} bekledi
+                                {groupedStop.stop_count > 1 && ` (${groupedStop.stop_count} durak)`}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSetStopAsHome(groupedStop)}
+                              className="gap-1"
+                            >
+                              <HomeIcon className="h-4 w-4" />
+                              Ev Yap
+                            </Button>
+                          </div>
                         ))}
                       </div>
-                      {contact.contact_type && (
-                        <span className="mt-2 inline-block px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
-                          {contact.contact_type}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">Rehber verisi yok</p>
-              )}
-            </div>
-          )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
 
-          {/* Responses Tab */}
-          {activeDataTab === 'responses' && (
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Anket ve Soru Cevapları</h3>
+            {/* Vehicles Tab */}
+            <TabsContent value="vehicles">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Vehicles */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TruckIcon className="h-5 w-5" />
+                      Araclar ({driver.vehicles?.length || 0})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {driver.vehicles && driver.vehicles.length > 0 ? (
+                      <ul className="space-y-3">
+                        {driver.vehicles.map((vehicle) => (
+                          <li key={vehicle.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="font-semibold text-gray-900">{vehicle.brand} {vehicle.model}</p>
+                              <p className="text-sm text-gray-500">{vehicle.plate}</p>
+                              {vehicle.year && <p className="text-xs text-gray-400">{vehicle.year} Model</p>}
+                            </div>
+                            {vehicle.is_active && (
+                              <Badge variant="success">Aktif</Badge>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <EmptyState
+                        icon={TruckIcon}
+                        title="Arac kaydi yok"
+                        description="Henuz arac eklenmemis"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Trailers */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Dorseler ({driver.trailers?.length || 0})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {driver.trailers && driver.trailers.length > 0 ? (
+                      <ul className="space-y-3">
+                        {driver.trailers.map((trailer) => (
+                          <li key={trailer.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="font-semibold text-gray-900">{trailer.trailer_type}</p>
+                              <p className="text-sm text-gray-500">{trailer.plate}</p>
+                            </div>
+                            {trailer.is_active && (
+                              <Badge variant="success">Aktif</Badge>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <EmptyState
+                        icon={TruckIcon}
+                        title="Dorse kaydi yok"
+                        description="Henuz dorse eklenmemis"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Trips */}
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ClockIcon className="h-5 w-5" />
+                      Son Seferler
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {trips.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Baslangic</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bitis</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mesafe</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Durum</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {trips.map((trip) => (
+                              <tr key={trip.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-sm">
+                                  {formatTurkeyDate(trip.start_time)}
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  {trip.end_time ? formatTurkeyDate(trip.end_time) : '-'}
+                                </td>
+                                <td className="px-4 py-3 text-sm font-medium">
+                                  {trip.distance_km.toFixed(1)} km
+                                </td>
+                                <td className="px-4 py-3">
+                                  <Badge variant={trip.status === 'completed' ? 'success' : 'warning'}>
+                                    {trip.status === 'completed' ? 'Tamamlandi' : 'Devam Ediyor'}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={ClockIcon}
+                        title="Sefer kaydi yok"
+                        description="Henuz sefer baslatilmamis"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Communication Tab */}
+            <TabsContent value="communication">
+              <div className="space-y-6">
+                {/* Call Logs */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <PhoneIcon className="h-5 w-5" />
+                      Arama Gecmisi ({callLogs.length})
+                    </CardTitle>
+                    {callLogs.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDeleteCallLogsConfirm(true)}
+                        className="text-red-600"
+                      >
+                        <TrashIcon className="h-4 w-4 mr-1" />
+                        Tumunu Sil
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    {callLogsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <LoadingSpinner />
+                      </div>
+                    ) : callLogs.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Numara</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kisi</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tip</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sure</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {callLogs.slice(0, 50).map((log) => (
+                              <tr key={log.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-sm font-medium">{log.phone_number}</td>
+                                <td className="px-4 py-3 text-sm text-gray-500">{log.contact_name || '-'}</td>
+                                <td className="px-4 py-3">
+                                  <Badge
+                                    variant={
+                                      log.call_type === 'incoming' ? 'success' :
+                                      log.call_type === 'outgoing' ? 'info' :
+                                      'error'
+                                    }
+                                    size="sm"
+                                  >
+                                    {log.call_type === 'incoming' ? 'Gelen' :
+                                     log.call_type === 'outgoing' ? 'Giden' :
+                                     log.call_type === 'missed' ? 'Cevapsiz' : log.call_type}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  {Math.floor(log.duration_seconds / 60)}:{(log.duration_seconds % 60).toString().padStart(2, '0')}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">
+                                  {formatTurkeyDate(log.call_timestamp)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={PhoneIcon}
+                        title="Arama gecmisi yok"
+                        description="Henuz arama verisi gelmemis"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Contacts */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <UserGroupIcon className="h-5 w-5" />
+                      Rehber ({contacts.length})
+                    </CardTitle>
+                    {contacts.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDeleteContactsConfirm(true)}
+                        className="text-red-600"
+                      >
+                        <TrashIcon className="h-4 w-4 mr-1" />
+                        Tumunu Sil
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    {contactsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <LoadingSpinner />
+                      </div>
+                    ) : contacts.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {contacts.slice(0, 50).map((contact) => (
+                          <div key={contact.id} className="p-4 bg-gray-50 rounded-lg">
+                            <p className="font-medium text-gray-900">{contact.name}</p>
+                            <div className="mt-1 space-y-1">
+                              {Array.isArray(contact.phone_numbers) && contact.phone_numbers.map((phone, i) => (
+                                <p key={i} className="text-sm text-gray-600">{phone}</p>
+                              ))}
+                            </div>
+                            {contact.contact_type && (
+                              <Badge variant="info" size="sm" className="mt-2">
+                                {contact.contact_type}
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={UserGroupIcon}
+                        title="Rehber verisi yok"
+                        description="Henuz rehber senkronize edilmemis"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Responses Tab */}
+            <TabsContent value="responses">
               {responsesLoading ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  <LoadingSpinner />
                 </div>
               ) : (
                 <div className="space-y-6">
                   {/* Survey Responses */}
-                  {surveyResponses.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-gray-700 mb-3">Anket Cevapları</h4>
-                      <div className="space-y-3">
-                        {surveyResponses.map((response) => (
-                          <div key={response.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium text-blue-800">{response.survey_title}</p>
-                              <span className="text-xs text-blue-600">
-                                {new Date(response.created_at).toLocaleDateString('tr-TR')}
-                              </span>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Anket Cevaplari ({surveyResponses.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {surveyResponses.length > 0 ? (
+                        <div className="space-y-3">
+                          {surveyResponses.map((response) => (
+                            <div key={response.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="font-medium text-blue-800">{response.survey_title}</p>
+                                <span className="text-xs text-blue-600">
+                                  {new Date(response.created_at).toLocaleDateString('tr-TR')}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-700">{response.answer}</p>
                             </div>
-                            <p className="text-sm text-gray-700">{response.answer}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                          ))}
+                        </div>
+                      ) : (
+                        <EmptyState
+                          icon={ChatBubbleLeftRightIcon}
+                          title="Anket cevabi yok"
+                          description="Henuz anket cevaplamamis"
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
 
                   {/* Question Responses */}
-                  {questionResponses.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-gray-700 mb-3">Soru Cevapları</h4>
-                      <div className="space-y-3">
-                        {questionResponses.map((response) => (
-                          <div key={response.id} className="p-4 bg-green-50 rounded-lg border border-green-200">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium text-green-800">{response.question_text}</p>
-                              <span className={`text-xs px-2 py-0.5 rounded ${
-                                response.status === 'answered' ? 'bg-green-200 text-green-800' :
-                                response.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
-                                'bg-gray-200 text-gray-800'
-                              }`}>
-                                {response.status === 'answered' ? 'Cevaplandı' :
-                                 response.status === 'pending' ? 'Bekliyor' : response.status}
-                              </span>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Soru Cevaplari ({questionResponses.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {questionResponses.length > 0 ? (
+                        <div className="space-y-3">
+                          {questionResponses.map((response) => (
+                            <div key={response.id} className="p-4 bg-green-50 rounded-lg border border-green-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="font-medium text-green-800">{response.question_text}</p>
+                                <Badge variant={response.status === 'answered' ? 'success' : 'warning'} size="sm">
+                                  {response.status === 'answered' ? 'Cevaplandi' : 'Bekliyor'}
+                                </Badge>
+                              </div>
+                              {response.answer_text && (
+                                <p className="text-sm text-gray-700">{response.answer_text}</p>
+                              )}
+                              <p className="text-xs text-gray-500 mt-2">
+                                {response.answered_at
+                                  ? `Cevap: ${formatTurkeyDate(response.answered_at)}`
+                                  : `Olusturulma: ${formatTurkeyDate(response.created_at)}`}
+                              </p>
                             </div>
-                            {response.answer_text && (
-                              <p className="text-sm text-gray-700">{response.answer_text}</p>
-                            )}
-                            <p className="text-xs text-gray-500 mt-2">
-                              {response.answered_at
-                                ? `Cevap: ${new Date(response.answered_at).toLocaleString('tr-TR')}`
-                                : `Oluşturulma: ${new Date(response.created_at).toLocaleString('tr-TR')}`}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {surveyResponses.length === 0 && questionResponses.length === 0 && (
-                    <p className="text-gray-500 text-center py-8">Henüz cevap yok</p>
-                  )}
+                          ))}
+                        </div>
+                      ) : (
+                        <EmptyState
+                          icon={ChatBubbleLeftRightIcon}
+                          title="Soru cevabi yok"
+                          description="Henuz soru cevaplamamis"
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               )}
-            </div>
-          )}
-        </div>
-      </div>
+            </TabsContent>
 
-      {/* Send Notification & Trips Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Send Notification */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <BellIcon className="h-5 w-5" />
-            Bildirim Gönder
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Başlık
-              </label>
-              <input
-                type="text"
-                value={notifTitle}
-                onChange={(e) => setNotifTitle(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Bildirim başlığı"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                İçerik
-              </label>
-              <textarea
-                value={notifBody}
-                onChange={(e) => setNotifBody(e.target.value)}
-                rows={3}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Bildirim içeriği"
-              />
-            </div>
-            <button
-              onClick={handleSendNotification}
-              disabled={sendingNotif}
-              className="w-full bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 disabled:opacity-50"
-            >
-              {sendingNotif ? 'Gönderiliyor...' : 'Gönder'}
-            </button>
-          </div>
-        </div>
+            {/* Settings Tab */}
+            <TabsContent value="settings">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Account Status */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Hesap Durumu</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900">Hesap Aktif mi?</p>
+                        <p className="text-sm text-gray-500">
+                          {driver.is_active ? 'Hesap aktif, giris yapabilir' : 'Hesap pasif, giris yapamaz'}
+                        </p>
+                      </div>
+                      <Button
+                        variant={driver.is_active ? 'outline' : 'primary'}
+                        onClick={() => updateStatusMutation.mutate(!driver.is_active)}
+                        disabled={updateStatusMutation.isPending}
+                      >
+                        {updateStatusMutation.isPending ? (
+                          <LoadingSpinner size="sm" />
+                        ) : driver.is_active ? 'Pasif Yap' : 'Aktif Yap'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
 
-        {/* Trips */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <ClockIcon className="h-5 w-5" />
-            Son Seferler
-          </h2>
-          {trips.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Başlangıç
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Mesafe
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Durum
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {trips.map((trip) => (
-                    <tr key={trip.id}>
-                      <td className="px-4 py-3 text-sm">
-                        {new Date(trip.start_time).toLocaleString('tr-TR')}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {trip.distance_km.toFixed(1)} km
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            trip.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}
-                        >
-                          {trip.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500 text-sm">Sefer kaydı yok</p>
-          )}
-        </div>
-      </div>
+                {/* Feature Toggles */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ozellik Kontrolleri</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { key: 'contacts_enabled', label: 'Rehber Erisimi', value: driver.contacts_enabled },
+                        { key: 'call_log_enabled', label: 'Arama Gecmisi', value: driver.call_log_enabled },
+                        { key: 'surveys_enabled', label: 'Anketler', value: driver.surveys_enabled },
+                        { key: 'questions_enabled', label: 'Sorular', value: driver.questions_enabled },
+                      ].map((feature) => (
+                        <div key={feature.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <span className="text-sm text-gray-700">{feature.label}</span>
+                          <button
+                            onClick={() => updateFeaturesMutation.mutate({ [feature.key]: !feature.value })}
+                            disabled={updateFeaturesMutation.isPending}
+                            className={clsx(
+                              'px-3 py-1 text-xs font-medium rounded transition-colors',
+                              feature.value
+                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                            )}
+                          >
+                            {feature.value ? 'Acik' : 'Kapali'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Danger Zone */}
+                <Card className="lg:col-span-2 border-red-200">
+                  <CardHeader>
+                    <CardTitle className="text-red-600 flex items-center gap-2">
+                      <ExclamationTriangleIcon className="h-5 w-5" />
+                      Tehlikeli Bolge
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-red-50 rounded-lg p-4">
+                      <p className="text-sm text-red-600 mb-4">
+                        Bu islem geri alinamaz! Surucuye ait tum veriler kalici olarak silinecektir.
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <TrashIcon className="h-4 w-4 mr-2" />
+                        Surucuyu Sil
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </CardContent>
+        </Tabs>
+      </Card>
 
       {/* Home Creation Modal */}
       {showHomeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <HomeIcon className="h-5 w-5 text-green-600" />
-              Ev Adresi Ekle
-            </h3>
+        <Modal isOpen onClose={() => setShowHomeModal(false)} title="Ev Adresi Ekle">
+          <div className="space-y-4">
+            {selectedStop && (
+              <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                <p className="font-medium">{selectedStop.province}, {selectedStop.district}</p>
+                <p className="text-gray-500">{selectedStop.latitude.toFixed(6)}, {selectedStop.longitude.toFixed(6)}</p>
+              </div>
+            )}
 
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <p className="font-medium">{driver.name} {driver.surname}</p>
-              {selectedStop && (
-                <>
-                  <p className="text-sm text-gray-500">
-                    {selectedStop.province}, {selectedStop.district}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {selectedStop.latitude.toFixed(6)}, {selectedStop.longitude.toFixed(6)}
-                  </p>
-                </>
-              )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ev Adi</label>
+              <input
+                type="text"
+                value={homeForm.name}
+                onChange={(e) => setHomeForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                placeholder="Ev 1, Ana Ev, vb."
+              />
             </div>
 
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ev Adı
-                </label>
-                <input
-                  type="text"
-                  value={homeForm.name}
-                  onChange={(e) => setHomeForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Ev 1, Ev 2, Ana Ev, vb."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tespit Yarıçapı (metre)
-                </label>
-                <input
-                  type="number"
-                  value={homeForm.radius}
-                  onChange={(e) => setHomeForm(f => ({ ...f, radius: parseInt(e.target.value) || 200 }))}
-                  min={50}
-                  max={1000}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Şoför bu yarıçap içinde durunca ev olarak algılanır
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setShowHomeModal(false)
-                  setSelectedStop(null)
-                  setHomeForm({ name: '', latitude: 0, longitude: 0, province: '', district: '', radius: 200 })
-                }}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                İptal
-              </button>
-              <button
-                onClick={handleCreateHome}
-                disabled={!homeForm.name || createHomeMutation.isPending}
-                className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <PlusIcon className="h-4 w-4" />
-                {createHomeMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tespit Yaricapi (metre)</label>
+              <input
+                type="number"
+                value={homeForm.radius}
+                onChange={(e) => setHomeForm(f => ({ ...f, radius: parseInt(e.target.value) || 200 }))}
+                min={50}
+                max={1000}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              />
             </div>
           </div>
-        </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowHomeModal(false)}>Iptal</Button>
+            <Button onClick={handleCreateHome} disabled={!homeForm.name || createHomeMutation.isPending}>
+              {createHomeMutation.isPending ? <LoadingSpinner size="sm" /> : 'Kaydet'}
+            </Button>
+          </div>
+        </Modal>
       )}
 
       {/* Edit Home Modal */}
       {editingHome && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <PencilIcon className="h-5 w-5 text-primary-600" />
-              Ev Adresini Düzenle
-            </h3>
-
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ev Adı
-                </label>
-                <input
-                  type="text"
-                  value={editingHome.name}
-                  onChange={(e) => setEditingHome(h => h ? { ...h, name: e.target.value } : null)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tespit Yarıçapı (metre)
-                </label>
-                <input
-                  type="number"
-                  value={editingHome.radius}
-                  onChange={(e) => setEditingHome(h => h ? { ...h, radius: parseInt(e.target.value) || 200 } : null)}
-                  min={50}
-                  max={1000}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={editingHome.is_active}
-                  onChange={(e) => setEditingHome(h => h ? { ...h, is_active: e.target.checked } : null)}
-                  className="h-4 w-4 text-primary-600 rounded"
-                />
-                <label htmlFor="isActive" className="text-sm text-gray-700">
-                  Aktif (Durak tespitinde kullanılsın)
-                </label>
-              </div>
+        <Modal isOpen onClose={() => setEditingHome(null)} title="Ev Adresini Duzenle">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ev Adi</label>
+              <input
+                type="text"
+                value={editingHome.name}
+                onChange={(e) => setEditingHome(h => h ? { ...h, name: e.target.value } : null)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              />
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => setEditingHome(null)}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                İptal
-              </button>
-              <button
-                onClick={() => {
-                  if (editingHome) {
-                    updateHomeMutation.mutate({
-                      homeId: editingHome.id,
-                      data: {
-                        name: editingHome.name,
-                        radius: editingHome.radius,
-                        is_active: editingHome.is_active,
-                      },
-                    })
-                  }
-                }}
-                disabled={updateHomeMutation.isPending}
-                className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-              >
-                {updateHomeMutation.isPending ? 'Kaydediliyor...' : 'Güncelle'}
-              </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Yaricap (metre)</label>
+              <input
+                type="number"
+                value={editingHome.radius}
+                onChange={(e) => setEditingHome(h => h ? { ...h, radius: parseInt(e.target.value) || 200 } : null)}
+                min={50}
+                max={1000}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={editingHome.is_active}
+                onChange={(e) => setEditingHome(h => h ? { ...h, is_active: e.target.checked } : null)}
+                className="h-4 w-4 text-primary-600 rounded"
+              />
+              <label htmlFor="isActive" className="text-sm text-gray-700">Aktif</label>
             </div>
           </div>
-        </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setEditingHome(null)}>Iptal</Button>
+            <Button
+              onClick={() => {
+                if (editingHome) {
+                  updateHomeMutation.mutate({
+                    homeId: editingHome.id,
+                    data: { name: editingHome.name, radius: editingHome.radius, is_active: editingHome.is_active },
+                  })
+                }
+              }}
+              disabled={updateHomeMutation.isPending}
+            >
+              {updateHomeMutation.isPending ? <LoadingSpinner size="sm" /> : 'Guncelle'}
+            </Button>
+          </div>
+        </Modal>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmations */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-full">
-                <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Sürücüyü Sil</h3>
-            </div>
-
-            <div className="mb-6">
-              <p className="text-gray-600 mb-2">
-                <strong>{driver?.name} {driver?.surname}</strong> ({driver?.phone}) adlı sürücüyü silmek istediğinize emin misiniz?
-              </p>
-              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                Bu işlem geri alınamaz! Sürücüye ait tüm veriler (araçlar, dorseler, konum geçmişi, seferler, anket yanıtları) kalıcı olarak silinecektir.
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                İptal
-              </button>
-              <button
-                onClick={() => {
-                  deleteDriverMutation.mutate()
-                  setShowDeleteConfirm(false)
-                }}
-                disabled={deleteDriverMutation.isPending}
-                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <TrashIcon className="h-4 w-4" />
-                {deleteDriverMutation.isPending ? 'Siliniyor...' : 'Evet, Sil'}
-              </button>
-            </div>
+        <Modal isOpen onClose={() => setShowDeleteConfirm(false)} title="Surucuyu Sil">
+          <div className="mb-6">
+            <p className="text-gray-600 mb-2">
+              <strong>{driver?.name} {driver?.surname}</strong> adli surucuyu silmek istediginize emin misiniz?
+            </p>
+            <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+              Bu islem geri alinamaz! Tum veriler silinecektir.
+            </p>
           </div>
-        </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Iptal</Button>
+            <Button
+              onClick={() => {
+                deleteDriverMutation.mutate()
+                setShowDeleteConfirm(false)
+              }}
+              disabled={deleteDriverMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteDriverMutation.isPending ? <LoadingSpinner size="sm" /> : 'Evet, Sil'}
+            </Button>
+          </div>
+        </Modal>
       )}
 
-      {/* Delete Call Logs Confirmation Modal */}
       {showDeleteCallLogsConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-full">
-                <PhoneIcon className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Arama Geçmişini Sil</h3>
-            </div>
-
-            <div className="mb-6">
-              <p className="text-gray-600 mb-2">
-                <strong>{driver?.name} {driver?.surname}</strong> adlı sürücünün tüm arama geçmişini silmek istediğinize emin misiniz?
-              </p>
-              <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg">
-                Bu işlem geri alınamaz! Toplam {callLogs.length} arama kaydı silinecektir.
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowDeleteCallLogsConfirm(false)}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                İptal
-              </button>
-              <button
-                onClick={() => deleteCallLogsMutation.mutate()}
-                disabled={deleteCallLogsMutation.isPending}
-                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <TrashIcon className="h-4 w-4" />
-                {deleteCallLogsMutation.isPending ? 'Siliniyor...' : 'Evet, Sil'}
-              </button>
-            </div>
+        <Modal isOpen onClose={() => setShowDeleteCallLogsConfirm(false)} title="Arama Gecmisini Sil">
+          <div className="mb-6">
+            <p className="text-gray-600">Tum arama gecmisini silmek istediginize emin misiniz?</p>
+            <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg mt-2">
+              Toplam {callLogs.length} arama kaydi silinecektir.
+            </p>
           </div>
-        </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowDeleteCallLogsConfirm(false)}>Iptal</Button>
+            <Button
+              onClick={() => deleteCallLogsMutation.mutate()}
+              disabled={deleteCallLogsMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteCallLogsMutation.isPending ? <LoadingSpinner size="sm" /> : 'Evet, Sil'}
+            </Button>
+          </div>
+        </Modal>
       )}
 
-      {/* Delete Contacts Confirmation Modal */}
       {showDeleteContactsConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-full">
-                <UserGroupIcon className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Rehberi Sil</h3>
-            </div>
-
-            <div className="mb-6">
-              <p className="text-gray-600 mb-2">
-                <strong>{driver?.name} {driver?.surname}</strong> adlı sürücünün tüm rehber verilerini silmek istediğinize emin misiniz?
-              </p>
-              <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg">
-                Bu işlem geri alınamaz! Toplam {contacts.length} kişi silinecektir.
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowDeleteContactsConfirm(false)}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                İptal
-              </button>
-              <button
-                onClick={() => deleteContactsMutation.mutate()}
-                disabled={deleteContactsMutation.isPending}
-                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <TrashIcon className="h-4 w-4" />
-                {deleteContactsMutation.isPending ? 'Siliniyor...' : 'Evet, Sil'}
-              </button>
-            </div>
+        <Modal isOpen onClose={() => setShowDeleteContactsConfirm(false)} title="Rehberi Sil">
+          <div className="mb-6">
+            <p className="text-gray-600">Tum rehber verilerini silmek istediginize emin misiniz?</p>
+            <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg mt-2">
+              Toplam {contacts.length} kisi silinecektir.
+            </p>
           </div>
-        </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowDeleteContactsConfirm(false)}>Iptal</Button>
+            <Button
+              onClick={() => deleteContactsMutation.mutate()}
+              disabled={deleteContactsMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteContactsMutation.isPending ? <LoadingSpinner size="sm" /> : 'Evet, Sil'}
+            </Button>
+          </div>
+        </Modal>
       )}
     </div>
   )
