@@ -49,6 +49,8 @@ interface Driver {
   last_active_at: string | null
   has_app: boolean
   app_status: 'active' | 'inactive' | 'stale' | 'never_installed'
+  push_enabled: boolean
+  has_fcm_token: boolean
 }
 
 function formatTimeElapsed(dateString: string | null): string {
@@ -425,8 +427,13 @@ export default function DriversPage() {
                             driver.device_os === 'ios' ? 'text-gray-600' : 'text-green-600'
                           )} />
                           <div className="text-xs">
-                            <div className="font-medium text-gray-900">
+                            <div className="font-medium text-gray-900 flex items-center gap-1">
                               {driver.device_os === 'ios' ? 'iOS' : 'Android'} v{driver.app_version}
+                              {driver.has_fcm_token ? (
+                                <span title="Bildirim aktif" className="text-green-500">🔔</span>
+                              ) : (
+                                <span title="Bildirim pasif" className="text-red-400">🔕</span>
+                              )}
                             </div>
                             <Badge variant={appStatusConfig[driver.app_status]?.variant || 'default'} size="sm">
                               {appStatusConfig[driver.app_status]?.label || 'Bilinmiyor'}

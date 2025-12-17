@@ -102,6 +102,10 @@ type DriverListItem struct {
 	AppInstalledAt *time.Time `json:"app_installed_at,omitempty"`
 	HasApp         bool       `json:"has_app"`    // app_version != null ise true
 	AppStatus      string     `json:"app_status"` // active, inactive, stale, never_installed
+
+	// Bildirim bilgileri
+	PushEnabled bool `json:"push_enabled"`
+	HasFCMToken bool `json:"has_fcm_token"` // FCM token kayıtlı mı
 }
 
 // GetAppStatus - LastActiveAt'e göre uygulama durumunu belirler
