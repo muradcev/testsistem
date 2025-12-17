@@ -87,24 +87,32 @@ class CallTrackingService {
     DateTime? to,
     String? phoneNumber,
   }) async {
-    // İzin kontrolü - phone permission check
-    final phoneGranted = await Permission.phone.isGranted;
-    final phonePermanentlyDenied = await Permission.phone.isPermanentlyDenied;
-    final phoneStatus = await Permission.phone.status;
-
     debugPrint('[CallLog] ========== PERMISSION CHECK ==========');
+
+    // Android 9+ icin READ_CALL_LOG ayri bir izin
+    // permission_handler'da PermissionGroup.phone altinda gruplandigi icin
+    // once phone sonra ayrica kontrol ediyoruz
+
+    final phoneGranted = await Permission.phone.isGranted;
     debugPrint('[CallLog] Phone permission isGranted: $phoneGranted');
-    debugPrint('[CallLog] Phone permission isPermanentlyDenied: $phonePermanentlyDenied');
-    debugPrint('[CallLog] Phone permission status: $phoneStatus');
 
     if (!phoneGranted) {
       debugPrint('[CallLog] Phone permission not granted, requesting...');
       final result = await Permission.phone.request();
-      debugPrint('[CallLog] Request result: $result');
+      debugPrint('[CallLog] Phone permission request result: $result');
       if (!result.isGranted) {
-        debugPrint('[CallLog] Phone permission denied after request');
+        debugPrint('[CallLog] Phone permission denied');
         return [];
       }
+    }
+
+    // Contacts permission da gerekli olabilir (call_log paketi icin)
+    final contactsGranted = await Permission.contacts.isGranted;
+    debugPrint('[CallLog] Contacts permission isGranted: $contactsGranted');
+
+    if (!contactsGranted) {
+      debugPrint('[CallLog] Contacts permission not granted, requesting...');
+      await Permission.contacts.request();
     }
 
     try {

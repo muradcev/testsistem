@@ -64,6 +64,25 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="nakliyeo_channel" />
 
+        <!-- Default notification icon (required for background notifications) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+
+        <!-- Default notification color -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
+
+        <!-- Firebase Cloud Messaging Service - for background messages -->
+        <service
+            android:name="io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- Background Location Service with foregroundServiceType -->
         <service
             android:name="id.flutter.flutter_background_service.BackgroundService"
