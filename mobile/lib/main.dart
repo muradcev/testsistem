@@ -89,6 +89,9 @@ void main() async {
     // Connect notification service to DeviceInfoService for FCM token
     notificationService.setDeviceInfoService(deviceInfoService);
 
+    // Also set ApiService for direct FCM token fallback
+    notificationService.setApiService(apiService);
+
     // Set navigation callback for notification taps
     notificationService.setNavigationCallback((route) {
       appRouter.go(route);

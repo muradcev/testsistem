@@ -380,39 +380,67 @@ class NotificationService {
 
   Future<void> sendFcmTokenToServer() async {
     debugPrint('[FCM] sendFcmTokenToServer called, token: ${_fcmToken != null ? "EXISTS" : "NULL"}');
+
+    // Token yoksa Firebase'den tekrar almayı dene
+    if (_fcmToken == null) {
+      debugPrint('[FCM] Token is null, trying to get from Firebase again...');
+      try {
+        _fcmToken = await _firebaseMessaging?.getToken();
+        if (_fcmToken != null) {
+          debugPrint('[FCM] Got token on retry: ${_fcmToken!.substring(0, 30)}...');
+        }
+      } catch (e) {
+        debugPrint('[FCM] Failed to get token on retry: $e');
+      }
+    }
+
     if (_fcmToken != null) {
       await _sendFcmTokenToServer(_fcmToken!);
     } else {
-      debugPrint('[FCM] WARNING: FCM token is null, cannot send to server');
+      _fcmError = 'FCM token alınamadı';
+      debugPrint('[FCM] WARNING: FCM token is still null after retry');
     }
   }
 
   Future<void> _sendFcmTokenToServer(String token) async {
     debugPrint('[FCM] _sendFcmTokenToServer called with token: ${token.substring(0, 20)}...');
+    bool success = false;
 
-    // Oncelikle DeviceInfoService uzerinden gonder (tum bilgilerle birlikte)
+    // 1. Oncelikle DeviceInfoService uzerinden gonder (tum bilgilerle birlikte)
     if (_deviceInfoService != null) {
-      debugPrint('[FCM] Sending via DeviceInfoService (with all device info)...');
-      await _deviceInfoService!.setFcmToken(token);
-      _fcmError = null;
-      return;
+      try {
+        debugPrint('[FCM] Sending via DeviceInfoService (with all device info)...');
+        await _deviceInfoService!.setFcmToken(token);
+        success = true;
+        _fcmError = null;
+        debugPrint('[FCM] SUCCESS via DeviceInfoService');
+      } catch (e) {
+        debugPrint('[FCM] DeviceInfoService failed: $e, trying direct API...');
+      }
     }
 
-    // Fallback: Eski yontem - sadece FCM token gonder
-    if (_apiService == null) {
-      _fcmError = 'ApiService not set';
+    // 2. Fallback: Direkt API ile gonder (DeviceInfoService basarisiz olduysa)
+    if (!success && _apiService != null) {
+      try {
+        debugPrint('[FCM] Fallback: Calling API to update FCM token directly...');
+        final response = await _apiService!.updateFcmToken(token);
+        if (response.statusCode == 200) {
+          success = true;
+          _fcmError = null;
+          debugPrint('[FCM] SUCCESS: FCM token sent via direct API. Response: ${response.statusCode}');
+        } else {
+          _fcmError = 'API hatası: ${response.statusCode}';
+          debugPrint('[FCM] API returned non-200: ${response.statusCode}');
+        }
+      } catch (e) {
+        _fcmError = 'Token gönderme hatası: $e';
+        debugPrint('[FCM] ERROR: Failed to send FCM token via direct API: $e');
+      }
+    }
+
+    if (!success && _apiService == null && _deviceInfoService == null) {
+      _fcmError = 'ApiService ve DeviceInfoService bulunamadı';
       debugPrint('[FCM] ERROR: Neither DeviceInfoService nor ApiService set');
-      return;
-    }
-
-    try {
-      debugPrint('[FCM] Fallback: Calling API to update FCM token directly...');
-      final response = await _apiService!.updateFcmToken(token);
-      debugPrint('[FCM] SUCCESS: FCM token sent to server. Response: ${response.statusCode}');
-      _fcmError = null;
-    } catch (e) {
-      _fcmError = 'Token gönderme hatası: $e';
-      debugPrint('[FCM] ERROR: Failed to send FCM token: $e');
     }
   }
 

@@ -334,15 +334,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _sendFcmToken() async {
     if (!mounted) return;
-    // Send FCM token to server after login
-    try {
-      debugPrint('[HomeScreen] Sending FCM token to server...');
-      final notificationService = context.read<NotificationService>();
-      await notificationService.sendFcmTokenToServer();
-      debugPrint('[HomeScreen] FCM token sent successfully');
-    } catch (e) {
-      debugPrint('[HomeScreen] Failed to send FCM token: $e');
+    // Send FCM token to server after login with retry
+    final notificationService = context.read<NotificationService>();
+
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      try {
+        debugPrint('[HomeScreen] Sending FCM token to server (attempt $attempt)...');
+        await notificationService.sendFcmTokenToServer();
+
+        // Token başarıyla gönderildiyse dur
+        if (notificationService.fcmError == null && notificationService.fcmToken != null) {
+          debugPrint('[HomeScreen] FCM token sent successfully on attempt $attempt');
+          return;
+        }
+
+        // Hata varsa ve daha deneme hakkı varsa bekle
+        if (attempt < 3) {
+          debugPrint('[HomeScreen] FCM token failed, waiting before retry...');
+          await Future.delayed(Duration(seconds: attempt * 2));
+        }
+      } catch (e) {
+        debugPrint('[HomeScreen] Failed to send FCM token (attempt $attempt): $e');
+        if (attempt < 3) {
+          await Future.delayed(Duration(seconds: attempt * 2));
+        }
+      }
     }
+
+    debugPrint('[HomeScreen] FCM token sending failed after 3 attempts');
   }
 
   @override
