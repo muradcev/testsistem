@@ -1,15 +1,11 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'api_service.dart';
 import 'device_info_service.dart';
-import '../config/constants.dart';
+import 'hybrid_location_service.dart';
 
 // Background message handler - must be top-level function
 @pragma('vm:entry-point')
@@ -17,76 +13,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint('Background message received: ${message.messageId}');
 
-  // Handle location request in background
+  // Handle location request in background - Admin "Konum İste" dediğinde
   if (message.data['type'] == 'location_request') {
-    debugPrint('Location request received in background');
-    await _handleLocationRequestBackground(message.data['request_id'] ?? '');
-  }
-}
-
-// Handle location request in background
-Future<void> _handleLocationRequestBackground(String requestId) async {
-  try {
-    // Check permission
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      debugPrint('Location permission denied');
-      return;
-    }
-
-    // Get current position
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
-    debugPrint('Background location: ${position.latitude}, ${position.longitude}');
-
-    // Send to server using direct HTTP call (background handler can't use ApiService)
-    await _sendLocationToServer(position);
-  } catch (e) {
-    debugPrint('Background location request failed: $e');
-  }
-}
-
-// Send location to server (for background use)
-Future<void> _sendLocationToServer(Position position) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(StorageKeys.accessToken);
-
-    if (token == null || token.isEmpty) {
-      debugPrint('No auth token available for background location send');
-      return;
-    }
-
-    final locationData = {
-      'latitude': position.latitude,
-      'longitude': position.longitude,
-      'speed': position.speed,
-      'accuracy': position.accuracy,
-      'altitude': position.altitude,
-      'heading': position.heading,
-      'is_moving': position.speed > 1,
-      'activity_type': position.speed > 5 ? 'driving' : 'still',
-      'recorded_at': DateTime.now().toUtc().toIso8601String(),
-    };
-
-    final response = await http.post(
-      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.location}'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(locationData),
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      debugPrint('Background location sent successfully');
-    } else {
-      debugPrint('Background location send failed: ${response.statusCode}');
-    }
-  } catch (e) {
-    debugPrint('Background location send error: $e');
+    debugPrint('[FCM] Admin location request received in background');
+    await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_background');
   }
 }
 
@@ -266,49 +196,10 @@ class NotificationService {
       await showQuestionNotification(questionId, notification?.body ?? 'Yeni bir soru var');
     }
 
-    // Handle location request (silent - no notification shown)
+    // Handle location request (silent - no notification shown) - Admin "Konum İste" dediğinde
     if (message.data['type'] == 'location_request') {
-      debugPrint('Location request received in foreground');
-      await _handleLocationRequest(message.data['request_id'] ?? '');
-    }
-  }
-
-  // Handle location request - get current location and send to server
-  Future<void> _handleLocationRequest(String requestId) async {
-    try {
-      // Check permission
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        debugPrint('Location permission denied for location request');
-        return;
-      }
-
-      // Get current position with high accuracy
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      debugPrint('Location request - Got position: ${position.latitude}, ${position.longitude}');
-
-      // Send to server
-      if (_apiService != null) {
-        await _apiService!.sendLocation({
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'speed': position.speed,
-          'accuracy': position.accuracy,
-          'altitude': position.altitude,
-          'heading': position.heading,
-          'is_moving': position.speed > 1,
-          'activity_type': position.speed > 5 ? 'driving' : 'still',
-          'recorded_at': DateTime.now().toUtc().toIso8601String(),
-        });
-        debugPrint('Location request - Sent to server successfully');
-      } else {
-        debugPrint('Location request - ApiService not available');
-      }
-    } catch (e) {
-      debugPrint('Location request failed: $e');
+      debugPrint('[FCM] Admin location request received in foreground');
+      await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_foreground');
     }
   }
 

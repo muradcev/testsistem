@@ -1,12 +1,6 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../config/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/questions_provider.dart';
@@ -28,7 +22,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _vehicleCheckDone = false;
   bool _questionsDialogShown = false;
-  Timer? _foregroundCheckTimer;
 
   @override
   void initState() {
@@ -39,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _initHybridLocation();
       _loadQuestionsAndShowDialog();
       _sendFcmToken();
-      _refreshDeviceInfo(); // Cihaz bilgisi + izinler + FCM token (tek noktadan)
+      _refreshDeviceInfo();
       _checkVehicles();
       _startCallTracking();
     });
@@ -48,7 +41,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _foregroundCheckTimer?.cancel();
     super.dispose();
   }
 
@@ -56,9 +48,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      // Kullanıcı telefonu eline aldı - Foreground modundan çık
-      _onPhonePickedUp();
-      // İzinleri yenile (kullanici ayarlardan izin degistirmis olabilir)
+      // Uygulama açıldığında anlık konum gönder
+      _sendImmediateLocation('app_resumed');
+      // İzinleri yenile
       _onAppResumed();
     }
   }
@@ -78,114 +70,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await deviceInfoService.sendAllInfo();
   }
 
-  /// Kullanıcı telefonu eline aldığında çağrılır
-  Future<void> _onPhonePickedUp() async {
-    debugPrint('[HomeScreen] Phone picked up - user is using phone');
-
-    final prefs = await SharedPreferences.getInstance();
-
-    // Önce should_start_foreground flag'ini temizle (tekrar başlatmasını engelle)
-    await prefs.setBool('should_start_foreground', false);
-
-    // Telefon kullanımı event'ini kaydet
-    await prefs.setString('last_phone_pickup', DateTime.now().toIso8601String());
-    await prefs.setBool('phone_in_use', true);
-
-    // Eğer Foreground modundaysak, WorkManager moduna geç
-    if (HybridLocationService.isForegroundMode) {
-      debugPrint('[HomeScreen] Switching from Foreground to WorkManager mode');
-      await HybridLocationService.stopForegroundMode();
-      await HybridLocationService.startWorkManagerMode();
-    }
-  }
-
   /// Hibrit konum servisini başlat
   Future<void> _initHybridLocation() async {
     debugPrint('[HomeScreen] Initializing hybrid location service...');
     try {
       await HybridLocationService.initialize();
       await HybridLocationService.startWorkManagerMode();
-      debugPrint('[HomeScreen] Hybrid location service started in WorkManager mode');
+      debugPrint('[HomeScreen] WorkManager started (15 dk interval, no notification)');
 
       // İlk konumu hemen gönder
-      _sendInitialLocation();
-
-      // Periyodik olarak foreground flag'i kontrol et (uygulama açıkken)
-      _foregroundCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-        _checkForegroundFlag();
-      });
+      _sendImmediateLocation('app_opened');
     } catch (e) {
       debugPrint('[HomeScreen] Hybrid location service init error: $e');
     }
   }
 
-  /// İlk konumu hemen gönder
-  Future<void> _sendInitialLocation() async {
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token');
-      if (token == null) return;
-
-      final locationData = {
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'speed': position.speed,
-        'accuracy': position.accuracy,
-        'altitude': position.altitude,
-        'heading': position.heading,
-        'is_moving': position.speed > 2,
-        'activity_type': position.speed * 3.6 > 30 ? 'driving' : (position.speed > 2 ? 'moving' : 'still'),
-        'recorded_at': DateTime.now().toUtc().toIso8601String(),
-      };
-
-      final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.location}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(locationData),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint('[HomeScreen] Initial location sent: ${position.latitude}, ${position.longitude}');
-      }
-    } catch (e) {
-      debugPrint('[HomeScreen] Initial location send error: $e');
-    }
-  }
-
-  /// WorkManager'dan foreground moduna geçiş flag'ini kontrol et
-  Future<void> _checkForegroundFlag() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final shouldStartForeground = prefs.getBool('should_start_foreground') ?? false;
-
-      // Son 5 dakika içinde telefon ele alındıysa foreground başlatma
-      final lastPickup = prefs.getString('last_phone_pickup');
-      if (lastPickup != null) {
-        final pickupTime = DateTime.tryParse(lastPickup);
-        if (pickupTime != null) {
-          final minutesSincePickup = DateTime.now().difference(pickupTime).inMinutes;
-          if (minutesSincePickup < 5) {
-            debugPrint('[HomeScreen] Phone was picked up $minutesSincePickup min ago, skipping foreground');
-            await prefs.setBool('should_start_foreground', false);
-            return;
-          }
-        }
-      }
-
-      if (shouldStartForeground && !HybridLocationService.isForegroundMode) {
-        debugPrint('[HomeScreen] Speed threshold reached, switching to Foreground mode');
-        await HybridLocationService.startForegroundMode();
-        await prefs.setBool('should_start_foreground', false);
-      }
-    } catch (e) {
-      debugPrint('[HomeScreen] Foreground flag check error: $e');
+  /// Anlık konum gönder
+  Future<void> _sendImmediateLocation(String trigger) async {
+    final success = await HybridLocationService.sendImmediateLocation(trigger: trigger);
+    if (success) {
+      debugPrint('[HomeScreen] Immediate location sent (trigger: $trigger)');
     }
   }
 

@@ -8,40 +8,19 @@ import 'package:workmanager/workmanager.dart';
 import 'package:dio/dio.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:call_log/call_log.dart' as call_log_pkg;
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:ui';
 
 import '../config/constants.dart';
 import '../providers/config_provider.dart';
 
-// Sabitler (varsayılan değerler - sunucudan gelen config yoksa kullanılır)
-const String _workManagerTaskName = 'nakliyeo_location_check';
+// Sabitler
+const String _workManagerTaskName = 'nakliyeo_location_task';
 const String _workManagerTaskTag = 'location';
-
-// Varsayılan değerler (sunucudan config gelmezse kullanılır)
-const double _defaultSpeedThresholdKmh = 30.0;
-const double _defaultSpeedStopThresholdKmh = 25.0;
 const int _defaultWorkManagerIntervalMinutes = 15;
-const int _defaultForegroundIntervalSeconds = 30;
-const int _slowSpeedCheckCount = 2; // 2 x interval = düşük hız kontrolü
 
 /// Config değerlerini SharedPreferences'tan oku
 class _RemoteConfig {
-  static Future<double> getSpeedThreshold(SharedPreferences prefs) async {
-    return (prefs.getInt(MobileConfigKeys.fastMovingThresholdKmh) ?? _defaultSpeedThresholdKmh.toInt()).toDouble();
-  }
-
-  static Future<double> getSpeedStopThreshold(SharedPreferences prefs) async {
-    final threshold = await getSpeedThreshold(prefs);
-    return threshold - 5.0; // Histerezis için 5 km/s düşük
-  }
-
-  static int getForegroundInterval(SharedPreferences prefs) {
-    return prefs.getInt(MobileConfigKeys.fastMovingIntervalSeconds) ?? _defaultForegroundIntervalSeconds;
-  }
-
   static int getWorkManagerInterval(SharedPreferences prefs) {
     return prefs.getInt(MobileConfigKeys.heartbeatIntervalMinutes) ?? _defaultWorkManagerIntervalMinutes;
   }
@@ -51,13 +30,11 @@ class _RemoteConfig {
   }
 }
 
-/// Hibrit Konum Servisi
-/// - Hız < 30 km/s: WorkManager modu (15 dk'da bir, bildirim yok)
-/// - Hız >= 30 km/s: Foreground modu (30 sn'de bir, bildirim var)
-/// - Hız 25-30 arası: Histerezis bölgesi (ani mod değişimi engellenir)
+/// Basit Konum Servisi
+/// - WorkManager: 15 dk'da bir arka planda konum (bildirim YOK)
+/// - Anlık konum: Uygulama açılınca, soru cevaplanınca, admin isteyince
 class HybridLocationService {
   static bool _isInitialized = false;
-  static bool _isForegroundMode = false;
 
   /// Servisi başlat
   static Future<void> initialize() async {
@@ -71,33 +48,13 @@ class HybridLocationService {
       isInDebugMode: false,
     );
 
-    // Foreground Service'i yapılandır (ama başlatma)
-    await _configureForegroundService();
-
-    // Önceki oturumdan kalmış olabilecek foreground servisi temizle
-    final service = FlutterBackgroundService();
-    final isRunning = await service.isRunning();
-    if (isRunning) {
-      debugPrint('[HybridLocation] Found running service from previous session, stopping...');
-      service.invoke('stop');
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-
-    // Flag'i de temizle
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('should_start_foreground', false);
-
     _isInitialized = true;
-    _isForegroundMode = false;
     debugPrint('[HybridLocation] Initialized');
   }
 
-  /// WorkManager modunu başlat (varsayılan mod)
+  /// WorkManager periyodik görevini başlat
   static Future<void> startWorkManagerMode() async {
     debugPrint('[HybridLocation] Starting WorkManager mode...');
-
-    // Önce foreground service'i durdur (eğer çalışıyorsa)
-    await stopForegroundMode();
 
     // Config'den interval al
     final prefs = await SharedPreferences.getInstance();
@@ -119,99 +76,67 @@ class HybridLocationService {
       existingWorkPolicy: ExistingWorkPolicy.replace,
     );
 
-    _isForegroundMode = false;
-    debugPrint('[HybridLocation] WorkManager mode started (every $intervalMinutes min - from config)');
-  }
-
-  /// Foreground modunu başlat (hızlı sürüş için)
-  static Future<void> startForegroundMode() async {
-    if (_isForegroundMode) {
-      debugPrint('[HybridLocation] Already in foreground mode');
-      return;
-    }
-
-    debugPrint('[HybridLocation] Starting Foreground mode...');
-
-    final service = FlutterBackgroundService();
-    var isRunning = await service.isRunning();
-    if (!isRunning) {
-      await service.startService();
-    }
-
-    _isForegroundMode = true;
-    debugPrint('[HybridLocation] Foreground mode started');
-  }
-
-  /// Foreground modunu durdur
-  static Future<void> stopForegroundMode() async {
-    debugPrint('[HybridLocation] Stopping Foreground mode...');
-
-    final service = FlutterBackgroundService();
-    var isRunning = await service.isRunning();
-
-    // Servis çalışıyorsa durdur (flag'e bakmadan)
-    if (isRunning) {
-      debugPrint('[HybridLocation] Service is running, stopping...');
-      service.invoke('stop');
-
-      // Servisin durmasını bekle
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Tekrar kontrol et
-      isRunning = await service.isRunning();
-      if (isRunning) {
-        debugPrint('[HybridLocation] Service still running, trying stopSelf...');
-        service.invoke('stopSelf');
-      }
-    }
-
-    _isForegroundMode = false;
-
-    // Flag'i de temizle
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('should_start_foreground', false);
-
-    debugPrint('[HybridLocation] Foreground mode stopped');
+    debugPrint('[HybridLocation] WorkManager started (every $intervalMinutes min)');
   }
 
   /// Tüm servisleri durdur
   static Future<void> stopAll() async {
     debugPrint('[HybridLocation] Stopping all services...');
-
-    await stopForegroundMode();
     await Workmanager().cancelByTag(_workManagerTaskTag);
-
     debugPrint('[HybridLocation] All services stopped');
   }
 
-  /// Mevcut modu kontrol et
-  static bool get isForegroundMode => _isForegroundMode;
+  /// Anlık konum gönder (uygulama açılınca, soru cevaplanınca vb.)
+  static Future<bool> sendImmediateLocation({String? trigger}) async {
+    debugPrint('[HybridLocation] Sending immediate location (trigger: $trigger)...');
 
-  /// Foreground Service yapılandırması
-  static Future<void> _configureForegroundService() async {
-    final service = FlutterBackgroundService();
+    try {
+      // Konum izni kontrolü
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        debugPrint('[HybridLocation] Location permission denied');
+        return false;
+      }
 
-    await service.configure(
-      androidConfiguration: AndroidConfiguration(
-        onStart: _onForegroundStart,
-        autoStart: false,
-        isForegroundMode: true,
-        notificationChannelId: 'nakliyeo_location',
-        initialNotificationTitle: 'Nakliyeo',
-        initialNotificationContent: 'Seyahat kaydediliyor',
-        foregroundServiceNotificationId: 888,
-        foregroundServiceTypes: [AndroidForegroundType.location],
-      ),
-      iosConfiguration: IosConfiguration(
-        autoStart: false,
-        onForeground: _onForegroundStart,
-        onBackground: _onIosBackground,
-      ),
-    );
+      // Konum servisi kontrolü
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('[HybridLocation] Location service disabled');
+        return false;
+      }
+
+      // Mevcut konumu al
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Prefs'ten token al
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString(StorageKeys.accessToken);
+
+      if (accessToken == null || accessToken.isEmpty) {
+        debugPrint('[HybridLocation] No access token');
+        return false;
+      }
+
+      // Konumu gönder
+      await _sendLocationToServer(position, accessToken, prefs, trigger: trigger);
+      debugPrint('[HybridLocation] Immediate location sent: ${position.latitude}, ${position.longitude}');
+      return true;
+    } catch (e) {
+      debugPrint('[HybridLocation] Immediate location error: $e');
+      return false;
+    }
   }
+
+  // Eski API uyumluluğu için (kullanılmıyor artık)
+  static bool get isForegroundMode => false;
+  static Future<void> startForegroundMode() async {}
+  static Future<void> stopForegroundMode() async {}
 }
 
-/// WorkManager callback - her 15 dakikada çalışır
+/// WorkManager callback - her 15 dakikada çalışır (BİLDİRİM YOK)
 @pragma('vm:entry-point')
 void workManagerCallbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
@@ -235,14 +160,12 @@ void workManagerCallbackDispatcher() {
 
       // Mevcut konumu al
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.medium, // Pil tasarrufu için medium
       );
 
-      // Hızı km/s'e çevir (m/s -> km/h)
-      double speedKmh = position.speed * 3.6;
-      debugPrint('[WorkManager] Current speed: ${speedKmh.toStringAsFixed(1)} km/h, accuracy: ${position.accuracy.toStringAsFixed(1)}m');
+      debugPrint('[WorkManager] Got position: ${position.latitude}, ${position.longitude}');
 
-      // Prefs'ten token ve ayarları al
+      // Prefs'ten token al
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString(StorageKeys.accessToken);
 
@@ -251,30 +174,9 @@ void workManagerCallbackDispatcher() {
         return true;
       }
 
-      // GPS doğruluk kontrolü - düşük doğrulukta hız verisi güvenilmez
-      // 50m üzeri doğruluk = GPS gürültüsü olabilir, foreground başlatma
-      if (position.accuracy > 50) {
-        debugPrint('[WorkManager] GPS accuracy too low (${position.accuracy.toStringAsFixed(1)}m), skipping foreground check');
-        await _sendLocation(position, accessToken, prefs);
-        return true;
-      }
-
-      // Config'den hız eşiğini al
-      final speedThreshold = await _RemoteConfig.getSpeedThreshold(prefs);
-
-      // Hız kontrolü - threshold üzerinde mi?
-      if (speedKmh >= speedThreshold) {
-        debugPrint('[WorkManager] Speed >= $speedThreshold km/h (from config), switching to Foreground mode');
-        // Foreground moduna geç (bu WorkManager içinden yapılamaz, flag kaydet)
-        await prefs.setBool('should_start_foreground', true);
-        // Konumu yine de gönder
-        await _sendLocation(position, accessToken, prefs);
-        return true;
-      }
-
-      // Yavaş hız - normal WorkManager modunda devam
-      await _sendLocation(position, accessToken, prefs);
-      debugPrint('[WorkManager] Location sent in WorkManager mode');
+      // Konumu gönder
+      await _sendLocationToServer(position, accessToken, prefs, trigger: 'workmanager');
+      debugPrint('[WorkManager] Location sent successfully');
 
       // Arama kayıtlarını da senkronize et (her 15 dakikada bir)
       await _syncCallLogsInBackground(accessToken);
@@ -288,7 +190,12 @@ void workManagerCallbackDispatcher() {
 }
 
 /// Konumu backend'e gönder
-Future<void> _sendLocation(Position position, String accessToken, SharedPreferences prefs) async {
+Future<void> _sendLocationToServer(
+  Position position,
+  String accessToken,
+  SharedPreferences prefs, {
+  String? trigger,
+}) async {
   try {
     // Bağlantı kontrolü
     final connectivity = Connectivity();
@@ -304,13 +211,6 @@ Future<void> _sendLocation(Position position, String accessToken, SharedPreferen
       // ignore
     }
 
-    // Telefon kullanım durumunu kontrol et
-    final phoneInUse = prefs.getBool('phone_in_use') ?? false;
-    // Telefon kullanımı flag'ini sıfırla (bir kez gönderildi)
-    if (phoneInUse) {
-      await prefs.setBool('phone_in_use', false);
-    }
-
     // Konum verisi
     final locationData = {
       'latitude': position.latitude,
@@ -322,17 +222,16 @@ Future<void> _sendLocation(Position position, String accessToken, SharedPreferen
       'is_moving': position.speed > 2,
       'activity_type': position.speed * 3.6 > 30 ? 'driving' : (position.speed > 2 ? 'moving' : 'still'),
       'battery_level': batteryLevel,
-      'phone_in_use': phoneInUse,
+      'trigger': trigger ?? 'unknown',
       'recorded_at': DateTime.now().toUtc().toIso8601String(),
     };
 
     if (!isOnline) {
       // Çevrimdışı - kuyruğa ekle
-      debugPrint('[WorkManager] Offline, queuing location');
+      debugPrint('[Location] Offline, queuing location');
       final pendingJson = prefs.getString('pending_locations') ?? '[]';
       List<dynamic> pending = json.decode(pendingJson);
       pending.add(locationData);
-      // Config'den max offline locations al
       final maxOffline = _RemoteConfig.getMaxOfflineLocations(prefs);
       if (pending.length > maxOffline) pending.removeAt(0);
       await prefs.setString('pending_locations', json.encode(pending));
@@ -357,17 +256,16 @@ Future<void> _sendLocation(Position position, String accessToken, SharedPreferen
       try {
         await dio.post(ApiConstants.locationBatch, data: {'locations': pending});
         await prefs.setString('pending_locations', '[]');
-        debugPrint('[WorkManager] Sent ${pending.length} pending locations');
+        debugPrint('[Location] Sent ${pending.length} pending locations');
       } catch (e) {
-        debugPrint('[WorkManager] Failed to send pending: $e');
+        debugPrint('[Location] Failed to send pending: $e');
       }
     }
 
     // Mevcut konumu gönder
     await dio.post(ApiConstants.location, data: locationData);
-    debugPrint('[WorkManager] Location sent: ${position.latitude}, ${position.longitude}');
   } catch (e) {
-    debugPrint('[WorkManager] Send error: $e');
+    debugPrint('[Location] Send error: $e');
   }
 }
 
@@ -382,7 +280,6 @@ Future<void> _syncCallLogsInBackground(String accessToken) async {
     if (lastSyncStr != null) {
       final lastSync = DateTime.tryParse(lastSyncStr);
       if (lastSync != null && now.difference(lastSync).inMinutes < 30) {
-        // Son 30 dakika içinde sync yapıldıysa atla
         debugPrint('[WorkManager] Call sync skipped (last sync < 30 min ago)');
         return;
       }
@@ -449,150 +346,4 @@ String _getCallTypeName(call_log_pkg.CallType? type) {
     default:
       return 'unknown';
   }
-}
-
-/// iOS background handler
-@pragma('vm:entry-point')
-Future<bool> _onIosBackground(ServiceInstance service) async {
-  WidgetsFlutterBinding.ensureInitialized();
-  DartPluginRegistrant.ensureInitialized();
-  return true;
-}
-
-/// Foreground Service ana fonksiyonu
-@pragma('vm:entry-point')
-void _onForegroundStart(ServiceInstance service) async {
-  DartPluginRegistrant.ensureInitialized();
-
-  debugPrint('[Foreground] Service started');
-
-  Dio? dio;
-  String? accessToken;
-  Timer? locationTimer;
-  int slowSpeedCount = 0; // Yavaş hız sayacı
-
-  // Prefs'ten token ve config al
-  final prefs = await SharedPreferences.getInstance();
-  accessToken = prefs.getString(StorageKeys.accessToken);
-
-  // Config değerlerini al
-  final speedStopThreshold = await _RemoteConfig.getSpeedStopThreshold(prefs);
-  final foregroundInterval = _RemoteConfig.getForegroundInterval(prefs);
-  debugPrint('[Foreground] Config: speedStopThreshold=$speedStopThreshold km/h, interval=${foregroundInterval}s');
-
-  if (accessToken != null && accessToken.isNotEmpty) {
-    dio = Dio(BaseOptions(
-      baseUrl: ApiConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
-    ));
-  }
-
-  // Stop komutu dinle
-  if (service is AndroidServiceInstance) {
-    service.on('stop').listen((event) {
-      debugPrint('[Foreground] Stop command received');
-      locationTimer?.cancel();
-      service.stopSelf();
-    });
-  }
-
-  // Token güncelleme dinle
-  service.on('updateToken').listen((event) async {
-    final newToken = event?['token'] as String?;
-    if (newToken != null && newToken.isNotEmpty) {
-      accessToken = newToken;
-      dio = Dio(BaseOptions(
-        baseUrl: ApiConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $newToken',
-        },
-      ));
-      debugPrint('[Foreground] Token updated');
-    }
-  });
-
-  // Konum gönderme fonksiyonu
-  Future<void> sendLocation() async {
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      double speedKmh = position.speed * 3.6;
-      debugPrint('[Foreground] Speed: ${speedKmh.toStringAsFixed(1)} km/h');
-
-      // Hız kontrolü - durdurma için daha düşük eşik kullan (histerezis)
-      if (speedKmh < speedStopThreshold) {
-        slowSpeedCount++;
-        debugPrint('[Foreground] Slow speed count: $slowSpeedCount (speed: ${speedKmh.toStringAsFixed(1)} < $speedStopThreshold)');
-
-        // Yavaş hız sayacı doldu = WorkManager'a dön
-        if (slowSpeedCount >= _slowSpeedCheckCount) {
-          debugPrint('[Foreground] Speed low for ${_slowSpeedCheckCount * foregroundInterval}s, switching to WorkManager mode');
-          await prefs.setBool('should_start_foreground', false);
-          locationTimer?.cancel();
-          service.invoke('stop');
-          return;
-        }
-      } else {
-        slowSpeedCount = 0; // Hızlandı, sayacı sıfırla
-      }
-
-      // Batarya seviyesi
-      int batteryLevel = 100;
-      try {
-        final battery = Battery();
-        batteryLevel = await battery.batteryLevel;
-      } catch (e) {
-        // ignore
-      }
-
-      final locationData = {
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'speed': position.speed,
-        'accuracy': position.accuracy,
-        'altitude': position.altitude,
-        'heading': position.heading,
-        'is_moving': speedKmh > 5,
-        'activity_type': 'driving',
-        'battery_level': batteryLevel,
-        'phone_in_use': false, // Foreground modunda telefon kullanılmıyor (sürüş halinde)
-        'recorded_at': DateTime.now().toUtc().toIso8601String(),
-      };
-
-      if (dio != null) {
-        await dio!.post(ApiConstants.location, data: locationData);
-        debugPrint('[Foreground] Location sent');
-      }
-
-      // Bildirim güncelle
-      if (service is AndroidServiceInstance) {
-        service.setForegroundNotificationInfo(
-          title: 'Nakliyeo',
-          content: 'Seyahat: ${speedKmh.toStringAsFixed(0)} km/s',
-        );
-      }
-    } catch (e) {
-      debugPrint('[Foreground] Error: $e');
-    }
-  }
-
-  // Config'den gelen aralıkta konum gönder (Foreground modunda)
-  locationTimer = Timer.periodic(Duration(seconds: foregroundInterval), (_) {
-    sendLocation();
-  });
-
-  debugPrint('[Foreground] Timer started with ${foregroundInterval}s interval (from config)');
-
-  // İlk konumu hemen gönder
-  sendLocation();
 }

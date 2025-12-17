@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/questions_provider.dart';
+import '../../services/hybrid_location_service.dart';
 
 class QuestionsScreen extends StatefulWidget {
   const QuestionsScreen({super.key});
@@ -145,6 +146,9 @@ class _QuestionCardState extends State<_QuestionCard> {
     );
 
     if (success && mounted) {
+      // Soru cevaplanınca anlık konum gönder
+      HybridLocationService.sendImmediateLocation(trigger: 'question_answered');
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Cevabiniz kaydedildi'),
