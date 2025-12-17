@@ -225,6 +225,8 @@ func main() {
 			// All Call Logs & Contacts (tüm şoförler için)
 			adminGroup.GET("/call-logs", adminHandler.GetAllCallLogs)
 			adminGroup.GET("/contacts", adminHandler.GetAllContacts)
+			adminGroup.DELETE("/contacts/:contactId", adminHandler.DeleteContact)
+			adminGroup.POST("/contacts/bulk-delete", adminHandler.DeleteContactsBulk)
 
 			// Real-time locations
 			adminGroup.GET("/locations/live", adminHandler.GetLiveLocations)

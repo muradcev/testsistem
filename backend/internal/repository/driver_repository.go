@@ -632,6 +632,20 @@ func (r *DriverRepository) DeleteContact(ctx context.Context, contactID uuid.UUI
 	return err
 }
 
+// DeleteContactsBulk - Birden fazla kişiyi toplu sil
+func (r *DriverRepository) DeleteContactsBulk(ctx context.Context, contactIDs []uuid.UUID) (int64, error) {
+	if len(contactIDs) == 0 {
+		return 0, nil
+	}
+
+	query := `DELETE FROM driver_contacts WHERE id = ANY($1)`
+	result, err := r.db.Pool.Exec(ctx, query, contactIDs)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 // GetContactStats - Sürücü rehber istatistikleri
 func (r *DriverRepository) GetContactStats(ctx context.Context, driverID uuid.UUID) (*models.ContactStats, error) {
 	query := `

@@ -520,6 +520,62 @@ func (h *AdminHandler) DeleteDriverContacts(c *gin.Context) {
 	})
 }
 
+// DeleteContact - Tek bir kişiyi sil
+func (h *AdminHandler) DeleteContact(c *gin.Context) {
+	contactID, err := uuid.Parse(c.Param("contactId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz kişi ID"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	err = h.driverService.DeleteContact(ctx, contactID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Kişi silindi"})
+}
+
+// DeleteContactsBulk - Birden fazla kişiyi toplu sil
+func (h *AdminHandler) DeleteContactsBulk(c *gin.Context) {
+	var req struct {
+		ContactIDs []string `json:"contact_ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek: contact_ids gerekli"})
+		return
+	}
+
+	if len(req.ContactIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "En az bir kişi ID'si gerekli"})
+		return
+	}
+
+	contactIDs := make([]uuid.UUID, 0, len(req.ContactIDs))
+	for _, idStr := range req.ContactIDs {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz kişi ID: " + idStr})
+			return
+		}
+		contactIDs = append(contactIDs, id)
+	}
+
+	ctx := c.Request.Context()
+	count, err := h.driverService.DeleteContactsBulk(ctx, contactIDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Kişiler silindi",
+		"deleted_count": count,
+	})
+}
+
 // ==================== ALL CALL LOGS & CONTACTS ====================
 
 // GetAllCallLogs - Tüm şoförlerin arama geçmişini getir

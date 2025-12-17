@@ -378,4 +378,7 @@ export const callLogsApi = {
 export const contactsApi = {
   getAll: (params?: { limit?: number; offset?: number; driver_id?: string; search?: string }) =>
     api.get('/admin/contacts', { params }),
+  delete: (contactId: string) => api.delete(`/admin/contacts/${contactId}`),
+  bulkDelete: (contactIds: string[]) =>
+    api.post('/admin/contacts/bulk-delete', { contact_ids: contactIds }),
 }

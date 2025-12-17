@@ -121,6 +121,16 @@ func (s *DriverService) DeleteDriverContacts(ctx context.Context, driverID uuid.
 	return s.repo.DeleteDriverContacts(ctx, driverID)
 }
 
+// DeleteContact - Tek bir kişiyi sil
+func (s *DriverService) DeleteContact(ctx context.Context, contactID uuid.UUID) error {
+	return s.repo.DeleteContact(ctx, contactID)
+}
+
+// DeleteContactsBulk - Birden fazla kişiyi toplu sil
+func (s *DriverService) DeleteContactsBulk(ctx context.Context, contactIDs []uuid.UUID) (int64, error) {
+	return s.repo.DeleteContactsBulk(ctx, contactIDs)
+}
+
 // GetContactStats - Sürücü rehber istatistikleri
 func (s *DriverService) GetContactStats(ctx context.Context, driverID uuid.UUID) (*models.ContactStats, error) {
 	return s.repo.GetContactStats(ctx, driverID)
