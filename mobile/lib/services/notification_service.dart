@@ -205,20 +205,40 @@ class NotificationService {
   // Navigation callback
   Function(String route)? onNavigate;
   RemoteMessage? _pendingNavigationMessage;
+  String? _pendingRoute;
+
+  /// Pending route'u al - uygulama başlarken kontrol edilir
+  String? get pendingRoute => _pendingRoute;
+
+  /// Pending route'u temizle
+  void clearPendingRoute() {
+    _pendingRoute = null;
+  }
 
   void setNavigationCallback(Function(String route) callback) {
     onNavigate = callback;
-    // If there's a pending message, handle it after a delay to ensure UI is ready
+    // If there's a pending message, process it immediately and set pending route
     if (_pendingNavigationMessage != null) {
-      debugPrint('[FCM] Pending notification found, will process after delay');
+      debugPrint('[FCM] Pending notification found, setting pending route');
       final message = _pendingNavigationMessage!;
       _pendingNavigationMessage = null;
-      // Wait for app to fully initialize before navigating
-      Future.delayed(const Duration(milliseconds: 2000), () {
-        debugPrint('[FCM] Processing pending notification message now');
-        _handleNotificationTap(message);
-      });
+      _pendingRoute = _getRouteForMessage(message);
+      debugPrint('[FCM] Pending route set to: $_pendingRoute');
     }
+  }
+
+  /// Message'dan route belirle
+  String _getRouteForMessage(RemoteMessage message) {
+    final type = message.data['type'];
+    if (type == 'question') {
+      return '/questions';
+    } else if (type == 'survey') {
+      final surveyId = message.data['survey_id'];
+      if (surveyId != null) {
+        return '/survey/$surveyId';
+      }
+    }
+    return '/home';
   }
 
   void _handleNotificationTap(RemoteMessage message) {

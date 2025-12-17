@@ -128,8 +128,35 @@ void main() async {
   });
 }
 
-class NakliyeoApp extends StatelessWidget {
+class NakliyeoApp extends StatefulWidget {
   const NakliyeoApp({super.key});
+
+  @override
+  State<NakliyeoApp> createState() => _NakliyeoAppState();
+}
+
+class _NakliyeoAppState extends State<NakliyeoApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Check for pending notification route after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingNotificationRoute();
+    });
+  }
+
+  void _checkPendingNotificationRoute() {
+    final notificationService = context.read<NotificationService>();
+    final pendingRoute = notificationService.pendingRoute;
+    if (pendingRoute != null && pendingRoute != '/home') {
+      debugPrint('[App] Navigating to pending route: $pendingRoute');
+      notificationService.clearPendingRoute();
+      // Small delay to ensure router is ready
+      Future.delayed(const Duration(milliseconds: 500), () {
+        appRouter.go(pendingRoute);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
