@@ -70,6 +70,7 @@ func main() {
 	driverHomeRepo := repository.NewDriverHomeRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
 	announcementRepo := repository.NewAnnouncementRepository(db)
+	questionFlowTemplateRepo := repository.NewQuestionFlowTemplateRepository(db)
 
 	// Service'ler
 	authService := service.NewAuthService(driverRepo, adminRepo, settingsRepo)
@@ -407,6 +408,18 @@ func main() {
 			adminGroup.PUT("/announcements/:id", announcementHandler.UpdateAnnouncement)
 			adminGroup.DELETE("/announcements/:id", announcementHandler.DeleteAnnouncement)
 			adminGroup.POST("/announcements/:id/toggle", announcementHandler.ToggleAnnouncementActive)
+
+			// Question Flow Templates (Soru Akis Sablonlari - Admin tarafı)
+			questionFlowTemplateHandler := api.NewQuestionFlowTemplateHandler(questionFlowTemplateRepo, auditRepo)
+			adminGroup.GET("/question-templates", questionFlowTemplateHandler.GetTemplates)
+			adminGroup.GET("/question-templates/stats", questionFlowTemplateHandler.GetStats)
+			adminGroup.GET("/question-templates/categories", questionFlowTemplateHandler.GetCategories)
+			adminGroup.POST("/question-templates", questionFlowTemplateHandler.CreateTemplate)
+			adminGroup.GET("/question-templates/:id", questionFlowTemplateHandler.GetTemplateByID)
+			adminGroup.PUT("/question-templates/:id", questionFlowTemplateHandler.UpdateTemplate)
+			adminGroup.DELETE("/question-templates/:id", questionFlowTemplateHandler.DeleteTemplate)
+			adminGroup.POST("/question-templates/:id/duplicate", questionFlowTemplateHandler.DuplicateTemplate)
+			adminGroup.POST("/question-templates/:id/use", questionFlowTemplateHandler.IncrementUsage)
 		}
 
 		// Public app config (mobil uygulama için)

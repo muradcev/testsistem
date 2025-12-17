@@ -436,39 +436,119 @@ export default function QuestionsPage() {
 
             {/* History Tab */}
             <TabsContent value="history">
-              <div className="space-y-4">
-                {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
-                    <SearchInput
-                      value={historySearch}
-                      onChange={setHistorySearch}
-                      placeholder="Soru veya cevap ara..."
-                    />
+              <div className="space-y-6">
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                        <CheckCircleIcon className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-green-700">{answeredQuestions.length}</p>
+                        <p className="text-xs text-green-600">Toplam Cevap</p>
+                      </div>
+                    </div>
                   </div>
-                  <Select
-                    value={historyFilterDriver}
-                    onChange={setHistoryFilterDriver}
-                    options={[
-                      { value: 'all', label: 'Tum Soforler' },
-                      ...uniqueDriversInHistory.map(d => ({
-                        value: d.id,
-                        label: `${d.name} ${d.surname}`
-                      }))
-                    ]}
-                    className="w-48"
-                  />
-                  <Select
-                    value={historyFilterDate}
-                    onChange={setHistoryFilterDate}
-                    options={[
-                      { value: 'all', label: 'Tum Zamanlar' },
-                      { value: 'today', label: 'Bugun' },
-                      { value: 'week', label: 'Son 7 Gun' },
-                      { value: 'month', label: 'Son 30 Gun' },
-                    ]}
-                    className="w-40"
-                  />
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <UsersIcon className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-blue-700">{uniqueDriversInHistory.length}</p>
+                        <p className="text-xs text-blue-600">Cevaplayan Sofor</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                        <ClockIcon className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-purple-700">
+                          {answeredQuestions.filter(q => {
+                            const d = new Date(q.answered_at)
+                            const today = new Date()
+                            return d.toDateString() === today.toDateString()
+                          }).length}
+                        </p>
+                        <p className="text-xs text-purple-600">Bugunki Cevap</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                        <ChartBarIcon className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-orange-700">
+                          {answeredQuestions.length > 0 ?
+                            Math.round((answeredQuestions.filter(q => q.answer_value === 'true').length / answeredQuestions.filter(q => q.question_type === 'yes_no').length) * 100) || 0
+                            : 0}%
+                        </p>
+                        <p className="text-xs text-orange-600">Evet Orani</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filters */}
+                <div className="bg-gray-50 rounded-xl p-4 border">
+                  <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="flex-1">
+                      <SearchInput
+                        value={historySearch}
+                        onChange={setHistorySearch}
+                        placeholder="Soru, cevap veya sofor ara..."
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Select
+                        value={historyFilterDriver}
+                        onChange={setHistoryFilterDriver}
+                        options={[
+                          { value: 'all', label: 'Tum Soforler' },
+                          ...uniqueDriversInHistory.map(d => ({
+                            value: d.id,
+                            label: `${d.name} ${d.surname}`
+                          }))
+                        ]}
+                        className="w-48"
+                      />
+                      <Select
+                        value={historyFilterDate}
+                        onChange={setHistoryFilterDate}
+                        options={[
+                          { value: 'all', label: 'Tum Zamanlar' },
+                          { value: 'today', label: 'Bugun' },
+                          { value: 'week', label: 'Son 7 Gun' },
+                          { value: 'month', label: 'Son 30 Gun' },
+                        ]}
+                        className="w-40"
+                      />
+                      {(historySearch || historyFilterDriver !== 'all' || historyFilterDate !== 'all') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setHistorySearch('')
+                            setHistoryFilterDriver('all')
+                            setHistoryFilterDate('all')
+                          }}
+                        >
+                          Temizle
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {filteredAnsweredQuestions.length !== answeredQuestions.length && (
+                    <p className="text-sm text-gray-500 mt-3">
+                      {filteredAnsweredQuestions.length} / {answeredQuestions.length} sonuc gosteriliyor
+                    </p>
+                  )}
                 </div>
 
                 {answeredLoading ? (
@@ -479,21 +559,9 @@ export default function QuestionsPage() {
                   <EmptyState
                     icon={ChatBubbleLeftRightIcon}
                     title="Cevaplanan soru bulunamadi"
-                    description="Filtreleri degistirmeyi deneyin"
-                    action={
-                      (historySearch || historyFilterDriver !== 'all' || historyFilterDate !== 'all') && (
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setHistorySearch('')
-                            setHistoryFilterDriver('all')
-                            setHistoryFilterDate('all')
-                          }}
-                        >
-                          Filtreleri Temizle
-                        </Button>
-                      )
-                    }
+                    description={historySearch || historyFilterDriver !== 'all' || historyFilterDate !== 'all'
+                      ? "Filtreleri degistirmeyi deneyin"
+                      : "Henuz cevaplanan soru yok"}
                   />
                 ) : (
                   <div className="space-y-3">
@@ -797,50 +865,140 @@ function QuestionCard({
   )
 }
 
-// Answered Question Card
+// Answered Question Card - Enhanced
 function AnsweredQuestionCard({ question }: { question: AnsweredQuestion }) {
+  const isYesNo = question.question_type === 'yes_no'
+  const isYes = question.answer_value === 'true'
+  const isNo = question.answer_value === 'false'
+  const isProvince = question.question_type === 'province' || question.question_type === 'province_district'
+
+  // Calculate time ago
+  const getTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 60) return `${diffMins} dk once`
+    if (diffHours < 24) return `${diffHours} saat once`
+    if (diffDays < 7) return `${diffDays} gun once`
+    return date.toLocaleDateString('tr-TR')
+  }
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <Badge variant="success">Cevaplandi</Badge>
-          <Badge variant="default" size="sm">
-            {question.source_type === 'manual_bulk' ? 'Toplu' : 'Tekil'}
-          </Badge>
-          <Badge variant="default" size="sm">
-            {questionTypes.find(t => t.id === question.question_type)?.name || question.question_type}
-          </Badge>
-        </div>
+    <div className="bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all overflow-hidden">
+      <div className="flex">
+        {/* Left color bar based on answer */}
+        <div className={clsx(
+          'w-1.5 flex-shrink-0',
+          isYesNo && isYes && 'bg-green-500',
+          isYesNo && isNo && 'bg-red-500',
+          !isYesNo && 'bg-blue-500'
+        )} />
 
-        <p className="font-medium text-gray-900 mb-3">{question.question_text}</p>
+        <div className="flex-1 p-4">
+          {/* Header row */}
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                  <UserIcon className="h-4 w-4 text-gray-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">
+                    {question.driver_name} {question.driver_surname}
+                  </p>
+                  <p className="text-xs text-gray-500">{question.driver_phone}</p>
+                </div>
+              </div>
+              {question.driver_province && (
+                <Badge variant="default" size="sm" className="bg-gray-100">
+                  <MapPinIcon className="h-3 w-3 mr-1" />
+                  {question.driver_province}
+                </Badge>
+              )}
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-xs text-gray-400">{getTimeAgo(question.answered_at)}</p>
+              <p className="text-xs text-gray-400">{new Date(question.answered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+          </div>
 
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-          <p className="text-sm text-gray-600 mb-1">Cevap:</p>
-          <p className="font-semibold text-green-700">
-            {question.answer_value === 'true' ? 'Evet' :
-             question.answer_value === 'false' ? 'Hayir' :
-             question.answer_value}
-          </p>
-        </div>
+          {/* Question */}
+          <div className="bg-gray-50 rounded-lg p-3 mb-3">
+            <div className="flex items-start gap-2">
+              <QuestionMarkCircleIcon className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
+              <p className="text-gray-700">{question.question_text}</p>
+            </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-          <span className="flex items-center gap-1">
-            <UserIcon className="h-4 w-4" />
-            {question.driver_name} {question.driver_surname}
-          </span>
-          {question.driver_province && (
-            <span className="flex items-center gap-1">
-              <MapPinIcon className="h-4 w-4" />
-              {question.driver_province}
-            </span>
-          )}
-          <span className="flex items-center gap-1">
-            <ClockIcon className="h-4 w-4" />
-            {new Date(question.answered_at).toLocaleString('tr-TR')}
-          </span>
+          {/* Answer */}
+          <div className={clsx(
+            'rounded-lg p-3 flex items-center gap-3',
+            isYesNo && isYes && 'bg-green-50 border border-green-200',
+            isYesNo && isNo && 'bg-red-50 border border-red-200',
+            isProvince && 'bg-blue-50 border border-blue-200',
+            !isYesNo && !isProvince && 'bg-gray-50 border border-gray-200'
+          )}>
+            {isYesNo ? (
+              <>
+                <div className={clsx(
+                  'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',
+                  isYes ? 'bg-green-500' : 'bg-red-500'
+                )}>
+                  {isYes ? (
+                    <CheckCircleIcon className="h-6 w-6 text-white" />
+                  ) : (
+                    <XCircleIcon className="h-6 w-6 text-white" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Cevap</p>
+                  <p className={clsx(
+                    'text-lg font-bold',
+                    isYes ? 'text-green-700' : 'text-red-700'
+                  )}>
+                    {isYes ? 'EVET' : 'HAYIR'}
+                  </p>
+                </div>
+              </>
+            ) : isProvince ? (
+              <>
+                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                  <MapPinIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Cevap (Il)</p>
+                  <p className="text-lg font-bold text-blue-700">{question.answer_value}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center flex-shrink-0">
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-500 mb-0.5">Cevap</p>
+                  <p className="font-semibold text-gray-800 break-words">{question.answer_value}</p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Footer badges */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <Badge variant="default" size="sm" className="bg-gray-100 text-gray-600">
+              {questionTypes.find(t => t.id === question.question_type)?.name || question.question_type}
+            </Badge>
+            <Badge variant="default" size="sm" className="bg-gray-100 text-gray-600">
+              {question.source_type === 'manual_bulk' ? 'Toplu Soru' : question.source_type === 'manual' ? 'Manuel' : 'Otomatik'}
+            </Badge>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

@@ -421,3 +421,69 @@ export const announcementsApi = {
   delete: (id: string) => api.delete(`/admin/announcements/${id}`),
   toggle: (id: string) => api.post(`/admin/announcements/${id}/toggle`),
 }
+
+// Question Flow Templates (Soru Akış Tasarımcısı Şablonları)
+export const questionFlowTemplatesApi = {
+  getAll: (params?: { limit?: number; offset?: number; category?: string; is_active?: boolean }) =>
+    api.get('/admin/question-templates', { params }),
+  getById: (id: string) => api.get(`/admin/question-templates/${id}`),
+  getStats: () => api.get('/admin/question-templates/stats'),
+  getCategories: () => api.get('/admin/question-templates/categories'),
+  create: (data: {
+    name: string
+    description?: string
+    nodes: Array<{
+      id: string
+      type: string
+      position: { x: number; y: number }
+      data: {
+        questionText: string
+        questionType: string
+        options?: string[]
+        isStart?: boolean
+      }
+    }>
+    edges: Array<{
+      id: string
+      source: string
+      target: string
+      sourceHandle?: string
+      targetHandle?: string
+      label?: string
+    }>
+    category?: string
+    tags?: string[]
+    is_public?: boolean
+  }) => api.post('/admin/question-templates', data),
+  update: (id: string, data: {
+    name?: string
+    description?: string
+    nodes?: Array<{
+      id: string
+      type: string
+      position: { x: number; y: number }
+      data: {
+        questionText: string
+        questionType: string
+        options?: string[]
+        isStart?: boolean
+      }
+    }>
+    edges?: Array<{
+      id: string
+      source: string
+      target: string
+      sourceHandle?: string
+      targetHandle?: string
+      label?: string
+    }>
+    category?: string
+    tags?: string[]
+    is_active?: boolean
+    is_public?: boolean
+  }) => api.put(`/admin/question-templates/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/question-templates/${id}`),
+  duplicate: (id: string, name: string) =>
+    api.post(`/admin/question-templates/${id}/duplicate`, { name }),
+  incrementUsage: (id: string) => api.post(`/admin/question-templates/${id}/use`),
+}

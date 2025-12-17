@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import ReactFlow, {
   Node,
   Edge,
@@ -25,6 +25,8 @@ import {
   ArrowPathIcon,
   QuestionMarkCircleIcon,
   XMarkIcon,
+  FolderIcon,
+  TagIcon,
 } from '@heroicons/react/24/outline'
 import {
   PageHeader,
@@ -35,7 +37,7 @@ import {
   LoadingSpinner,
   SearchInput,
 } from '../components/ui'
-import { questionsApi, driversApi } from '../services/api'
+import { questionsApi, driversApi, questionFlowTemplatesApi } from '../services/api'
 
 interface QuestionNodeData {
   questionText: string
@@ -50,6 +52,10 @@ interface QuestionTemplate {
   description?: string
   nodes: Node<QuestionNodeData>[]
   edges: Edge[]
+  category?: string
+  tags?: string[]
+  is_active: boolean
+  is_public: boolean
   created_at: string
   updated_at: string
   usage_count: number
@@ -176,6 +182,7 @@ const initialNodes: Node<QuestionNodeData>[] = [
 const initialEdges: Edge[] = []
 
 export default function QuestionDesignerPage() {
+  const queryClient = useQueryClient()
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [selectedNode, setSelectedNode] = useState<Node<QuestionNodeData> | null>(null)
@@ -184,42 +191,80 @@ export default function QuestionDesignerPage() {
   const [showSendModal, setShowSendModal] = useState(false)
   const [templateName, setTemplateName] = useState('')
   const [templateDescription, setTemplateDescription] = useState('')
+  const [templateCategory, setTemplateCategory] = useState('')
 
-  // Mock templates data (will be replaced with API)
-  const [savedTemplates, setSavedTemplates] = useState<QuestionTemplate[]>([
-    {
-      id: '1',
-      name: 'Yuk Durumu Sorgusu',
-      description: 'Soforun yuk durumunu ve gidecegi ili sorgular',
-      nodes: [
-        {
-          id: 'start',
-          type: 'question',
-          position: { x: 250, y: 50 },
-          data: { questionText: 'Su an yukunuz var mi?', questionType: 'yes_no', isStart: true },
+  // Fetch templates from API
+  const { data: templatesData, isLoading: templatesLoading } = useQuery({
+    queryKey: ['question-flow-templates'],
+    queryFn: () => questionFlowTemplatesApi.getAll({ limit: 100 }),
+    enabled: showTemplates,
+  })
+  const savedTemplates: QuestionTemplate[] = templatesData?.data?.templates || []
+
+  // Create template mutation
+  const createTemplateMutation = useMutation({
+    mutationFn: (data: {
+      name: string
+      description?: string
+      nodes: Node<QuestionNodeData>[]
+      edges: Edge[]
+      category?: string
+    }) => questionFlowTemplatesApi.create({
+      name: data.name,
+      description: data.description,
+      nodes: data.nodes.map(n => ({
+        id: n.id,
+        type: n.type || 'question',
+        position: n.position,
+        data: {
+          questionText: n.data.questionText,
+          questionType: n.data.questionType,
+          options: n.data.options,
+          isStart: n.data.isStart,
         },
-        {
-          id: 'q2',
-          type: 'question',
-          position: { x: 100, y: 200 },
-          data: { questionText: 'Yukunuz hangi ile gidecek?', questionType: 'province' },
-        },
-        {
-          id: 'q3',
-          type: 'question',
-          position: { x: 400, y: 200 },
-          data: { questionText: 'Ne zaman musait olursunuz?', questionType: 'text' },
-        },
-      ],
-      edges: [
-        { id: 'e1', source: 'start', target: 'q2', sourceHandle: 'yes', label: 'Evet', markerEnd: { type: MarkerType.ArrowClosed } },
-        { id: 'e2', source: 'start', target: 'q3', sourceHandle: 'no', label: 'Hayir', markerEnd: { type: MarkerType.ArrowClosed } },
-      ],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      usage_count: 15,
+      })),
+      edges: data.edges.map(e => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle || undefined,
+        targetHandle: e.targetHandle || undefined,
+        label: typeof e.label === 'string' ? e.label : undefined,
+      })),
+      category: data.category || undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['question-flow-templates'] })
+      queryClient.invalidateQueries({ queryKey: ['question-flow-categories'] })
+      setTemplateName('')
+      setTemplateDescription('')
+      setTemplateCategory('')
+      toast.success('Sablon kaydedildi')
     },
-  ])
+    onError: () => {
+      toast.error('Sablon kaydedilemedi')
+    },
+  })
+
+  // Delete template mutation
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id: string) => questionFlowTemplatesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['question-flow-templates'] })
+      toast.success('Sablon silindi')
+    },
+    onError: () => {
+      toast.error('Sablon silinemedi')
+    },
+  })
+
+  // Increment usage mutation
+  const incrementUsageMutation = useMutation({
+    mutationFn: (id: string) => questionFlowTemplatesApi.incrementUsage(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['question-flow-templates'] })
+    },
+  })
 
   // Drivers query
   const { data: driversData } = useQuery({
@@ -293,29 +338,59 @@ export default function QuestionDesignerPage() {
       return
     }
 
-    const newTemplate: QuestionTemplate = {
-      id: `t-${Date.now()}`,
+    createTemplateMutation.mutate({
       name: templateName,
-      description: templateDescription,
+      description: templateDescription || undefined,
       nodes: nodes,
       edges: edges,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      usage_count: 0,
-    }
-
-    setSavedTemplates((prev) => [...prev, newTemplate])
-    setTemplateName('')
-    setTemplateDescription('')
-    toast.success('Sablon kaydedildi')
+      category: templateCategory || undefined,
+    })
   }
 
   // Load template
   const loadTemplate = (template: QuestionTemplate) => {
-    setNodes(template.nodes)
-    setEdges(template.edges)
+    // Transform nodes from API format to ReactFlow format
+    const loadedNodes: Node<QuestionNodeData>[] = template.nodes.map(n => ({
+      id: n.id,
+      type: n.type || 'question',
+      position: n.position,
+      data: {
+        questionText: n.data.questionText,
+        questionType: n.data.questionType,
+        options: n.data.options,
+        isStart: n.data.isStart,
+      },
+    }))
+
+    // Transform edges
+    const loadedEdges: Edge[] = template.edges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle || undefined,
+      targetHandle: e.targetHandle || undefined,
+      label: e.label,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      style: {
+        stroke: e.sourceHandle === 'yes' ? '#22c55e' : e.sourceHandle === 'no' ? '#ef4444' : '#6b7280',
+      },
+    }))
+
+    setNodes(loadedNodes)
+    setEdges(loadedEdges)
     setShowTemplates(false)
+
+    // Increment usage count
+    incrementUsageMutation.mutate(template.id)
+
     toast.success(`"${template.name}" sablonu yuklendi`)
+  }
+
+  // Delete template
+  const deleteTemplate = (template: QuestionTemplate) => {
+    if (confirm(`"${template.name}" sablonunu silmek istediginize emin misiniz?`)) {
+      deleteTemplateMutation.mutate(template.id)
+    }
   }
 
   // Clear canvas
@@ -487,7 +562,7 @@ export default function QuestionDesignerPage() {
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  placeholder="Sablon adi"
+                  placeholder="Sablon adi *"
                 />
                 <textarea
                   value={templateDescription}
@@ -496,8 +571,28 @@ export default function QuestionDesignerPage() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                   placeholder="Aciklama (opsiyonel)"
                 />
-                <Button onClick={saveAsTemplate} className="w-full gap-2">
-                  <BookmarkIcon className="h-4 w-4" />
+                <select
+                  value={templateCategory}
+                  onChange={(e) => setTemplateCategory(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="">Kategori Seciniz</option>
+                  <option value="yuk_durumu">Yuk Durumu</option>
+                  <option value="musaitlik">Musaitlik</option>
+                  <option value="fiyat">Fiyat</option>
+                  <option value="konum">Konum</option>
+                  <option value="genel">Genel</option>
+                </select>
+                <Button
+                  onClick={saveAsTemplate}
+                  className="w-full gap-2"
+                  disabled={createTemplateMutation.isPending}
+                >
+                  {createTemplateMutation.isPending ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    <BookmarkIcon className="h-4 w-4" />
+                  )}
                   Kaydet
                 </Button>
               </div>
@@ -510,11 +605,15 @@ export default function QuestionDesignerPage() {
       {showTemplates && (
         <Modal isOpen onClose={() => setShowTemplates(false)} title="Kayitli Sablonlar" size="lg">
           <div className="space-y-3">
-            {savedTemplates.length === 0 ? (
+            {templatesLoading ? (
+              <div className="flex justify-center py-8">
+                <LoadingSpinner />
+              </div>
+            ) : savedTemplates.length === 0 ? (
               <EmptyState
                 icon={DocumentDuplicateIcon}
                 title="Sablon bulunamadi"
-                description="Henuz kayitli sablon yok"
+                description="Henuz kayitli sablon yok. Tasarimcinizi kullanarak yeni sablonlar olusturun."
               />
             ) : (
               savedTemplates.map((template) => (
@@ -522,17 +621,45 @@ export default function QuestionDesignerPage() {
                   key={template.id}
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  <div>
-                    <p className="font-medium text-gray-900">{template.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{template.name}</p>
+                      {!template.is_active && (
+                        <Badge variant="warning" size="sm">Pasif</Badge>
+                      )}
+                    </div>
                     {template.description && (
-                      <p className="text-sm text-gray-500">{template.description}</p>
+                      <p className="text-sm text-gray-500 truncate">{template.description}</p>
                     )}
-                    <div className="flex gap-2 mt-1">
-                      <Badge variant="default" size="sm">{template.nodes.length} soru</Badge>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <Badge variant="default" size="sm">{template.nodes?.length || 0} soru</Badge>
                       <Badge variant="info" size="sm">{template.usage_count} kullanim</Badge>
+                      {template.category && (
+                        <Badge variant="success" size="sm" className="gap-1">
+                          <FolderIcon className="h-3 w-3" />
+                          {template.category}
+                        </Badge>
+                      )}
+                      {template.tags?.map((tag, idx) => (
+                        <Badge key={idx} variant="default" size="sm" className="gap-1">
+                          <TagIcon className="h-3 w-3" />
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
-                  <Button onClick={() => loadTemplate(template)}>Yukle</Button>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteTemplate(template)}
+                      className="text-red-600 hover:bg-red-50"
+                      disabled={deleteTemplateMutation.isPending}
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" onClick={() => loadTemplate(template)}>Yukle</Button>
+                  </div>
                 </div>
               ))
             )}
