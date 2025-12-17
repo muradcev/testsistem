@@ -266,6 +266,19 @@ export default function QuestionDesignerPage() {
     },
   })
 
+  // Duplicate template mutation
+  const duplicateTemplateMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      questionFlowTemplatesApi.duplicate(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['question-flow-templates'] })
+      toast.success('Sablon kopyalandi')
+    },
+    onError: () => {
+      toast.error('Sablon kopyalanamadi')
+    },
+  })
+
   // Drivers query
   const { data: driversData } = useQuery({
     queryKey: ['all-drivers-for-send'],
@@ -390,6 +403,14 @@ export default function QuestionDesignerPage() {
   const deleteTemplate = (template: QuestionTemplate) => {
     if (confirm(`"${template.name}" sablonunu silmek istediginize emin misiniz?`)) {
       deleteTemplateMutation.mutate(template.id)
+    }
+  }
+
+  // Duplicate template
+  const duplicateTemplate = (template: QuestionTemplate) => {
+    const newName = prompt('Yeni sablon adi:', `${template.name} (Kopya)`)
+    if (newName) {
+      duplicateTemplateMutation.mutate({ id: template.id, name: newName })
     }
   }
 
@@ -652,8 +673,18 @@ export default function QuestionDesignerPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => duplicateTemplate(template)}
+                      title="Kopyala"
+                      disabled={duplicateTemplateMutation.isPending}
+                    >
+                      <DocumentDuplicateIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => deleteTemplate(template)}
                       className="text-red-600 hover:bg-red-50"
+                      title="Sil"
                       disabled={deleteTemplateMutation.isPending}
                     >
                       <TrashIcon className="h-4 w-4" />

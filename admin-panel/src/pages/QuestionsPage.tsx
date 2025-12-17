@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { questionsApi, driversApi } from '../services/api'
 import toast from 'react-hot-toast'
 import {
@@ -17,6 +18,7 @@ import {
   MapPinIcon,
   QuestionMarkCircleIcon,
   ChartBarIcon,
+  RectangleStackIcon,
 } from '@heroicons/react/24/outline'
 import {
   PageHeader,
@@ -324,10 +326,18 @@ export default function QuestionsPage() {
         subtitle="Soforlere soru gonderin ve cevaplari yonetin"
         icon={QuestionMarkCircleIcon}
         actions={
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-            <PlusIcon className="h-5 w-5" />
-            Yeni Soru
-          </Button>
+          <div className="flex gap-2">
+            <Link to="/question-designer">
+              <Button variant="outline" className="gap-2">
+                <RectangleStackIcon className="h-5 w-5" />
+                Soru Tasarimcisi
+              </Button>
+            </Link>
+            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+              <PlusIcon className="h-5 w-5" />
+              Yeni Soru
+            </Button>
+          </div>
         }
       />
 
