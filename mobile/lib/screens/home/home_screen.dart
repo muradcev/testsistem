@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingNotificationRoute();
       _initLocation();
       _initHybridLocation();
       _loadQuestionsAndShowDialog();
@@ -36,6 +37,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _checkVehicles();
       _startCallTracking();
     });
+  }
+
+  /// Bildirimden gelen pending route varsa yönlendir
+  void _checkPendingNotificationRoute() {
+    if (!mounted) return;
+    final notificationService = context.read<NotificationService>();
+    final pendingRoute = notificationService.pendingRoute;
+    if (pendingRoute != null && pendingRoute != '/home' && pendingRoute != '/') {
+      debugPrint('[HomeScreen] Pending notification route found: $pendingRoute');
+      notificationService.clearPendingRoute();
+      // Küçük delay ile yönlendir
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          debugPrint('[HomeScreen] Navigating to pending route: $pendingRoute');
+          context.go(pendingRoute);
+        }
+      });
+    }
   }
 
   @override

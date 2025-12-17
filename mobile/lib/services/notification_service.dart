@@ -243,36 +243,28 @@ class NotificationService {
 
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('[FCM] Notification tapped: ${message.data}');
-    final type = message.data['type'];
+    final route = _getRouteForMessage(message);
 
-    // If navigation callback is not set yet, store the message for later
+    // If navigation callback is not set yet, store for later
     if (onNavigate == null) {
-      debugPrint('[FCM] Navigation callback not set, storing message for later');
+      debugPrint('[FCM] Navigation callback not set, storing pending route: $route');
       _pendingNavigationMessage = message;
+      _pendingRoute = route;
       return;
     }
 
-    try {
-      if (type == 'question') {
-        debugPrint('[FCM] Navigating to /questions');
-        onNavigate?.call('/questions');
-      } else if (type == 'survey') {
-        final surveyId = message.data['survey_id'];
-        if (surveyId != null) {
-          debugPrint('[FCM] Navigating to /survey/$surveyId');
-          onNavigate?.call('/survey/$surveyId');
-        } else {
-          debugPrint('[FCM] Survey ID missing, navigating to home');
-          onNavigate?.call('/');
-        }
-      } else {
-        // Unknown type or no type - just open the app (home screen)
-        debugPrint('[FCM] Unknown notification type: $type, navigating to home');
-        onNavigate?.call('/');
+    // Set pending route and navigate with delay for router to be ready
+    _pendingRoute = route;
+    debugPrint('[FCM] Setting pending route: $route, will navigate after delay');
+
+    // Navigate with delay to ensure router is ready
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (_pendingRoute != null && _pendingRoute != '/home') {
+        debugPrint('[FCM] Navigating to: $_pendingRoute');
+        onNavigate?.call(_pendingRoute!);
+        _pendingRoute = null;
       }
-    } catch (e) {
-      debugPrint('[FCM] Navigation error: $e');
-    }
+    });
   }
 
   void _onNotificationTap(NotificationResponse response) {
