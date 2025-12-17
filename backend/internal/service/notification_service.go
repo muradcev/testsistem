@@ -179,22 +179,61 @@ func (s *NotificationService) SendSurveyNotification(ctx context.Context, token 
 	return s.SendToDevice(ctx, token, message)
 }
 
-// SendQuestionNotification - Soru bildirimi gönder
+// SendQuestionNotification - Soru bildirimi gönder (DATA-ONLY - her zaman arka planda çalışır)
 func (s *NotificationService) SendQuestionNotification(ctx context.Context, token string, questionID string, questionText string) error {
+	if token == "" {
+		return nil
+	}
+
 	body := questionText
 	if len(body) > 100 {
 		body = body[:97] + "..."
 	}
-	message := &NotificationMessage{
-		Title: "Yeni Soru",
-		Body:  body,
+
+	if !s.initialized || s.client == nil {
+		log.Printf("[MOCK] Soru bildirimi gönderildi - Token: %s..., QuestionID: %s",
+			token[:min(20, len(token))], questionID)
+		return nil
+	}
+
+	// DATA-ONLY mesaj gönder - bu her zaman arka plan handler'ı tetikler
+	// Notification payload YOK - Flutter uygulaması local notification gösterecek
+	fcmMessage := &messaging.Message{
+		Token: token,
 		Data: map[string]string{
-			"type":        "question",
-			"action":      "open_question",
-			"question_id": questionID,
+			"type":          "question",
+			"action":        "open_question",
+			"question_id":   questionID,
+			"question_text": body,
+			"title":         "Yeni Soru",
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+			// TTL sıfır - anında teslim et
+			TTL: nil,
+		},
+		APNS: &messaging.APNSConfig{
+			Headers: map[string]string{
+				"apns-priority": "10",
+				"apns-push-type": "background",
+			},
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					ContentAvailable: true,
+					MutableContent:   true,
+				},
+			},
 		},
 	}
-	return s.SendToDevice(ctx, token, message)
+
+	response, err := s.client.Send(ctx, fcmMessage)
+	if err != nil {
+		log.Printf("[FCM] Soru bildirimi gönderilemedi - Token: %s..., Hata: %v", token[:min(20, len(token))], err)
+		return err
+	}
+
+	log.Printf("[FCM] Soru bildirimi gönderildi (data-only) - Response: %s, QuestionID: %s", response, questionID)
+	return nil
 }
 
 // SendTripReminderNotification - Sefer hatırlatma bildirimi

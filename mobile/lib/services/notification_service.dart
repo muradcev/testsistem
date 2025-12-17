@@ -12,11 +12,65 @@ import 'hybrid_location_service.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint('Background message received: ${message.messageId}');
+  debugPrint('Background message data: ${message.data}');
+  debugPrint('Background message notification: ${message.notification?.title}');
+
+  final type = message.data['type'];
 
   // Handle location request in background - Admin "Konum İste" dediğinde
-  if (message.data['type'] == 'location_request') {
+  if (type == 'location_request') {
     debugPrint('[FCM] Admin location request received in background');
     await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_background');
+  }
+  // Handle question notification in background - her zaman local notification göster
+  else if (type == 'question') {
+    debugPrint('[FCM] Question notification received in background');
+    final questionId = message.data['question_id'] ?? '';
+    final questionText = message.data['question_text'] ?? message.notification?.body ?? 'Yeni bir soru var';
+
+    // Show local notification for background questions
+    await _showBackgroundQuestionNotification(questionId, questionText);
+  }
+}
+
+// Helper function to show local notification in background
+Future<void> _showBackgroundQuestionNotification(String questionId, String questionText) async {
+  try {
+    final FlutterLocalNotificationsPlugin notifications = FlutterLocalNotificationsPlugin();
+
+    const androidDetails = AndroidNotificationDetails(
+      'nakliyeo_questions',
+      'Sorular',
+      channelDescription: 'Yeni soru bildirimleri',
+      importance: Importance.max,
+      priority: Priority.max,
+      showWhen: true,
+      enableVibration: true,
+      playSound: true,
+      fullScreenIntent: true, // Bu bildirim için ekranı aç
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await notifications.show(
+      questionId.hashCode,
+      'Yeni Soru',
+      questionText,
+      details,
+      payload: 'question:$questionId',
+    );
+    debugPrint('[FCM] Background local notification shown for question: $questionId');
+  } catch (e) {
+    debugPrint('[FCM] Error showing background notification: $e');
   }
 }
 
@@ -98,14 +152,16 @@ class NotificationService {
     );
     await androidPlugin.createNotificationChannel(generalChannel);
 
-    // Questions channel
+    // Questions channel - Maximum importance for guaranteed delivery
     const questionsChannel = AndroidNotificationChannel(
       'nakliyeo_questions',
       'Sorular',
       description: 'Yeni soru bildirimleri',
-      importance: Importance.high,
+      importance: Importance.max, // Maximum importance - bypass DND
       playSound: true,
       enableVibration: true,
+      showBadge: true,
+      enableLights: true,
     );
     await androidPlugin.createNotificationChannel(questionsChannel);
   }
@@ -178,27 +234,34 @@ class NotificationService {
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     debugPrint('Foreground message received: ${message.data}');
+    debugPrint('Foreground message notification: ${message.notification?.title}');
 
     final notification = message.notification;
     final type = message.data['type'];
 
     // Handle different notification types
     if (type == 'question') {
-      // Soru bildirimi - özel kanal ve payload formatı
+      // Soru bildirimi - DATA-ONLY mesaj olarak geliyor
+      // question_text data payload'da, notification payload'da değil
       final questionId = message.data['question_id'] ?? '';
-      await showQuestionNotification(questionId, notification?.body ?? 'Yeni bir soru var');
+      final questionText = message.data['question_text'] ?? notification?.body ?? 'Yeni bir soru var';
+      debugPrint('[FCM] Question notification received in foreground: $questionId');
+      await showQuestionNotification(questionId, questionText);
     } else if (type == 'location_request') {
       // Konum isteği - sessiz, bildirim gösterme
       debugPrint('[FCM] Admin location request received in foreground');
       await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_foreground');
     } else if (notification != null) {
-      // Diğer bildirimler
+      // Diğer bildirimler (notification payload varsa)
       await showNotification(
         id: message.hashCode,
         title: notification.title ?? 'Nakliyeo',
         body: notification.body ?? '',
         payload: type ?? '',
       );
+    } else if (message.data.isNotEmpty) {
+      // Data-only mesaj ama tip bilinmiyor
+      debugPrint('[FCM] Unknown data-only message: ${message.data}');
     }
   }
 
@@ -413,19 +476,27 @@ class NotificationService {
   }
 
   Future<void> showQuestionNotification(String questionId, String questionText) async {
+    debugPrint('[Notification] Showing question notification: $questionId - $questionText');
+
     const androidDetails = AndroidNotificationDetails(
       'nakliyeo_questions',
       'Sorular',
       channelDescription: 'Yeni soru bildirimleri',
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: Importance.max, // Maximum importance
+      priority: Priority.max, // Maximum priority
       showWhen: true,
+      enableVibration: true,
+      playSound: true,
+      fullScreenIntent: true, // Ekranı aç (kilit ekranında bile)
+      category: AndroidNotificationCategory.message, // Mesaj kategorisi
+      visibility: NotificationVisibility.public, // Kilit ekranında görünsün
     );
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive, // iOS 15+ için yüksek öncelik
     );
 
     const details = NotificationDetails(
@@ -440,6 +511,7 @@ class NotificationService {
       details,
       payload: 'question:$questionId',
     );
+    debugPrint('[Notification] Question notification shown successfully');
   }
 
   Future<void> showSurveyNotification(String surveyId, String title) async {
