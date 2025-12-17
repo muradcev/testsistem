@@ -38,7 +38,7 @@ func (r *LocationRepository) Create(ctx context.Context, location *models.Locati
 		WHERE NOT EXISTS (
 			SELECT 1 FROM locations
 			WHERE driver_id = $1
-			AND recorded_at BETWEEN $13 - INTERVAL '1 second' AND $13 + INTERVAL '1 second'
+			AND recorded_at BETWEEN ($13::timestamptz - INTERVAL '1 second') AND ($13::timestamptz + INTERVAL '1 second')
 		)
 		RETURNING id
 	`
@@ -72,7 +72,7 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 		WHERE NOT EXISTS (
 			SELECT 1 FROM locations
 			WHERE driver_id = $1
-			AND recorded_at BETWEEN $13 - INTERVAL '1 second' AND $13 + INTERVAL '1 second'
+			AND recorded_at BETWEEN ($13::timestamptz - INTERVAL '1 second') AND ($13::timestamptz + INTERVAL '1 second')
 		)
 	`
 

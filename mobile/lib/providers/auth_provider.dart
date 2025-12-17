@@ -1,9 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import '../services/api_service.dart';
-import '../services/background_location_service.dart';
 import '../services/device_info_service.dart';
+import '../services/hybrid_location_service.dart';
 import '../config/constants.dart';
 import '../config/router.dart';
 
@@ -39,12 +38,7 @@ class AuthProvider extends ChangeNotifier {
       // DeviceInfoService uzerinden cihaz bilgisi gonderilecek (FCM token ile birlikte)
       // NotificationService FCM token aldiginda otomatik DeviceInfoService'e iletecek
       debugPrint('[Auth] User is logged in, device info will be sent via DeviceInfoService');
-
-      // Arka plan servisini başlat
-      final token = prefs.getString(StorageKeys.accessToken);
-      if (token != null) {
-        await _startBackgroundLocationService(token);
-      }
+      // WorkManager home_screen.dart'da başlatılıyor
     }
 
     notifyListeners();
@@ -81,9 +75,7 @@ class AuthProvider extends ChangeNotifier {
       deviceInfoService.setApiService(_apiService);
       await deviceInfoService.sendAllInfo(force: true);
       debugPrint('[Auth] Device info sent via DeviceInfoService');
-
-      // Arka plan konum servisini başlat ve token gönder
-      await _startBackgroundLocationService(data['auth']['access_token']);
+      // WorkManager home_screen.dart'da başlatılıyor
 
       _isLoading = false;
       notifyListeners();
@@ -184,8 +176,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    // Arka plan servisini durdur
-    await BackgroundLocationService.stopService();
+    // Konum servisini durdur
+    await HybridLocationService.stopAll();
 
     await _apiService.clearToken();
 
@@ -205,21 +197,6 @@ class AuthProvider extends ChangeNotifier {
     authNotifier.setLoggedIn(false);
 
     notifyListeners();
-  }
-
-  Future<void> _startBackgroundLocationService(String token) async {
-    try {
-      // Servisi başlat
-      await BackgroundLocationService.startService();
-
-      // Token'ı servise gönder
-      final service = FlutterBackgroundService();
-      service.invoke('updateToken', {'token': token});
-
-      debugPrint('Background location service started');
-    } catch (e) {
-      debugPrint('Failed to start background location service: $e');
-    }
   }
 
   /// Cihaz bilgisini DeviceInfoService uzerinden gonder
