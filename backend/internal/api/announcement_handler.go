@@ -57,19 +57,14 @@ func (h *AnnouncementHandler) CreateAnnouncement(c *gin.Context) {
 	}
 
 	// Admin ID
-	adminIDStr, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Oturum bilgisi bulunamadı"})
 		return
 	}
-	adminIDString, ok := adminIDStr.(string)
+	adminID, ok := userID.(uuid.UUID)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı bilgisi"})
-		return
-	}
-	adminID, err := uuid.Parse(adminIDString)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı ID"})
 		return
 	}
 
@@ -196,11 +191,9 @@ func (h *AnnouncementHandler) UpdateAnnouncement(c *gin.Context) {
 
 	// Audit log
 	if h.auditRepo != nil {
-		if adminIDStr, exists := c.Get("user_id"); exists {
-			if adminIDString, ok := adminIDStr.(string); ok {
-				if adminID, err := uuid.Parse(adminIDString); err == nil {
-					h.auditRepo.LogAction(c.Request.Context(), &adminID, "admin", "", "update", "announcement", &id, req, c.ClientIP(), c.GetHeader("User-Agent"))
-				}
+		if userID, exists := c.Get("userID"); exists {
+			if adminID, ok := userID.(uuid.UUID); ok {
+				h.auditRepo.LogAction(c.Request.Context(), &adminID, "admin", "", "update", "announcement", &id, req, c.ClientIP(), c.GetHeader("User-Agent"))
 			}
 		}
 	}
@@ -228,11 +221,9 @@ func (h *AnnouncementHandler) DeleteAnnouncement(c *gin.Context) {
 
 	// Audit log
 	if h.auditRepo != nil {
-		if adminIDStr, exists := c.Get("user_id"); exists {
-			if adminIDString, ok := adminIDStr.(string); ok {
-				if adminID, err := uuid.Parse(adminIDString); err == nil {
-					h.auditRepo.LogAction(c.Request.Context(), &adminID, "admin", "", "delete", "announcement", &id, nil, c.ClientIP(), c.GetHeader("User-Agent"))
-				}
+		if userID, exists := c.Get("userID"); exists {
+			if adminID, ok := userID.(uuid.UUID); ok {
+				h.auditRepo.LogAction(c.Request.Context(), &adminID, "admin", "", "delete", "announcement", &id, nil, c.ClientIP(), c.GetHeader("User-Agent"))
 			}
 		}
 	}
@@ -296,19 +287,14 @@ func (h *AnnouncementHandler) ToggleAnnouncementActive(c *gin.Context) {
 // @Success 200 {array} models.AnnouncementResponse
 // @Router /driver/announcements [get]
 func (h *AnnouncementHandler) GetActiveAnnouncements(c *gin.Context) {
-	driverIDStr, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Oturum bilgisi bulunamadı"})
 		return
 	}
-	driverIDString, ok := driverIDStr.(string)
+	driverID, ok := userID.(uuid.UUID)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı bilgisi"})
-		return
-	}
-	driverID, err := uuid.Parse(driverIDString)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı ID"})
 		return
 	}
 
@@ -347,19 +333,14 @@ func (h *AnnouncementHandler) DismissAnnouncement(c *gin.Context) {
 		return
 	}
 
-	driverIDStr, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Oturum bilgisi bulunamadı"})
 		return
 	}
-	driverIDString, ok := driverIDStr.(string)
+	driverID, ok := userID.(uuid.UUID)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı bilgisi"})
-		return
-	}
-	driverID, err := uuid.Parse(driverIDString)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı ID"})
 		return
 	}
 
