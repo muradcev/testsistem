@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../config/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/questions_provider.dart';
@@ -84,12 +88,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await HybridLocationService.startWorkManagerMode();
       debugPrint('[HomeScreen] Hybrid location service started in WorkManager mode');
 
+      // İlk konumu hemen gönder
+      _sendInitialLocation();
+
       // Periyodik olarak foreground flag'i kontrol et (uygulama açıkken)
       _foregroundCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
         _checkForegroundFlag();
       });
     } catch (e) {
       debugPrint('[HomeScreen] Hybrid location service init error: $e');
+    }
+  }
+
+  /// İlk konumu hemen gönder
+  Future<void> _sendInitialLocation() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      if (token == null) return;
+
+      final locationData = {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'speed': position.speed,
+        'accuracy': position.accuracy,
+        'altitude': position.altitude,
+        'heading': position.heading,
+        'is_moving': position.speed > 2,
+        'activity_type': position.speed * 3.6 > 30 ? 'driving' : (position.speed > 2 ? 'moving' : 'still'),
+        'recorded_at': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.location}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(locationData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('[HomeScreen] Initial location sent: ${position.latitude}, ${position.longitude}');
+      }
+    } catch (e) {
+      debugPrint('[HomeScreen] Initial location send error: $e');
     }
   }
 
