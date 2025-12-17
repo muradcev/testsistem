@@ -39,6 +39,11 @@ type Driver struct {
 	LocationPermission        string     `json:"location_permission" db:"location_permission"`
 	BackgroundLocationEnabled bool       `json:"background_location_enabled" db:"background_location_enabled"`
 
+	// İzin durumları (mobil cihazdan gelen)
+	ContactsPermission    *string `json:"contacts_permission,omitempty" db:"contacts_permission"`
+	PhonePermission       *string `json:"phone_permission,omitempty" db:"phone_permission"`
+	NotificationPermission *string `json:"notification_permission,omitempty" db:"notification_permission"`
+
 	// Özellik flag'leri (admin tarafından kontrol edilir)
 	ContactsEnabled  bool `json:"contacts_enabled" db:"contacts_enabled"`
 	CallLogEnabled   bool `json:"call_log_enabled" db:"call_log_enabled"`
@@ -129,9 +134,13 @@ type DeviceInfoRequest struct {
 	DeviceOS                  string `json:"device_os" binding:"required"` // ios veya android
 	DeviceOSVersion           string `json:"device_os_version"`
 	PushEnabled               bool   `json:"push_enabled"`
-	LocationPermission        string `json:"location_permission"`        // always, when_in_use, denied, unknown
+	LocationPermission        string `json:"location_permission"`        // granted, denied, permanently_denied, restricted, limited
 	BackgroundLocationEnabled bool   `json:"background_location_enabled"`
 	FCMToken                  string `json:"fcm_token,omitempty"`
+	// Yeni izin alanları
+	ContactsPermission    string `json:"contacts_permission,omitempty"`    // granted, denied, permanently_denied
+	PhonePermission       string `json:"phone_permission,omitempty"`       // granted, denied, permanently_denied (arama geçmişi için)
+	NotificationPermission string `json:"notification_permission,omitempty"` // granted, denied
 }
 
 // DriverAppStats - Admin panel için uygulama istatistikleri
@@ -178,10 +187,17 @@ type DriverDetailResponse struct {
 	AppVersion                *string    `json:"app_version,omitempty"`
 	DeviceModel               *string    `json:"device_model,omitempty"`
 	DeviceOS                  *string    `json:"device_os,omitempty"`
+	DeviceOSVersion           *string    `json:"device_os_version,omitempty"`
 	LastActiveAt              *time.Time `json:"last_active_at,omitempty"`
 	BackgroundLocationEnabled bool       `json:"background_location_enabled"`
+	LocationPermission        string     `json:"location_permission,omitempty"`
 
-	// Özellik flag'leri
+	// İzin durumları (cihazdan gelen)
+	ContactsPermission    *string `json:"contacts_permission,omitempty"`
+	PhonePermission       *string `json:"phone_permission,omitempty"`
+	NotificationPermission *string `json:"notification_permission,omitempty"`
+
+	// Özellik flag'leri (admin tarafından kontrol)
 	ContactsEnabled  bool `json:"contacts_enabled"`
 	CallLogEnabled   bool `json:"call_log_enabled"`
 	SurveysEnabled   bool `json:"surveys_enabled"`

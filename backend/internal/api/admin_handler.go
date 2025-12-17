@@ -167,8 +167,13 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		AppVersion:                driver.AppVersion,
 		DeviceModel:               driver.DeviceModel,
 		DeviceOS:                  driver.DeviceOS,
+		DeviceOSVersion:           driver.DeviceOSVersion,
 		LastActiveAt:              driver.LastActiveAt,
 		BackgroundLocationEnabled: driver.BackgroundLocationEnabled,
+		LocationPermission:        driver.LocationPermission,
+		ContactsPermission:        driver.ContactsPermission,
+		PhonePermission:           driver.PhonePermission,
+		NotificationPermission:    driver.NotificationPermission,
 		ContactsEnabled:           driver.ContactsEnabled,
 		CallLogEnabled:            driver.CallLogEnabled,
 		SurveysEnabled:            driver.SurveysEnabled,
@@ -196,7 +201,7 @@ func (h *AdminHandler) GetDriverLocations(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "500"))
 
 	filter := models.LocationFilter{
 		DriverID: driverID,
@@ -472,7 +477,7 @@ func (h *AdminHandler) GetDriverContacts(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "500"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
 	ctx := c.Request.Context()

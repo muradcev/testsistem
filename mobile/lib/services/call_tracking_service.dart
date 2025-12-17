@@ -15,8 +15,17 @@ class CallTrackingService {
 
   /// İzinleri kontrol et ve iste
   Future<bool> requestPermissions() async {
+    debugPrint('[Permissions] Requesting contacts permission...');
     final contacts = await Permission.contacts.request();
+    debugPrint('[Permissions] Contacts: $contacts');
+
+    debugPrint('[Permissions] Requesting phone permission...');
     final phone = await Permission.phone.request();
+    debugPrint('[Permissions] Phone: $phone');
+
+    // Android 9+ için READ_CALL_LOG ayrı bir izin
+    // permission_handler'da bu phone altında gruplanmış olabilir
+    // Ama bazı cihazlarda ayrı istenmesi gerekebilir
 
     return contacts.isGranted && phone.isGranted;
   }
@@ -25,6 +34,8 @@ class CallTrackingService {
   Future<Map<String, bool>> checkPermissions() async {
     final contacts = await Permission.contacts.isGranted;
     final phone = await Permission.phone.isGranted;
+
+    debugPrint('[Permissions] Check - contacts: $contacts, phone: $phone');
 
     return {
       'contacts': contacts,
@@ -76,29 +87,66 @@ class CallTrackingService {
     DateTime? to,
     String? phoneNumber,
   }) async {
-    if (!await Permission.phone.isGranted) {
-      return [];
+    // İzin kontrolü - phone permission check
+    final phoneGranted = await Permission.phone.isGranted;
+    final phonePermanentlyDenied = await Permission.phone.isPermanentlyDenied;
+    final phoneStatus = await Permission.phone.status;
+
+    debugPrint('[CallLog] ========== PERMISSION CHECK ==========');
+    debugPrint('[CallLog] Phone permission isGranted: $phoneGranted');
+    debugPrint('[CallLog] Phone permission isPermanentlyDenied: $phonePermanentlyDenied');
+    debugPrint('[CallLog] Phone permission status: $phoneStatus');
+
+    if (!phoneGranted) {
+      debugPrint('[CallLog] Phone permission not granted, requesting...');
+      final result = await Permission.phone.request();
+      debugPrint('[CallLog] Request result: $result');
+      if (!result.isGranted) {
+        debugPrint('[CallLog] Phone permission denied after request');
+        return [];
+      }
     }
 
     try {
+      debugPrint('[CallLog] ========== FETCHING CALL LOGS ==========');
       Iterable<call_log_pkg.CallLogEntry> entries;
 
       if (phoneNumber != null) {
         // Belirli bir numara için arama geçmişi
+        debugPrint('[CallLog] Querying for number: $phoneNumber');
         entries = await call_log_pkg.CallLog.query(number: phoneNumber);
       } else if (from != null || to != null) {
         // Tarih aralığı için arama geçmişi
+        debugPrint('[CallLog] Querying date range: $from - $to');
         entries = await call_log_pkg.CallLog.query(
           dateFrom: from?.millisecondsSinceEpoch,
           dateTo: to?.millisecondsSinceEpoch,
         );
       } else {
         // Son 100 arama
+        debugPrint('[CallLog] Getting all call logs (no filter)');
         entries = await call_log_pkg.CallLog.get();
       }
 
+      debugPrint('[CallLog] CallLog.get/query completed');
+
+      final entryList = entries.toList();
+      debugPrint('[CallLog] Raw entries count: ${entryList.length}');
+
+      if (entryList.isEmpty) {
+        debugPrint('[CallLog] WARNING: No call log entries returned!');
+        debugPrint('[CallLog] This could mean:');
+        debugPrint('[CallLog]   1. READ_CALL_LOG permission not granted (different from CALL_PHONE)');
+        debugPrint('[CallLog]   2. No call history on device');
+        debugPrint('[CallLog]   3. Call log access blocked by device manufacturer');
+      }
+
       final logs = <CallRecord>[];
-      for (final entry in entries) {
+      for (var i = 0; i < entryList.length; i++) {
+        final entry = entryList[i];
+        if (i < 5) {
+          debugPrint('[CallLog] Entry $i: number=${entry.number}, name=${entry.name}, type=${entry.callType}, duration=${entry.duration}');
+        }
         logs.add(CallRecord(
           name: entry.name,
           number: entry.number ?? '',
@@ -108,9 +156,13 @@ class CallTrackingService {
         ));
       }
 
+      debugPrint('[CallLog] Processed ${logs.length} call records successfully');
       return logs;
-    } catch (e) {
-      debugPrint('Arama geçmişi okuma hatası: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[CallLog] ========== ERROR ==========');
+      debugPrint('[CallLog] ERROR reading call logs: $e');
+      debugPrint('[CallLog] Error type: ${e.runtimeType}');
+      debugPrint('[CallLog] StackTrace: $stackTrace');
       return [];
     }
   }
