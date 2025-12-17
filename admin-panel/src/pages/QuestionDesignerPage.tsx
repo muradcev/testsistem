@@ -193,6 +193,10 @@ export default function QuestionDesignerPage() {
   const [templateDescription, setTemplateDescription] = useState('')
   const [templateCategory, setTemplateCategory] = useState('')
 
+  // Track currently loaded template for editing
+  const [currentTemplate, setCurrentTemplate] = useState<QuestionTemplate | null>(null)
+  const [sendFromTemplate, setSendFromTemplate] = useState<QuestionTemplate | null>(null)
+
   // Fetch templates from API
   const { data: templatesData, isLoading: templatesLoading } = useQuery({
     queryKey: ['question-flow-templates'],
@@ -279,6 +283,48 @@ export default function QuestionDesignerPage() {
     },
   })
 
+  // Update template mutation
+  const updateTemplateMutation = useMutation({
+    mutationFn: (data: {
+      id: string
+      name: string
+      description?: string
+      nodes: Node<QuestionNodeData>[]
+      edges: Edge[]
+      category?: string
+    }) => questionFlowTemplatesApi.update(data.id, {
+      name: data.name,
+      description: data.description,
+      nodes: data.nodes.map(n => ({
+        id: n.id,
+        type: n.type || 'question',
+        position: n.position,
+        data: {
+          questionText: n.data.questionText,
+          questionType: n.data.questionType,
+          options: n.data.options,
+          isStart: n.data.isStart,
+        },
+      })),
+      edges: data.edges.map(e => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle || undefined,
+        targetHandle: e.targetHandle || undefined,
+        label: typeof e.label === 'string' ? e.label : undefined,
+      })),
+      category: data.category || undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['question-flow-templates'] })
+      toast.success('Sablon guncellendi')
+    },
+    onError: () => {
+      toast.error('Sablon guncellenemedi')
+    },
+  })
+
   // Drivers query
   const { data: driversData } = useQuery({
     queryKey: ['all-drivers-for-send'],
@@ -361,7 +407,7 @@ export default function QuestionDesignerPage() {
   }
 
   // Load template
-  const loadTemplate = (template: QuestionTemplate) => {
+  const loadTemplate = (template: QuestionTemplate, forSend = false) => {
     // Transform nodes from API format to ReactFlow format
     const loadedNodes: Node<QuestionNodeData>[] = template.nodes.map(n => ({
       id: n.id,
@@ -393,10 +439,38 @@ export default function QuestionDesignerPage() {
     setEdges(loadedEdges)
     setShowTemplates(false)
 
+    // Set current template for editing
+    setCurrentTemplate(template)
+    setTemplateName(template.name)
+    setTemplateDescription(template.description || '')
+    setTemplateCategory(template.category || '')
+
     // Increment usage count
     incrementUsageMutation.mutate(template.id)
 
+    if (forSend) {
+      setShowSendModal(true)
+    }
+
     toast.success(`"${template.name}" sablonu yuklendi`)
+  }
+
+  // Send from template directly
+  const sendFromTemplateDirectly = (template: QuestionTemplate) => {
+    setSendFromTemplate(template)
+    setShowTemplates(false)
+    setShowSendModal(true)
+  }
+
+  // Clear and start new
+  const startNew = () => {
+    setNodes(initialNodes)
+    setEdges([])
+    setSelectedNode(null)
+    setCurrentTemplate(null)
+    setTemplateName('')
+    setTemplateDescription('')
+    setTemplateCategory('')
   }
 
   // Delete template
@@ -416,11 +490,27 @@ export default function QuestionDesignerPage() {
 
   // Clear canvas
   const clearCanvas = () => {
-    if (confirm('Tum sorulari silmek istediginize emin misiniz?')) {
-      setNodes(initialNodes)
-      setEdges([])
-      setSelectedNode(null)
+    if (confirm('Tum sorulari silmek ve yeni baslangic yapmak istediginize emin misiniz?')) {
+      startNew()
     }
+  }
+
+  // Update existing template
+  const updateCurrentTemplate = () => {
+    if (!currentTemplate) return
+    if (!templateName) {
+      toast.error('Sablon adi gerekli')
+      return
+    }
+
+    updateTemplateMutation.mutate({
+      id: currentTemplate.id,
+      name: templateName,
+      description: templateDescription || undefined,
+      nodes: nodes,
+      edges: edges,
+      category: templateCategory || undefined,
+    })
   }
 
   // Node click handler
@@ -433,19 +523,24 @@ export default function QuestionDesignerPage() {
     <div className="h-screen flex flex-col">
       <PageHeader
         title="Soru Akis Tasarimcisi"
-        subtitle="Surukle-birak ile algoritmik soru zincirleri olusturun"
+        subtitle={currentTemplate ? `Duzenleniyor: ${currentTemplate.name}` : "Surukle-birak ile algoritmik soru zincirleri olusturun"}
         icon={QuestionMarkCircleIcon}
         actions={
           <div className="flex gap-2">
+            {currentTemplate && (
+              <Badge variant="info" className="self-center">
+                {currentTemplate.name}
+              </Badge>
+            )}
             <Button variant="outline" onClick={() => setShowTemplates(true)} className="gap-2">
-              <DocumentDuplicateIcon className="h-5 w-5" />
+              <FolderIcon className="h-5 w-5" />
               Sablonlar
             </Button>
             <Button variant="outline" onClick={clearCanvas} className="gap-2">
               <ArrowPathIcon className="h-5 w-5" />
-              Temizle
+              Yeni
             </Button>
-            <Button onClick={() => setShowSendModal(true)} className="gap-2">
+            <Button onClick={() => { setSendFromTemplate(null); setShowSendModal(true); }} className="gap-2">
               <PaperAirplaneIcon className="h-5 w-5" />
               Gonder
             </Button>
@@ -576,7 +671,9 @@ export default function QuestionDesignerPage() {
 
             {/* Save as Template */}
             <div className="mt-6 pt-6 border-t">
-              <h4 className="font-medium text-gray-900 mb-3">Sablon Olarak Kaydet</h4>
+              <h4 className="font-medium text-gray-900 mb-3">
+                {currentTemplate ? 'Sablonu Guncelle' : 'Sablon Olarak Kaydet'}
+              </h4>
               <div className="space-y-2">
                 <input
                   type="text"
@@ -604,18 +701,58 @@ export default function QuestionDesignerPage() {
                   <option value="konum">Konum</option>
                   <option value="genel">Genel</option>
                 </select>
-                <Button
-                  onClick={saveAsTemplate}
-                  className="w-full gap-2"
-                  disabled={createTemplateMutation.isPending}
-                >
-                  {createTemplateMutation.isPending ? (
-                    <LoadingSpinner size="sm" />
-                  ) : (
-                    <BookmarkIcon className="h-4 w-4" />
-                  )}
-                  Kaydet
-                </Button>
+
+                {currentTemplate ? (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={updateCurrentTemplate}
+                      className="w-full gap-2"
+                      disabled={updateTemplateMutation.isPending}
+                    >
+                      {updateTemplateMutation.isPending ? (
+                        <LoadingSpinner size="sm" />
+                      ) : (
+                        <BookmarkIcon className="h-4 w-4" />
+                      )}
+                      Guncelle
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const newName = prompt('Yeni sablon adi:', `${templateName} (Kopya)`)
+                        if (newName) {
+                          setTemplateName(newName)
+                          setCurrentTemplate(null)
+                          createTemplateMutation.mutate({
+                            name: newName,
+                            description: templateDescription || undefined,
+                            nodes: nodes,
+                            edges: edges,
+                            category: templateCategory || undefined,
+                          })
+                        }
+                      }}
+                      className="w-full gap-2"
+                      disabled={createTemplateMutation.isPending}
+                    >
+                      <DocumentDuplicateIcon className="h-4 w-4" />
+                      Yeni Olarak Kaydet
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={saveAsTemplate}
+                    className="w-full gap-2"
+                    disabled={createTemplateMutation.isPending}
+                  >
+                    {createTemplateMutation.isPending ? (
+                      <LoadingSpinner size="sm" />
+                    ) : (
+                      <BookmarkIcon className="h-4 w-4" />
+                    )}
+                    Kaydet
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -673,6 +810,15 @@ export default function QuestionDesignerPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => sendFromTemplateDirectly(template)}
+                      title="Hemen Gonder"
+                      className="text-green-600 hover:bg-green-50"
+                    >
+                      <PaperAirplaneIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => duplicateTemplate(template)}
                       title="Kopyala"
                       disabled={duplicateTemplateMutation.isPending}
@@ -689,7 +835,7 @@ export default function QuestionDesignerPage() {
                     >
                       <TrashIcon className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" onClick={() => loadTemplate(template)}>Yukle</Button>
+                    <Button size="sm" onClick={() => loadTemplate(template)}>Duzenle</Button>
                   </div>
                 </div>
               ))
@@ -701,12 +847,32 @@ export default function QuestionDesignerPage() {
       {/* Send Modal */}
       {showSendModal && (
         <SendFlowModal
-          nodes={nodes}
-          edges={edges}
+          nodes={sendFromTemplate ? sendFromTemplate.nodes.map(n => ({
+            id: n.id,
+            type: n.type || 'question',
+            position: n.position,
+            data: n.data,
+          })) : nodes}
+          edges={sendFromTemplate ? sendFromTemplate.edges.map(e => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceHandle: e.sourceHandle || undefined,
+            targetHandle: e.targetHandle || undefined,
+            label: e.label,
+          })) : edges}
           drivers={allDrivers}
-          onClose={() => setShowSendModal(false)}
-          onSuccess={() => {
+          templateName={sendFromTemplate?.name}
+          onClose={() => {
             setShowSendModal(false)
+            setSendFromTemplate(null)
+          }}
+          onSuccess={() => {
+            if (sendFromTemplate) {
+              incrementUsageMutation.mutate(sendFromTemplate.id)
+            }
+            setShowSendModal(false)
+            setSendFromTemplate(null)
             toast.success('Soru akisi gonderildi')
           }}
         />
@@ -720,12 +886,14 @@ function SendFlowModal({
   nodes,
   edges,
   drivers,
+  templateName,
   onClose,
   onSuccess,
 }: {
   nodes: Node<QuestionNodeData>[]
   edges: Edge[]
   drivers: { id: string; name: string; surname: string; phone: string; province?: string }[]
+  templateName?: string
   onClose: () => void
   onSuccess: () => void
 }) {
@@ -810,10 +978,15 @@ function SendFlowModal({
   }
 
   return (
-    <Modal isOpen onClose={onClose} title="Soru Akisini Gonder" size="lg">
+    <Modal isOpen onClose={onClose} title={templateName ? `"${templateName}" Gonder` : "Soru Akisini Gonder"} size="lg">
       <div className="space-y-4">
         {/* Summary */}
         <div className="bg-gray-50 rounded-lg p-4">
+          {templateName && (
+            <p className="text-sm font-medium text-primary-600 mb-1">
+              Sablon: {templateName}
+            </p>
+          )}
           <p className="text-sm text-gray-600">
             <strong>{nodes.length}</strong> soru, <strong>{edges.length}</strong> baglanti
           </p>
