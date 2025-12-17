@@ -57,8 +57,21 @@ func (h *AnnouncementHandler) CreateAnnouncement(c *gin.Context) {
 	}
 
 	// Admin ID
-	adminIDStr, _ := c.Get("user_id")
-	adminID, _ := uuid.Parse(adminIDStr.(string))
+	adminIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Oturum bilgisi bulunamadı"})
+		return
+	}
+	adminIDString, ok := adminIDStr.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı bilgisi"})
+		return
+	}
+	adminID, err := uuid.Parse(adminIDString)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı ID"})
+		return
+	}
 
 	announcement, err := h.announcementRepo.Create(c.Request.Context(), &req, adminID)
 	if err != nil {
@@ -183,9 +196,13 @@ func (h *AnnouncementHandler) UpdateAnnouncement(c *gin.Context) {
 
 	// Audit log
 	if h.auditRepo != nil {
-		adminIDStr, _ := c.Get("user_id")
-		adminID, _ := uuid.Parse(adminIDStr.(string))
-		h.auditRepo.LogAction(c.Request.Context(), &adminID, "admin", "", "update", "announcement", &id, req, c.ClientIP(), c.GetHeader("User-Agent"))
+		if adminIDStr, exists := c.Get("user_id"); exists {
+			if adminIDString, ok := adminIDStr.(string); ok {
+				if adminID, err := uuid.Parse(adminIDString); err == nil {
+					h.auditRepo.LogAction(c.Request.Context(), &adminID, "admin", "", "update", "announcement", &id, req, c.ClientIP(), c.GetHeader("User-Agent"))
+				}
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, announcement)
@@ -211,9 +228,13 @@ func (h *AnnouncementHandler) DeleteAnnouncement(c *gin.Context) {
 
 	// Audit log
 	if h.auditRepo != nil {
-		adminIDStr, _ := c.Get("user_id")
-		adminID, _ := uuid.Parse(adminIDStr.(string))
-		h.auditRepo.LogAction(c.Request.Context(), &adminID, "admin", "", "delete", "announcement", &id, nil, c.ClientIP(), c.GetHeader("User-Agent"))
+		if adminIDStr, exists := c.Get("user_id"); exists {
+			if adminIDString, ok := adminIDStr.(string); ok {
+				if adminID, err := uuid.Parse(adminIDString); err == nil {
+					h.auditRepo.LogAction(c.Request.Context(), &adminID, "admin", "", "delete", "announcement", &id, nil, c.ClientIP(), c.GetHeader("User-Agent"))
+				}
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Duyuru silindi"})
@@ -275,8 +296,21 @@ func (h *AnnouncementHandler) ToggleAnnouncementActive(c *gin.Context) {
 // @Success 200 {array} models.AnnouncementResponse
 // @Router /driver/announcements [get]
 func (h *AnnouncementHandler) GetActiveAnnouncements(c *gin.Context) {
-	driverIDStr, _ := c.Get("user_id")
-	driverID, _ := uuid.Parse(driverIDStr.(string))
+	driverIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Oturum bilgisi bulunamadı"})
+		return
+	}
+	driverIDString, ok := driverIDStr.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı bilgisi"})
+		return
+	}
+	driverID, err := uuid.Parse(driverIDString)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı ID"})
+		return
+	}
 
 	// Şoförün ilini al
 	driver, err := h.driverRepo.GetByID(c.Request.Context(), driverID)
@@ -313,8 +347,21 @@ func (h *AnnouncementHandler) DismissAnnouncement(c *gin.Context) {
 		return
 	}
 
-	driverIDStr, _ := c.Get("user_id")
-	driverID, _ := uuid.Parse(driverIDStr.(string))
+	driverIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Oturum bilgisi bulunamadı"})
+		return
+	}
+	driverIDString, ok := driverIDStr.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı bilgisi"})
+		return
+	}
+	driverID, err := uuid.Parse(driverIDString)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçersiz kullanıcı ID"})
+		return
+	}
 
 	// Duyurunun kapatılabilir olduğunu kontrol et
 	announcement, err := h.announcementRepo.GetByID(c.Request.Context(), announcementID)
