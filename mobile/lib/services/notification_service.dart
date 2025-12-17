@@ -180,26 +180,25 @@ class NotificationService {
     debugPrint('Foreground message received: ${message.data}');
 
     final notification = message.notification;
-    if (notification != null) {
-      // Show local notification
+    final type = message.data['type'];
+
+    // Handle different notification types
+    if (type == 'question') {
+      // Soru bildirimi - özel kanal ve payload formatı
+      final questionId = message.data['question_id'] ?? '';
+      await showQuestionNotification(questionId, notification?.body ?? 'Yeni bir soru var');
+    } else if (type == 'location_request') {
+      // Konum isteği - sessiz, bildirim gösterme
+      debugPrint('[FCM] Admin location request received in foreground');
+      await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_foreground');
+    } else if (notification != null) {
+      // Diğer bildirimler
       await showNotification(
         id: message.hashCode,
         title: notification.title ?? 'Nakliyeo',
         body: notification.body ?? '',
-        payload: message.data['type'] ?? '',
+        payload: type ?? '',
       );
-    }
-
-    // Handle question notification
-    if (message.data['type'] == 'question') {
-      final questionId = message.data['question_id'];
-      await showQuestionNotification(questionId, notification?.body ?? 'Yeni bir soru var');
-    }
-
-    // Handle location request (silent - no notification shown) - Admin "Konum İste" dediğinde
-    if (message.data['type'] == 'location_request') {
-      debugPrint('[FCM] Admin location request received in foreground');
-      await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_foreground');
     }
   }
 
@@ -275,13 +274,21 @@ class NotificationService {
   }
 
   void _processLocalNotificationPayload(String payload) {
-    if (payload.startsWith('question:')) {
-      debugPrint('Navigating to /questions from local notification');
+    debugPrint('[Notification] Processing payload: $payload');
+
+    if (payload.startsWith('question:') || payload == 'question') {
+      debugPrint('[Notification] Navigating to /questions');
       onNavigate?.call('/questions');
     } else if (payload.startsWith('survey:')) {
       final surveyId = payload.replaceFirst('survey:', '');
-      debugPrint('Navigating to /survey/$surveyId from local notification');
+      debugPrint('[Notification] Navigating to /survey/$surveyId');
       onNavigate?.call('/survey/$surveyId');
+    } else if (payload == 'survey') {
+      debugPrint('[Notification] Navigating to /home (survey without id)');
+      onNavigate?.call('/');
+    } else {
+      debugPrint('[Notification] Unknown payload, navigating to /home');
+      onNavigate?.call('/');
     }
   }
 
