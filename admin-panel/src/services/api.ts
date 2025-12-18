@@ -428,6 +428,61 @@ export const announcementsApi = {
   toggle: (id: string) => api.post(`/admin/announcements/${id}/toggle`),
 }
 
+// Transport Records (Taşıma Kayıtları / Fiyat Raporları)
+export const transportRecordsApi = {
+  getAll: (params?: {
+    limit?: number
+    offset?: number
+    driver_id?: string
+    origin_province?: string
+    destination_province?: string
+    trailer_type?: string
+    start_date?: string
+    end_date?: string
+  }) => api.get('/admin/transport-records', { params }),
+  getById: (id: string) => api.get(`/admin/transport-records/${id}`),
+  getStats: () => api.get('/admin/transport-records/stats'),
+  getTrailerTypes: () => api.get('/admin/transport-records/trailer-types'),
+  getPricesByRoute: (origin: string, destination: string, limit?: number) =>
+    api.get('/admin/transport-records/prices', {
+      params: { origin, destination, limit: limit || 20 },
+    }),
+  create: (data: {
+    driver_id: string
+    plate?: string
+    trailer_type?: string
+    origin_province?: string
+    origin_district?: string
+    destination_province?: string
+    destination_district?: string
+    transport_date?: string
+    price?: number
+    currency?: string
+    cargo_type?: string
+    cargo_weight?: number
+    distance_km?: number
+    notes?: string
+    source_type?: string
+    source_id?: string
+  }) => api.post('/admin/transport-records', data),
+  update: (id: string, data: {
+    plate?: string
+    trailer_type?: string
+    origin_province?: string
+    origin_district?: string
+    destination_province?: string
+    destination_district?: string
+    transport_date?: string
+    price?: number
+    currency?: string
+    cargo_type?: string
+    cargo_weight?: number
+    distance_km?: number
+    notes?: string
+  }) => api.put(`/admin/transport-records/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/transport-records/${id}`),
+}
+
 // Question Flow Templates (Soru Akış Tasarımcısı Şablonları)
 export const questionFlowTemplatesApi = {
   getAll: (params?: { limit?: number; offset?: number; category?: string; is_active?: boolean }) =>

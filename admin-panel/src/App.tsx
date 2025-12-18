@@ -25,6 +25,7 @@ import AuditLogsPage from './pages/AuditLogsPage'
 import CallLogsPage from './pages/CallLogsPage'
 import ContactsPage from './pages/ContactsPage'
 import AnnouncementsPage from './pages/AnnouncementsPage'
+import TransportRecordsPage from './pages/TransportRecordsPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="call-logs" element={<CallLogsPage />} />
         <Route path="contacts" element={<ContactsPage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
+        <Route path="transport-records" element={<TransportRecordsPage />} />
       </Route>
     </Routes>
   )

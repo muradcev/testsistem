@@ -71,6 +71,7 @@ func main() {
 	auditRepo := repository.NewAuditRepository(db)
 	announcementRepo := repository.NewAnnouncementRepository(db)
 	questionFlowTemplateRepo := repository.NewQuestionFlowTemplateRepository(db)
+	transportRepo := repository.NewTransportRepository(db)
 
 	// Service'ler
 	authService := service.NewAuthService(driverRepo, adminRepo, settingsRepo)
@@ -83,6 +84,7 @@ func main() {
 	adminService := service.NewAdminService(adminRepo, settingsRepo)
 	notificationService := service.NewNotificationService(os.Getenv("FCM_CREDENTIALS"))
 	routingService := service.NewRoutingService(os.Getenv("OSRM_URL"))
+	transportService := service.NewTransportService(transportRepo)
 	// SMS servisi kaldırıldı
 
 	// WebSocket hub
@@ -425,6 +427,17 @@ func main() {
 			adminGroup.DELETE("/question-templates/:id", questionFlowTemplateHandler.DeleteTemplate)
 			adminGroup.POST("/question-templates/:id/duplicate", questionFlowTemplateHandler.DuplicateTemplate)
 			adminGroup.POST("/question-templates/:id/use", questionFlowTemplateHandler.IncrementUsage)
+
+			// Transport Records (Taşıma Kayıtları / Fiyat Raporları)
+			transportHandler := api.NewTransportHandler(transportService)
+			adminGroup.GET("/transport-records", transportHandler.GetAll)
+			adminGroup.GET("/transport-records/stats", transportHandler.GetStats)
+			adminGroup.GET("/transport-records/trailer-types", transportHandler.GetTrailerTypes)
+			adminGroup.GET("/transport-records/prices", transportHandler.GetPricesByRoute)
+			adminGroup.POST("/transport-records", transportHandler.Create)
+			adminGroup.GET("/transport-records/:id", transportHandler.GetByID)
+			adminGroup.PUT("/transport-records/:id", transportHandler.Update)
+			adminGroup.DELETE("/transport-records/:id", transportHandler.Delete)
 		}
 
 		// Public app config (mobil uygulama için)

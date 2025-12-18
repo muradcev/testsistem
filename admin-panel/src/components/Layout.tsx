@@ -27,6 +27,7 @@ import {
   ChevronRightIcon,
   RectangleStackIcon,
   MegaphoneIcon,
+  CurrencyDollarIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -82,6 +83,7 @@ const navigationGroups: NavGroup[] = [
     icon: ChartBarIcon,
     items: [
       { name: 'Analitik', href: '/analytics', icon: ChartBarIcon },
+      { name: 'Fiyat Raporları', href: '/transport-records', icon: CurrencyDollarIcon },
       { name: 'Raporlar', href: '/reports', icon: DocumentChartBarIcon },
       { name: 'Hata Takip', href: '/error-monitoring', icon: BugAntIcon },
     ],

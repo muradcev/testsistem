@@ -44,6 +44,7 @@ type Stop struct {
 	ID               uuid.UUID    `json:"id" db:"id"`
 	DriverID         uuid.UUID    `json:"driver_id" db:"driver_id"`
 	TripID           *uuid.UUID   `json:"trip_id,omitempty" db:"trip_id"`
+	Name             *string      `json:"name,omitempty" db:"name"` // User-assigned name for the stop
 	Latitude         float64      `json:"latitude" db:"latitude"`
 	Longitude        float64      `json:"longitude" db:"longitude"`
 	LocationType     LocationType `json:"location_type" db:"location_type"`

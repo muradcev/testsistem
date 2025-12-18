@@ -41,7 +41,7 @@ func (r *StopRepository) Create(ctx context.Context, stop *models.Stop) error {
 
 func (r *StopRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Stop, error) {
 	query := `
-		SELECT id, driver_id, trip_id, latitude, longitude, location_type,
+		SELECT id, driver_id, trip_id, name, latitude, longitude, location_type,
 			address, province, district, started_at, ended_at, duration_minutes,
 			is_in_vehicle, created_at, updated_at
 		FROM stops WHERE id = $1
@@ -49,7 +49,7 @@ func (r *StopRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Sto
 
 	var stop models.Stop
 	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
-		&stop.ID, &stop.DriverID, &stop.TripID, &stop.Latitude, &stop.Longitude, &stop.LocationType,
+		&stop.ID, &stop.DriverID, &stop.TripID, &stop.Name, &stop.Latitude, &stop.Longitude, &stop.LocationType,
 		&stop.Address, &stop.Province, &stop.District, &stop.StartedAt, &stop.EndedAt, &stop.DurationMinutes,
 		&stop.IsInVehicle, &stop.CreatedAt, &stop.UpdatedAt,
 	)
@@ -172,14 +172,28 @@ func (r *StopRepository) Update(ctx context.Context, stop *models.Stop) error {
 
 	query := `
 		UPDATE stops SET
-			location_type = $2, ended_at = $3, duration_minutes = $4, updated_at = $5
+			name = $2, location_type = $3, ended_at = $4, duration_minutes = $5, updated_at = $6
 		WHERE id = $1
 	`
 
 	_, err := r.db.Pool.Exec(ctx, query,
-		stop.ID, stop.LocationType, stop.EndedAt, stop.DurationMinutes, stop.UpdatedAt,
+		stop.ID, stop.Name, stop.LocationType, stop.EndedAt, stop.DurationMinutes, stop.UpdatedAt,
 	)
 
+	return err
+}
+
+// UpdateName updates only the name of a stop
+func (r *StopRepository) UpdateName(ctx context.Context, id uuid.UUID, name *string) error {
+	query := `UPDATE stops SET name = $1, updated_at = $2 WHERE id = $3`
+	_, err := r.db.Pool.Exec(ctx, query, name, time.Now(), id)
+	return err
+}
+
+// UpdateStopTypeAndName updates both location type and name for a stop
+func (r *StopRepository) UpdateStopTypeAndName(ctx context.Context, id uuid.UUID, locationType string, name *string) error {
+	query := `UPDATE stops SET location_type = $1, name = $2, updated_at = $3 WHERE id = $4`
+	_, err := r.db.Pool.Exec(ctx, query, locationType, name, time.Now(), id)
 	return err
 }
 
@@ -220,7 +234,7 @@ func (r *StopRepository) GetUncategorized(ctx context.Context, limit, offset int
 
 	// Get stops with driver info
 	query := `
-		SELECT s.id, s.driver_id, s.trip_id, s.latitude, s.longitude, s.location_type,
+		SELECT s.id, s.driver_id, s.trip_id, s.name, s.latitude, s.longitude, s.location_type,
 			s.address, s.province, s.district, s.started_at, s.ended_at, s.duration_minutes,
 			s.is_in_vehicle, s.created_at, s.updated_at
 		FROM stops s
@@ -239,7 +253,7 @@ func (r *StopRepository) GetUncategorized(ctx context.Context, limit, offset int
 	for rows.Next() {
 		var s models.Stop
 		err := rows.Scan(
-			&s.ID, &s.DriverID, &s.TripID, &s.Latitude, &s.Longitude, &s.LocationType,
+			&s.ID, &s.DriverID, &s.TripID, &s.Name, &s.Latitude, &s.Longitude, &s.LocationType,
 			&s.Address, &s.Province, &s.District, &s.StartedAt, &s.EndedAt, &s.DurationMinutes,
 			&s.IsInVehicle, &s.CreatedAt, &s.UpdatedAt,
 		)
@@ -273,7 +287,7 @@ func (r *StopRepository) GetAllStops(ctx context.Context, limit, offset int, loc
 
 	// Build main query
 	query := `
-		SELECT s.id, s.driver_id, s.trip_id, s.latitude, s.longitude, s.location_type,
+		SELECT s.id, s.driver_id, s.trip_id, s.name, s.latitude, s.longitude, s.location_type,
 			s.address, s.province, s.district, s.started_at, s.ended_at, s.duration_minutes,
 			s.is_in_vehicle, s.created_at, s.updated_at
 		FROM stops s
@@ -307,7 +321,7 @@ func (r *StopRepository) GetAllStops(ctx context.Context, limit, offset int, loc
 	for rows.Next() {
 		var s models.Stop
 		err := rows.Scan(
-			&s.ID, &s.DriverID, &s.TripID, &s.Latitude, &s.Longitude, &s.LocationType,
+			&s.ID, &s.DriverID, &s.TripID, &s.Name, &s.Latitude, &s.Longitude, &s.LocationType,
 			&s.Address, &s.Province, &s.District, &s.StartedAt, &s.EndedAt, &s.DurationMinutes,
 			&s.IsInVehicle, &s.CreatedAt, &s.UpdatedAt,
 		)

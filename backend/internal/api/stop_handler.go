@@ -63,6 +63,7 @@ func (h *StopHandler) GetStops(c *gin.Context) {
 			"id":               stop.ID,
 			"driver_id":        stop.DriverID,
 			"driver_name":      driverName,
+			"name":             stop.Name,
 			"latitude":         stop.Latitude,
 			"longitude":        stop.Longitude,
 			"location_type":    stop.LocationType,
@@ -78,9 +79,9 @@ func (h *StopHandler) GetStops(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"stops": enrichedStops,
-		"total": total,
-		"limit": limit,
+		"stops":  enrichedStops,
+		"total":  total,
+		"limit":  limit,
 		"offset": offset,
 	})
 }
@@ -111,6 +112,7 @@ func (h *StopHandler) GetUncategorizedStops(c *gin.Context) {
 			"id":               stop.ID,
 			"driver_id":        stop.DriverID,
 			"driver_name":      driverName,
+			"name":             stop.Name,
 			"latitude":         stop.Latitude,
 			"longitude":        stop.Longitude,
 			"location_type":    stop.LocationType,
@@ -126,14 +128,14 @@ func (h *StopHandler) GetUncategorizedStops(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"stops": enrichedStops,
-		"total": total,
-		"limit": limit,
+		"stops":  enrichedStops,
+		"total":  total,
+		"limit":  limit,
 		"offset": offset,
 	})
 }
 
-// UpdateStopType updates the location type for a stop
+// UpdateStopType updates the location type and optionally name for a stop
 func (h *StopHandler) UpdateStopType(c *gin.Context) {
 	ctx := c.Request.Context()
 	stopID := c.Param("id")
@@ -145,7 +147,8 @@ func (h *StopHandler) UpdateStopType(c *gin.Context) {
 	}
 
 	var req struct {
-		LocationType string `json:"location_type" binding:"required"`
+		LocationType string  `json:"location_type"`
+		Name         *string `json:"name"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -153,24 +156,46 @@ func (h *StopHandler) UpdateStopType(c *gin.Context) {
 		return
 	}
 
-	// Validate location type
-	locationType := models.LocationType(req.LocationType)
-	if _, exists := models.LocationTypeLabels[locationType]; !exists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz durak tipi"})
+	// At least one field must be provided
+	if req.LocationType == "" && req.Name == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "En az bir alan gerekli (location_type veya name)"})
 		return
 	}
 
-	err = h.stopDetection.UpdateStopType(ctx, id, locationType)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Durak güncellenemedi"})
-		return
-	}
+	// If location type provided, validate it
+	if req.LocationType != "" {
+		locationType := models.LocationType(req.LocationType)
+		if _, exists := models.LocationTypeLabels[locationType]; !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz durak tipi"})
+			return
+		}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Durak tipi güncellendi",
-		"location_type": locationType,
-		"location_label": models.LocationTypeLabels[locationType],
-	})
+		// Update both type and name
+		err = h.stopRepo.UpdateStopTypeAndName(ctx, id, req.LocationType, req.Name)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Durak güncellenemedi"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":        "Durak güncellendi",
+			"location_type":  locationType,
+			"location_label": models.LocationTypeLabels[locationType],
+			"name":           req.Name,
+		})
+	} else {
+		// Only update name
+		err = h.stopRepo.UpdateName(ctx, id, req.Name)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Durak adı güncellenemedi"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Durak adı güncellendi",
+			"name":    req.Name,
+		})
+	}
 }
 
 // DetectStopsForDriver runs stop detection for a specific driver
@@ -292,6 +317,7 @@ func (h *StopHandler) GetStopByID(c *gin.Context) {
 			"id":               stop.ID,
 			"driver_id":        stop.DriverID,
 			"driver_name":      driverName,
+			"name":             stop.Name,
 			"latitude":         stop.Latitude,
 			"longitude":        stop.Longitude,
 			"location_type":    stop.LocationType,

@@ -90,6 +90,7 @@ interface Stop {
   id: string
   driver_id: string
   driver_name: string
+  name?: string
   latitude: number
   longitude: number
   location_type: string
@@ -210,6 +211,7 @@ export default function StopsPage() {
     name: '',
     radius: 500,
   })
+  const [stopName, setStopName] = useState('')
 
   // Get location types
   const { data: typesData, error: typesError } = useQuery({
@@ -245,14 +247,15 @@ export default function StopsPage() {
   if (stopsError) console.error('Stops error:', stopsError)
   if (homesError) console.error('Homes error:', homesError)
 
-  // Update stop type mutation
+  // Update stop type and/or name mutation
   const updateMutation = useMutation({
-    mutationFn: ({ stopId, locationType }: { stopId: string; locationType: string }) =>
-      api.put(`/admin/stops/${stopId}`, { location_type: locationType }),
+    mutationFn: ({ stopId, locationType, name }: { stopId: string; locationType?: string; name?: string }) =>
+      api.put(`/admin/stops/${stopId}`, { location_type: locationType, name }),
     onSuccess: () => {
-      toast.success('Durak tipi güncellendi')
+      toast.success('Durak güncellendi')
       queryClient.invalidateQueries({ queryKey: ['stops'] })
       setSelectedStop(null)
+      setStopName('')
     },
     onError: () => {
       toast.error('Güncelleme başarısız')
@@ -435,6 +438,7 @@ export default function StopsPage() {
   const handleStopSelect = (stop: Stop) => {
     setSelectedStop(stop)
     setSelectedCluster(null)
+    setStopName(stop.name || '')
     flyToLocation(stop.latitude, stop.longitude, 15)
   }
 
@@ -765,6 +769,11 @@ export default function StopsPage() {
                       {locationTypeIcons[stop.location_type] || '❓'}
                     </span>
                   </div>
+                  {stop.name && (
+                    <p className="text-sm font-medium text-primary-600 mb-1">
+                      📍 {stop.name}
+                    </p>
+                  )}
                   <div className="text-sm text-gray-500 space-y-1">
                     <p className="flex items-center gap-1">
                       <ClockIcon className="h-4 w-4" />
@@ -918,6 +927,12 @@ export default function StopsPage() {
                       <Popup>
                         <div className="text-sm">
                           <strong>{stop.driver_name}</strong>
+                          {stop.name && (
+                            <>
+                              <br />
+                              <span className="text-primary-600 font-medium">📍 {stop.name}</span>
+                            </>
+                          )}
                           <br />
                           <span className="text-2xl">{locationTypeIcons[stop.location_type]}</span>{' '}
                           {stop.location_label || 'Belirlenmedi'}
@@ -1034,7 +1049,7 @@ export default function StopsPage() {
       {selectedStop && !showHomeModal && filter !== 'clusters' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Durak Tipini Seçin</h3>
+            <h3 className="text-lg font-semibold mb-4">Durak Düzenle</h3>
 
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
               <p className="font-medium">{selectedStop.driver_name}</p>
@@ -1047,6 +1062,32 @@ export default function StopsPage() {
               <p className="text-sm text-gray-500">
                 {selectedStop.started_at ? new Date(selectedStop.started_at).toLocaleString('tr-TR') : '-'}
               </p>
+            </div>
+
+            {/* Stop Name Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Durak Adı (İsteğe Bağlı)
+              </label>
+              <input
+                type="text"
+                value={stopName}
+                onChange={(e) => setStopName(e.target.value)}
+                placeholder="Örn: Fabrika Girişi, Depo, Terminal..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+              {stopName && (
+                <button
+                  onClick={() => updateMutation.mutate({
+                    stopId: selectedStop.id,
+                    name: stopName,
+                  })}
+                  disabled={updateMutation.isPending}
+                  className="mt-2 w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm"
+                >
+                  {updateMutation.isPending ? 'Kaydediliyor...' : 'Sadece Adı Kaydet'}
+                </button>
+              )}
             </div>
 
             {/* Save as Home option */}
@@ -1064,7 +1105,7 @@ export default function StopsPage() {
             </div>
 
             <div className="border-t pt-4">
-              <p className="text-sm text-gray-600 mb-2">Veya diğer tip seçin:</p>
+              <p className="text-sm text-gray-600 mb-2">Durak tipini seçin{stopName ? ' ve adla birlikte kaydet' : ''}:</p>
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {categorizableTypes.map((type) => (
                   <button
@@ -1072,6 +1113,7 @@ export default function StopsPage() {
                     onClick={() => updateMutation.mutate({
                       stopId: selectedStop.id,
                       locationType: type.value,
+                      name: stopName || undefined,
                     })}
                     disabled={updateMutation.isPending}
                     className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
@@ -1085,7 +1127,7 @@ export default function StopsPage() {
 
             <div className="flex gap-2 mt-4">
               <button
-                onClick={() => setSelectedStop(null)}
+                onClick={() => { setSelectedStop(null); setStopName(''); }}
                 className="flex-1 py-2 text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg"
               >
                 İptal
