@@ -1,12 +1,12 @@
 # OSRM Server for Turkey - Railway Deployment
 # Multi-stage build to keep final image small
 
-FROM ghcr.io/project-osrm/osrm-backend:latest as builder
+FROM ghcr.io/project-osrm/osrm-backend:latest AS builder
 
 WORKDIR /data
 
-# Download Turkey OSM data from Geofabrik
-RUN apt-get update && apt-get install -y wget && \
+# Download Turkey OSM data from Geofabrik (Alpine uses apk, not apt-get)
+RUN apk add --no-cache wget && \
     wget -q https://download.geofabrik.de/europe/turkey-latest.osm.pbf -O turkey.osm.pbf
 
 # Extract and prepare data for car routing
