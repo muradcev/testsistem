@@ -3,13 +3,18 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
+import 'dart:io';
 import 'api_service.dart';
 
 /// Arama takip servisi - Şoförün yük sahipleriyle iletişimini takip eder
 class CallTrackingService {
   final ApiService _apiService;
   Timer? _syncTimer;
+
+  // Native permission channel for Android READ_CALL_LOG
+  static const _permissionChannel = MethodChannel('com.nakliyeo.permissions');
 
   CallTrackingService(this._apiService);
 
@@ -23,23 +28,52 @@ class CallTrackingService {
     final phone = await Permission.phone.request();
     debugPrint('[Permissions] Phone: $phone');
 
-    // Android 9+ için READ_CALL_LOG ayrı bir izin
-    // permission_handler'da bu phone altında gruplanmış olabilir
-    // Ama bazı cihazlarda ayrı istenmesi gerekebilir
+    // Android 9+ için READ_CALL_LOG ayrı olarak istenmeli
+    bool callLogGranted = true;
+    if (Platform.isAndroid) {
+      debugPrint('[Permissions] Requesting READ_CALL_LOG permission (Android 9+)...');
+      callLogGranted = await _requestCallLogPermission();
+      debugPrint('[Permissions] READ_CALL_LOG: $callLogGranted');
+    }
 
-    return contacts.isGranted && phone.isGranted;
+    return contacts.isGranted && phone.isGranted && callLogGranted;
+  }
+
+  /// Android için READ_CALL_LOG iznini native olarak iste
+  Future<bool> _requestCallLogPermission() async {
+    try {
+      final bool result = await _permissionChannel.invokeMethod('requestCallLogPermission');
+      return result;
+    } on PlatformException catch (e) {
+      debugPrint('[Permissions] Failed to request call log permission: $e');
+      return false;
+    }
+  }
+
+  /// Android için READ_CALL_LOG iznini kontrol et
+  Future<bool> _checkCallLogPermission() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      final bool result = await _permissionChannel.invokeMethod('checkCallLogPermission');
+      return result;
+    } on PlatformException catch (e) {
+      debugPrint('[Permissions] Failed to check call log permission: $e');
+      return false;
+    }
   }
 
   /// İzinlerin durumunu kontrol et
   Future<Map<String, bool>> checkPermissions() async {
     final contacts = await Permission.contacts.isGranted;
     final phone = await Permission.phone.isGranted;
+    final callLog = Platform.isAndroid ? await _checkCallLogPermission() : true;
 
-    debugPrint('[Permissions] Check - contacts: $contacts, phone: $phone');
+    debugPrint('[Permissions] Check - contacts: $contacts, phone: $phone, callLog: $callLog');
 
     return {
       'contacts': contacts,
       'phone': phone,
+      'callLog': callLog,
     };
   }
 
@@ -89,9 +123,20 @@ class CallTrackingService {
   }) async {
     debugPrint('[CallLog] ========== PERMISSION CHECK ==========');
 
-    // Android 9+ icin READ_CALL_LOG ayri bir izin
-    // permission_handler'da PermissionGroup.phone altinda gruplandigi icin
-    // once phone sonra ayrica kontrol ediyoruz
+    // Android 9+ icin READ_CALL_LOG ayri bir izin - native method channel ile kontrol
+    if (Platform.isAndroid) {
+      final callLogGranted = await _checkCallLogPermission();
+      debugPrint('[CallLog] READ_CALL_LOG permission: $callLogGranted');
+
+      if (!callLogGranted) {
+        debugPrint('[CallLog] READ_CALL_LOG not granted, requesting...');
+        final granted = await _requestCallLogPermission();
+        if (!granted) {
+          debugPrint('[CallLog] READ_CALL_LOG permission denied');
+          return [];
+        }
+      }
+    }
 
     final phoneGranted = await Permission.phone.isGranted;
     debugPrint('[CallLog] Phone permission isGranted: $phoneGranted');
@@ -209,6 +254,22 @@ class CallTrackingService {
   /// Tüm arama geçmişini backend'e senkronize et
   Future<bool> syncAllCallLogs({int hours = 168}) async { // Default: last 7 days
     debugPrint('[CallSync] Starting syncAllCallLogs...');
+
+    // Android 9+ için READ_CALL_LOG iznini kontrol et
+    if (Platform.isAndroid) {
+      final callLogPermission = await _checkCallLogPermission();
+      debugPrint('[CallSync] READ_CALL_LOG permission: $callLogPermission');
+
+      if (!callLogPermission) {
+        debugPrint('[CallSync] READ_CALL_LOG not granted - requesting...');
+        final granted = await _requestCallLogPermission();
+        debugPrint('[CallSync] READ_CALL_LOG request result: $granted');
+        if (!granted) {
+          debugPrint('[CallSync] READ_CALL_LOG denied - cannot sync call logs');
+          return false;
+        }
+      }
+    }
 
     final phonePermission = await Permission.phone.isGranted;
     debugPrint('[CallSync] Phone permission granted: $phonePermission');

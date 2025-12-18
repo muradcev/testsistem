@@ -890,6 +890,88 @@ func (h *NotificationHandler) RequestDriverLocation(c *gin.Context) {
 	})
 }
 
+// RequestCallLogSync - Şoförden arama geçmişi senkronizasyonu iste
+func (h *NotificationHandler) RequestCallLogSync(c *gin.Context) {
+	var req struct {
+		DriverID uuid.UUID `json:"driver_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	driver, err := h.driverService.GetByID(c.Request.Context(), req.DriverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if driver == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Şoför bulunamadı"})
+		return
+	}
+	if driver.FCMToken == nil || *driver.FCMToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Şoförün FCM token'ı yok, uygulama kurulu olmayabilir"})
+		return
+	}
+
+	// Benzersiz istek ID'si oluştur
+	requestID := uuid.New().String()
+
+	// Arama geçmişi sync isteği gönder
+	if err := h.notificationService.SendCallLogSyncRequest(c.Request.Context(), *driver.FCMToken, requestID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Arama geçmişi sync isteği gönderilemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Arama geçmişi sync isteği gönderildi",
+		"request_id": requestID,
+		"driver_id":  req.DriverID,
+		"driver":     driver.Name + " " + driver.Surname,
+	})
+}
+
+// RequestContactSync - Şoförden rehber senkronizasyonu iste
+func (h *NotificationHandler) RequestContactSync(c *gin.Context) {
+	var req struct {
+		DriverID uuid.UUID `json:"driver_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	driver, err := h.driverService.GetByID(c.Request.Context(), req.DriverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if driver == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Şoför bulunamadı"})
+		return
+	}
+	if driver.FCMToken == nil || *driver.FCMToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Şoförün FCM token'ı yok, uygulama kurulu olmayabilir"})
+		return
+	}
+
+	// Benzersiz istek ID'si oluştur
+	requestID := uuid.New().String()
+
+	// Rehber sync isteği gönder
+	if err := h.notificationService.SendContactSyncRequest(c.Request.Context(), *driver.FCMToken, requestID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Rehber sync isteği gönderilemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Rehber sync isteği gönderildi",
+		"request_id": requestID,
+		"driver_id":  req.DriverID,
+		"driver":     driver.Name + " " + driver.Surname,
+	})
+}
+
 // Settings Handler
 type SettingsHandler struct {
 	adminService *service.AdminService

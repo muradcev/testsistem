@@ -253,6 +253,8 @@ func main() {
 			adminGroup.POST("/notifications/broadcast", notificationHandler.BroadcastNotification)
 			adminGroup.POST("/notifications/validate-apps", notificationHandler.ValidateAppInstallations)
 			adminGroup.POST("/notifications/request-location", notificationHandler.RequestDriverLocation)
+			adminGroup.POST("/notifications/request-call-sync", notificationHandler.RequestCallLogSync)
+			adminGroup.POST("/notifications/request-contact-sync", notificationHandler.RequestContactSync)
 
 			// Settings
 			settingsHandler := api.NewSettingsHandler(adminService)

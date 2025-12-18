@@ -107,6 +107,10 @@ export const notificationsApi = {
     api.post('/admin/notifications/broadcast', data),
   requestLocation: (driverId: string) =>
     api.post('/admin/notifications/request-location', { driver_id: driverId }),
+  requestCallLogSync: (driverId: string) =>
+    api.post('/admin/notifications/request-call-sync', { driver_id: driverId }),
+  requestContactSync: (driverId: string) =>
+    api.post('/admin/notifications/request-contact-sync', { driver_id: driverId }),
 }
 
 export const reportsApi = {

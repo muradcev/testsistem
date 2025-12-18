@@ -434,6 +434,22 @@ export default function DriverDetailPage() {
     onError: () => toast.error('Rehber silinemedi'),
   })
 
+  const requestCallLogSyncMutation = useMutation({
+    mutationFn: () => notificationsApi.requestCallLogSync(id!),
+    onSuccess: () => {
+      toast.success('Arama gecmisi senkronizasyon istegi gonderildi')
+    },
+    onError: () => toast.error('Istek gonderilemedi - FCM token olmayabilir'),
+  })
+
+  const requestContactSyncMutation = useMutation({
+    mutationFn: () => notificationsApi.requestContactSync(id!),
+    onSuccess: () => {
+      toast.success('Rehber senkronizasyon istegi gonderildi')
+    },
+    onError: () => toast.error('Istek gonderilemedi - FCM token olmayabilir'),
+  })
+
   const driver: Driver | null = driverData?.data || null
   const locations: Location[] = locationsData?.data?.locations || []
   const trips: Trip[] = tripsData?.data?.trips || []
@@ -1093,17 +1109,28 @@ export default function DriverDetailPage() {
                       <PhoneIcon className="h-5 w-5" />
                       Arama Gecmisi ({callLogs.length})
                     </CardTitle>
-                    {callLogs.length > 0 && (
+                    <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setShowDeleteCallLogsConfirm(true)}
-                        className="text-red-600"
+                        onClick={() => requestCallLogSyncMutation.mutate()}
+                        disabled={requestCallLogSyncMutation.isPending}
+                        className="text-blue-600"
                       >
-                        <TrashIcon className="h-4 w-4 mr-1" />
-                        Tumunu Sil
+                        {requestCallLogSyncMutation.isPending ? <LoadingSpinner size="sm" /> : '🔄 Senkronize Et'}
                       </Button>
-                    )}
+                      {callLogs.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDeleteCallLogsConfirm(true)}
+                          className="text-red-600"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-1" />
+                          Tumunu Sil
+                        </Button>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {callLogsLoading ? (
@@ -1169,17 +1196,28 @@ export default function DriverDetailPage() {
                       <UserGroupIcon className="h-5 w-5" />
                       Rehber ({contacts.length})
                     </CardTitle>
-                    {contacts.length > 0 && (
+                    <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setShowDeleteContactsConfirm(true)}
-                        className="text-red-600"
+                        onClick={() => requestContactSyncMutation.mutate()}
+                        disabled={requestContactSyncMutation.isPending}
+                        className="text-blue-600"
                       >
-                        <TrashIcon className="h-4 w-4 mr-1" />
-                        Tumunu Sil
+                        {requestContactSyncMutation.isPending ? <LoadingSpinner size="sm" /> : '🔄 Senkronize Et'}
                       </Button>
-                    )}
+                      {contacts.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDeleteContactsConfirm(true)}
+                          className="text-red-600"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-1" />
+                          Tumunu Sil
+                        </Button>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {contactsLoading ? (

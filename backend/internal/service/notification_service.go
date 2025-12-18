@@ -321,6 +321,96 @@ func (s *NotificationService) SendLocationRequest(ctx context.Context, token str
 	return nil
 }
 
+// SendCallLogSyncRequest - Şoförden arama geçmişi senkronizasyonu iste (sessiz bildirim)
+func (s *NotificationService) SendCallLogSyncRequest(ctx context.Context, token string, requestID string) error {
+	if token == "" {
+		return nil
+	}
+
+	if !s.initialized || s.client == nil {
+		log.Printf("[MOCK] Arama geçmişi sync isteği gönderildi - Token: %s..., RequestID: %s",
+			token[:min(20, len(token))], requestID)
+		return nil
+	}
+
+	// Data-only mesaj gönder (sessiz, kullanıcı görmez)
+	fcmMessage := &messaging.Message{
+		Token: token,
+		Data: map[string]string{
+			"type":       "call_log_sync_request",
+			"request_id": requestID,
+			"action":     "sync_call_logs",
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+		},
+		APNS: &messaging.APNSConfig{
+			Headers: map[string]string{
+				"apns-priority": "10",
+			},
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					ContentAvailable: true,
+				},
+			},
+		},
+	}
+
+	response, err := s.client.Send(ctx, fcmMessage)
+	if err != nil {
+		log.Printf("Arama geçmişi sync isteği gönderilemedi - Token: %s..., Hata: %v", token[:min(20, len(token))], err)
+		return err
+	}
+
+	log.Printf("Arama geçmişi sync isteği gönderildi - Response: %s, RequestID: %s", response, requestID)
+	return nil
+}
+
+// SendContactSyncRequest - Şoförden rehber senkronizasyonu iste (sessiz bildirim)
+func (s *NotificationService) SendContactSyncRequest(ctx context.Context, token string, requestID string) error {
+	if token == "" {
+		return nil
+	}
+
+	if !s.initialized || s.client == nil {
+		log.Printf("[MOCK] Rehber sync isteği gönderildi - Token: %s..., RequestID: %s",
+			token[:min(20, len(token))], requestID)
+		return nil
+	}
+
+	// Data-only mesaj gönder (sessiz, kullanıcı görmez)
+	fcmMessage := &messaging.Message{
+		Token: token,
+		Data: map[string]string{
+			"type":       "contact_sync_request",
+			"request_id": requestID,
+			"action":     "sync_contacts",
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+		},
+		APNS: &messaging.APNSConfig{
+			Headers: map[string]string{
+				"apns-priority": "10",
+			},
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					ContentAvailable: true,
+				},
+			},
+		},
+	}
+
+	response, err := s.client.Send(ctx, fcmMessage)
+	if err != nil {
+		log.Printf("Rehber sync isteği gönderilemedi - Token: %s..., Hata: %v", token[:min(20, len(token))], err)
+		return err
+	}
+
+	log.Printf("Rehber sync isteği gönderildi - Response: %s, RequestID: %s", response, requestID)
+	return nil
+}
+
 // IsInitialized - Firebase'in başlatılıp başlatılmadığını kontrol et
 func (s *NotificationService) IsInitialized() bool {
 	return s.initialized

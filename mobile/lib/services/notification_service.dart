@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'api_service.dart';
 import 'device_info_service.dart';
 import 'hybrid_location_service.dart';
+import 'call_tracking_service.dart';
 
 // Background message handler - must be top-level function
 // NOT: Notification payload olan mesajlar icin bu handler CAGIRILMAZ
@@ -33,6 +34,42 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final questionId = message.data['question_id'] ?? '';
     final questionText = message.data['question_text'] ?? message.data['body'] ?? 'Yeni bir soru var';
     await _showBackgroundQuestionNotification(questionId, questionText);
+  }
+  // Arama geçmişi sync isteği - Admin panelden tetikleniyor
+  else if (type == 'call_log_sync_request') {
+    debugPrint('[FCM] Admin call log sync request received in background');
+    await _syncCallLogsInBackground();
+  }
+  // Rehber sync isteği - Admin panelden tetikleniyor
+  else if (type == 'contact_sync_request') {
+    debugPrint('[FCM] Admin contact sync request received in background');
+    await _syncContactsInBackground();
+  }
+}
+
+// Background'da arama geçmişi senkronize et
+Future<void> _syncCallLogsInBackground() async {
+  try {
+    debugPrint('[FCM] Starting background call log sync...');
+    final apiService = ApiService();
+    final callTrackingService = CallTrackingService(apiService);
+    final result = await callTrackingService.syncAllCallLogs(hours: 168); // Son 7 gün
+    debugPrint('[FCM] Background call log sync result: $result');
+  } catch (e) {
+    debugPrint('[FCM] Error syncing call logs in background: $e');
+  }
+}
+
+// Background'da rehber senkronize et
+Future<void> _syncContactsInBackground() async {
+  try {
+    debugPrint('[FCM] Starting background contact sync...');
+    final apiService = ApiService();
+    final callTrackingService = CallTrackingService(apiService);
+    final result = await callTrackingService.syncAllContacts();
+    debugPrint('[FCM] Background contact sync result: $result');
+  } catch (e) {
+    debugPrint('[FCM] Error syncing contacts in background: $e');
   }
 }
 
@@ -254,6 +291,14 @@ class NotificationService {
       // Konum isteği - sessiz, bildirim gösterme
       debugPrint('[FCM] Admin location request received in foreground');
       await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_foreground');
+    } else if (type == 'call_log_sync_request') {
+      // Arama geçmişi sync isteği - sessiz, bildirim gösterme
+      debugPrint('[FCM] Admin call log sync request received in foreground');
+      await _syncCallLogsInForeground();
+    } else if (type == 'contact_sync_request') {
+      // Rehber sync isteği - sessiz, bildirim gösterme
+      debugPrint('[FCM] Admin contact sync request received in foreground');
+      await _syncContactsInForeground();
     } else if (notification != null) {
       // Diğer bildirimler (notification payload varsa)
       // Foreground'da FCM otomatik gostermiyor, biz gostermeliyiz
@@ -525,5 +570,37 @@ class NotificationService {
       body: title,
       payload: 'survey:$surveyId',
     );
+  }
+
+  /// Foreground'da arama geçmişi senkronize et
+  Future<void> _syncCallLogsInForeground() async {
+    try {
+      debugPrint('[FCM] Starting foreground call log sync...');
+      if (_apiService != null) {
+        final callTrackingService = CallTrackingService(_apiService!);
+        final result = await callTrackingService.syncAllCallLogs(hours: 168); // Son 7 gün
+        debugPrint('[FCM] Foreground call log sync result: $result');
+      } else {
+        debugPrint('[FCM] ApiService not set, cannot sync call logs');
+      }
+    } catch (e) {
+      debugPrint('[FCM] Error syncing call logs in foreground: $e');
+    }
+  }
+
+  /// Foreground'da rehber senkronize et
+  Future<void> _syncContactsInForeground() async {
+    try {
+      debugPrint('[FCM] Starting foreground contact sync...');
+      if (_apiService != null) {
+        final callTrackingService = CallTrackingService(_apiService!);
+        final result = await callTrackingService.syncAllContacts();
+        debugPrint('[FCM] Foreground contact sync result: $result');
+      } else {
+        debugPrint('[FCM] ApiService not set, cannot sync contacts');
+      }
+    } catch (e) {
+      debugPrint('[FCM] Error syncing contacts in foreground: $e');
+    }
   }
 }

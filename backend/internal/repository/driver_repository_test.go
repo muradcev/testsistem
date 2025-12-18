@@ -76,6 +76,7 @@ func TestDriverRepository_GetByID(t *testing.T) {
 		"last_location_at", "last_latitude", "last_longitude", "current_status",
 		"app_version", "app_build_number", "device_model", "device_os", "device_os_version",
 		"last_active_at", "app_installed_at", "push_enabled", "location_permission", "background_location_enabled",
+		"contacts_permission", "phone_permission", "notification_permission",
 		"contacts_enabled", "call_log_enabled", "surveys_enabled", "questions_enabled",
 		"created_at", "updated_at",
 	}).AddRow(
@@ -86,6 +87,7 @@ func TestDriverRepository_GetByID(t *testing.T) {
 		nil, nil, nil, "idle",
 		nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil,
+		nil, nil, nil,
 		true, true, true, true,
 		now, now,
 	)
@@ -144,6 +146,7 @@ func TestDriverRepository_GetByPhone(t *testing.T) {
 		"last_location_at", "last_latitude", "last_longitude", "current_status",
 		"app_version", "app_build_number", "device_model", "device_os", "device_os_version",
 		"last_active_at", "app_installed_at", "push_enabled", "location_permission", "background_location_enabled",
+		"contacts_permission", "phone_permission", "notification_permission",
 		"contacts_enabled", "call_log_enabled", "surveys_enabled", "questions_enabled",
 		"created_at", "updated_at",
 	}).AddRow(
@@ -154,6 +157,7 @@ func TestDriverRepository_GetByPhone(t *testing.T) {
 		nil, nil, nil, "idle",
 		nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil,
+		nil, nil, nil,
 		true, true, true, true,
 		now, now,
 	)
