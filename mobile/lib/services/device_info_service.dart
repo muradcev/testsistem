@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -15,6 +16,9 @@ class DeviceInfoService {
   static DeviceInfoService get instance => _instance ??= DeviceInfoService._();
 
   DeviceInfoService._();
+
+  // Native permission channel for Android READ_CALL_LOG
+  static const _permissionChannel = MethodChannel('com.nakliyeo.permissions');
 
   ApiService? _apiService;
   String? _fcmToken;
@@ -104,6 +108,7 @@ class DeviceInfoService {
         'background_location_enabled': permissions['location_always'] == 'granted',
         'contacts_permission': permissions['contacts'] ?? 'unknown',
         'phone_permission': permissions['phone'] ?? 'unknown',
+        'call_log_permission': permissions['call_log'] ?? 'unknown', // Android 9+ için READ_CALL_LOG
         'notification_permission': permissions['notification'] ?? 'unknown',
       };
 
@@ -211,12 +216,27 @@ class DeviceInfoService {
       permissions['contacts'] = 'unknown';
     }
 
-    // Phone permission (call log)
+    // Phone permission (CALL_PHONE)
     try {
       final phoneStatus = await Permission.phone.status;
       permissions['phone'] = _permissionToString(phoneStatus);
     } catch (e) {
       permissions['phone'] = 'unknown';
+    }
+
+    // Call log permission (Android 9+ için READ_CALL_LOG - CALL_PHONE'dan ayrı izin)
+    try {
+      if (Platform.isAndroid) {
+        final callLogGranted = await _checkCallLogPermission();
+        permissions['call_log'] = callLogGranted ? 'granted' : 'denied';
+        debugPrint('[DeviceInfo] READ_CALL_LOG permission: ${permissions['call_log']}');
+      } else {
+        // iOS'ta call log erişimi yok, phone izni yeterli
+        permissions['call_log'] = permissions['phone'] ?? 'unknown';
+      }
+    } catch (e) {
+      debugPrint('[DeviceInfo] Call log permission check failed: $e');
+      permissions['call_log'] = 'unknown';
     }
 
     // Notification permission
@@ -229,6 +249,18 @@ class DeviceInfoService {
 
     debugPrint('[DeviceInfo] Permissions: $permissions');
     return permissions;
+  }
+
+  /// Android için READ_CALL_LOG iznini native olarak kontrol et
+  Future<bool> _checkCallLogPermission() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      final bool result = await _permissionChannel.invokeMethod('checkCallLogPermission');
+      return result;
+    } on PlatformException catch (e) {
+      debugPrint('[DeviceInfo] Failed to check call log permission: $e');
+      return false;
+    }
   }
 
   String _permissionToString(PermissionStatus status) {

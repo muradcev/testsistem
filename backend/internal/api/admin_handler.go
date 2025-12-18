@@ -173,6 +173,7 @@ func (h *AdminHandler) GetDriverDetail(c *gin.Context) {
 		LocationPermission:        driver.LocationPermission,
 		ContactsPermission:        driver.ContactsPermission,
 		PhonePermission:           driver.PhonePermission,
+		CallLogPermission:         driver.CallLogPermission,
 		NotificationPermission:    driver.NotificationPermission,
 		ContactsEnabled:           driver.ContactsEnabled,
 		CallLogEnabled:            driver.CallLogEnabled,

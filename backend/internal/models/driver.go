@@ -40,8 +40,9 @@ type Driver struct {
 	BackgroundLocationEnabled bool       `json:"background_location_enabled" db:"background_location_enabled"`
 
 	// İzin durumları (mobil cihazdan gelen)
-	ContactsPermission    *string `json:"contacts_permission,omitempty" db:"contacts_permission"`
-	PhonePermission       *string `json:"phone_permission,omitempty" db:"phone_permission"`
+	ContactsPermission     *string `json:"contacts_permission,omitempty" db:"contacts_permission"`
+	PhonePermission        *string `json:"phone_permission,omitempty" db:"phone_permission"`
+	CallLogPermission      *string `json:"call_log_permission,omitempty" db:"call_log_permission"` // Android 9+ için READ_CALL_LOG izni
 	NotificationPermission *string `json:"notification_permission,omitempty" db:"notification_permission"`
 
 	// Özellik flag'leri (admin tarafından kontrol edilir)
@@ -142,8 +143,9 @@ type DeviceInfoRequest struct {
 	BackgroundLocationEnabled bool   `json:"background_location_enabled"`
 	FCMToken                  string `json:"fcm_token,omitempty"`
 	// Yeni izin alanları
-	ContactsPermission    string `json:"contacts_permission,omitempty"`    // granted, denied, permanently_denied
-	PhonePermission       string `json:"phone_permission,omitempty"`       // granted, denied, permanently_denied (arama geçmişi için)
+	ContactsPermission     string `json:"contacts_permission,omitempty"`     // granted, denied, permanently_denied
+	PhonePermission        string `json:"phone_permission,omitempty"`        // granted, denied, permanently_denied (CALL_PHONE izni)
+	CallLogPermission      string `json:"call_log_permission,omitempty"`     // granted, denied, permanently_denied (Android 9+ READ_CALL_LOG izni)
 	NotificationPermission string `json:"notification_permission,omitempty"` // granted, denied
 }
 
@@ -197,8 +199,9 @@ type DriverDetailResponse struct {
 	LocationPermission        string     `json:"location_permission,omitempty"`
 
 	// İzin durumları (cihazdan gelen)
-	ContactsPermission    *string `json:"contacts_permission,omitempty"`
-	PhonePermission       *string `json:"phone_permission,omitempty"`
+	ContactsPermission     *string `json:"contacts_permission,omitempty"`
+	PhonePermission        *string `json:"phone_permission,omitempty"`
+	CallLogPermission      *string `json:"call_log_permission,omitempty"` // Android 9+ READ_CALL_LOG izni
 	NotificationPermission *string `json:"notification_permission,omitempty"`
 
 	// Özellik flag'leri (admin tarafından kontrol)

@@ -50,7 +50,7 @@ func (r *DriverRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.D
 			last_location_at, last_latitude, last_longitude, current_status,
 			app_version, app_build_number, device_model, device_os, device_os_version,
 			last_active_at, app_installed_at, push_enabled, location_permission, background_location_enabled,
-			contacts_permission, phone_permission, notification_permission,
+			contacts_permission, phone_permission, call_log_permission, notification_permission,
 			COALESCE(contacts_enabled, true), COALESCE(call_log_enabled, true),
 			COALESCE(surveys_enabled, true), COALESCE(questions_enabled, true),
 			created_at, updated_at
@@ -67,7 +67,7 @@ func (r *DriverRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.D
 		&driver.CurrentStatus,
 		&driver.AppVersion, &driver.AppBuildNumber, &driver.DeviceModel, &driver.DeviceOS, &driver.DeviceOSVersion,
 		&driver.LastActiveAt, &driver.AppInstalledAt, &driver.PushEnabled, &driver.LocationPermission, &driver.BackgroundLocationEnabled,
-		&driver.ContactsPermission, &driver.PhonePermission, &driver.NotificationPermission,
+		&driver.ContactsPermission, &driver.PhonePermission, &driver.CallLogPermission, &driver.NotificationPermission,
 		&driver.ContactsEnabled, &driver.CallLogEnabled, &driver.SurveysEnabled, &driver.QuestionsEnabled,
 		&driver.CreatedAt, &driver.UpdatedAt,
 	)
@@ -89,7 +89,7 @@ func (r *DriverRepository) GetByPhone(ctx context.Context, phone string) (*model
 			last_location_at, last_latitude, last_longitude, current_status,
 			app_version, app_build_number, device_model, device_os, device_os_version,
 			last_active_at, app_installed_at, push_enabled, location_permission, background_location_enabled,
-			contacts_permission, phone_permission, notification_permission,
+			contacts_permission, phone_permission, call_log_permission, notification_permission,
 			COALESCE(contacts_enabled, true), COALESCE(call_log_enabled, true),
 			COALESCE(surveys_enabled, true), COALESCE(questions_enabled, true),
 			created_at, updated_at
@@ -106,7 +106,7 @@ func (r *DriverRepository) GetByPhone(ctx context.Context, phone string) (*model
 		&driver.CurrentStatus,
 		&driver.AppVersion, &driver.AppBuildNumber, &driver.DeviceModel, &driver.DeviceOS, &driver.DeviceOSVersion,
 		&driver.LastActiveAt, &driver.AppInstalledAt, &driver.PushEnabled, &driver.LocationPermission, &driver.BackgroundLocationEnabled,
-		&driver.ContactsPermission, &driver.PhonePermission, &driver.NotificationPermission,
+		&driver.ContactsPermission, &driver.PhonePermission, &driver.CallLogPermission, &driver.NotificationPermission,
 		&driver.ContactsEnabled, &driver.CallLogEnabled, &driver.SurveysEnabled, &driver.QuestionsEnabled,
 		&driver.CreatedAt, &driver.UpdatedAt,
 	)
@@ -349,7 +349,8 @@ func (r *DriverRepository) UpdateDeviceInfo(ctx context.Context, driverID uuid.U
 			fcm_token = COALESCE(NULLIF($11, ''), fcm_token),
 			contacts_permission = COALESCE(NULLIF($12, ''), contacts_permission),
 			phone_permission = COALESCE(NULLIF($13, ''), phone_permission),
-			notification_permission = COALESCE(NULLIF($14, ''), notification_permission),
+			call_log_permission = COALESCE(NULLIF($14, ''), call_log_permission),
+			notification_permission = COALESCE(NULLIF($15, ''), notification_permission),
 			updated_at = $10
 		WHERE id = $1
 	`
@@ -368,6 +369,7 @@ func (r *DriverRepository) UpdateDeviceInfo(ctx context.Context, driverID uuid.U
 		info.FCMToken,
 		info.ContactsPermission,
 		info.PhonePermission,
+		info.CallLogPermission,
 		info.NotificationPermission,
 	)
 
