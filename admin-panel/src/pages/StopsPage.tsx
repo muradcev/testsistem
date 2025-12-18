@@ -1271,7 +1271,7 @@ export default function StopsPage() {
 
             <div className="border-t pt-4">
               <p className="text-sm text-gray-600 mb-2">Durak tipini seçin{stopName ? ' ve adla birlikte kaydet' : ''}:</p>
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
                 {categorizableTypes.map((type) => (
                   <button
                     key={type.value}
@@ -1281,19 +1281,19 @@ export default function StopsPage() {
                       name: stopName || undefined,
                     })}
                     disabled={updateMutation.isPending}
-                    className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-3 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
-                    <span className="text-2xl">{locationTypeIcons[type.value]}</span>
-                    <span className="text-sm">{type.label}</span>
+                    <span className="text-xl sm:text-2xl">{locationTypeIcons[type.value]}</span>
+                    <span className="text-xs sm:text-sm truncate">{type.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="flex gap-2 mt-4">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 mt-4">
               <button
                 onClick={() => { setSelectedStop(null); setStopName(''); }}
-                className="flex-1 py-2 text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg"
+                className="flex-1 py-2.5 text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg"
               >
                 İptal
               </button>
@@ -1304,7 +1304,7 @@ export default function StopsPage() {
                   }
                 }}
                 disabled={deleteStopMutation.isPending}
-                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <TrashIcon className="h-4 w-4" />
                 {deleteStopMutation.isPending ? 'Siliniyor...' : 'Sil'}
