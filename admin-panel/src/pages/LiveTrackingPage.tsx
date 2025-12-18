@@ -146,51 +146,51 @@ export default function LiveTrackingPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Canlı Takip</h1>
-        <p className="text-gray-500 mt-1">Tüm şoförlerin anlık konum ve hız bilgileri</p>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Canlı Takip</h1>
+        <p className="text-sm sm:text-base text-gray-500 mt-1">Tüm şoförlerin anlık konum ve hız bilgileri</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Toplam Şoför</div>
-          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-gray-500">Toplam Şoför</div>
+          <div className="text-xl sm:text-2xl font-bold text-gray-900">{stats.total}</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Hareket Halinde</div>
-          <div className="text-2xl font-bold text-green-600">{stats.moving}</div>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-gray-500">Hareket Halinde</div>
+          <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.moving}</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Hızlı (30+ km/s)</div>
-          <div className="text-2xl font-bold text-orange-600">{stats.fast}</div>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-gray-500">Hızlı (30+ km/s)</div>
+          <div className="text-xl sm:text-2xl font-bold text-orange-600">{stats.fast}</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Duruyor</div>
-          <div className="text-2xl font-bold text-gray-600">{stats.stationary}</div>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-gray-500">Duruyor</div>
+          <div className="text-xl sm:text-2xl font-bold text-gray-600">{stats.stationary}</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Telefon Kullanan</div>
-          <div className="text-2xl font-bold text-red-600">{stats.phoneInUse}</div>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 col-span-2 md:col-span-1">
+          <div className="text-xs sm:text-sm text-gray-500">Telefon Kullanan</div>
+          <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.phoneInUse}</div>
         </div>
       </div>
 
       {/* Search and Refresh */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="flex-1">
           <input
             type="text"
             placeholder="Şoför adı veya telefon ara..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
         <button
           onClick={() => refetchLive()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 w-full sm:w-auto"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
