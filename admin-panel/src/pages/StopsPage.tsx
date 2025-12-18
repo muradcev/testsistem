@@ -1365,20 +1365,20 @@ export default function StopsPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
               <button
                 onClick={() => {
                   setShowHomeModal(false)
                   setHomeForm({ name: '', radius: 500 })
                 }}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="flex-1 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 İptal
               </button>
               <button
                 onClick={handleCreateHome}
                 disabled={!homeForm.name || createHomeMutation.isPending}
-                className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <PlusIcon className="h-4 w-4" />
                 {createHomeMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
@@ -1438,10 +1438,10 @@ export default function StopsPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
               <button
                 onClick={() => setEditingHome(null)}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="flex-1 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 İptal
               </button>
@@ -1459,7 +1459,7 @@ export default function StopsPage() {
                   }
                 }}
                 disabled={updateHomeMutation.isPending}
-                className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
               >
                 {updateHomeMutation.isPending ? 'Kaydediliyor...' : 'Güncelle'}
               </button>
@@ -1514,13 +1514,13 @@ export default function StopsPage() {
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
               <button
                 onClick={() => {
                   setShowDetectModal(false)
                   setSelectedDriverId('')
                 }}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="flex-1 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 İptal
               </button>
@@ -1533,17 +1533,19 @@ export default function StopsPage() {
                   }
                 }}
                 disabled={detectMutation.isPending || detectForDriverMutation.isPending}
-                className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {(detectMutation.isPending || detectForDriverMutation.isPending) ? (
                   <>
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    Tespit Ediliyor...
+                    <span className="hidden sm:inline">Tespit Ediliyor...</span>
+                    <span className="sm:hidden">Tespit...</span>
                   </>
                 ) : (
                   <>
                     <PlayIcon className="h-4 w-4" />
-                    {selectedDriverId ? 'Şoför İçin Tespit Et' : 'Tüm Şoförler İçin Tespit Et'}
+                    <span className="hidden sm:inline">{selectedDriverId ? 'Şoför İçin Tespit Et' : 'Tüm Şoförler İçin Tespit Et'}</span>
+                    <span className="sm:hidden">Tespit Et</span>
                   </>
                 )}
               </button>
