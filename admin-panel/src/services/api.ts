@@ -80,6 +80,8 @@ export const driversApi = {
   deleteContacts: (id: string) => api.delete(`/admin/drivers/${id}/contacts`),
   // Responses (Survey & Question)
   getResponses: (id: string) => api.get(`/admin/drivers/${id}/responses`),
+  deleteSurveyResponses: (id: string) => api.delete(`/admin/drivers/${id}/survey-responses`),
+  deleteQuestionResponses: (id: string) => api.delete(`/admin/drivers/${id}/question-responses`),
 }
 
 export const locationsApi = {

@@ -229,6 +229,8 @@ func main() {
 
 			// Driver Responses (Survey & Question)
 			adminGroup.GET("/drivers/:id/responses", adminHandler.GetDriverResponses)
+			adminGroup.DELETE("/drivers/:id/survey-responses", adminHandler.DeleteDriverSurveyResponses)
+			adminGroup.DELETE("/drivers/:id/question-responses", adminHandler.DeleteDriverQuestionResponses)
 
 			// All Call Logs & Contacts (tüm şoförler için)
 			adminGroup.GET("/call-logs", adminHandler.GetAllCallLogs)

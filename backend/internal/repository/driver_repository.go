@@ -809,6 +809,36 @@ func (r *DriverRepository) GetDriverQuestionResponses(ctx context.Context, drive
 	return responses, nil
 }
 
+// DeleteDriverSurveyResponses - Sürücünün tüm anket cevaplarını sil
+func (r *DriverRepository) DeleteDriverSurveyResponses(ctx context.Context, driverID uuid.UUID) (int64, error) {
+	query := `DELETE FROM survey_responses WHERE driver_id = $1`
+	result, err := r.db.Pool.Exec(ctx, query, driverID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete survey responses: %w", err)
+	}
+	return result.RowsAffected(), nil
+}
+
+// DeleteDriverQuestionResponses - Sürücünün tüm soru cevaplarını sil
+func (r *DriverRepository) DeleteDriverQuestionResponses(ctx context.Context, driverID uuid.UUID) (int64, error) {
+	// Önce cevapları sil
+	_, err := r.db.Pool.Exec(ctx, `
+		DELETE FROM driver_question_answers
+		WHERE question_id IN (SELECT id FROM driver_questions WHERE driver_id = $1)
+	`, driverID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete question answers: %w", err)
+	}
+
+	// Sonra soruları sil
+	query := `DELETE FROM driver_questions WHERE driver_id = $1`
+	result, err := r.db.Pool.Exec(ctx, query, driverID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete questions: %w", err)
+	}
+	return result.RowsAffected(), nil
+}
+
 // ==================== ALL CALL LOGS & CONTACTS ====================
 
 // GetAllCallLogs - Tüm şoförlerin arama geçmişini getir

@@ -289,6 +289,8 @@ export default function DriverDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDeleteCallLogsConfirm, setShowDeleteCallLogsConfirm] = useState(false)
   const [showDeleteContactsConfirm, setShowDeleteContactsConfirm] = useState(false)
+  const [showDeleteSurveyResponsesConfirm, setShowDeleteSurveyResponsesConfirm] = useState(false)
+  const [showDeleteQuestionResponsesConfirm, setShowDeleteQuestionResponsesConfirm] = useState(false)
   const [homeForm, setHomeForm] = useState({
     name: '',
     latitude: 0,
@@ -448,6 +450,26 @@ export default function DriverDetailPage() {
       toast.success('Rehber senkronizasyon istegi gonderildi')
     },
     onError: () => toast.error('Istek gonderilemedi - FCM token olmayabilir'),
+  })
+
+  const deleteSurveyResponsesMutation = useMutation({
+    mutationFn: () => driversApi.deleteSurveyResponses(id!),
+    onSuccess: () => {
+      toast.success('Anket cevaplari silindi')
+      queryClient.invalidateQueries({ queryKey: ['driver-responses', id] })
+      setShowDeleteSurveyResponsesConfirm(false)
+    },
+    onError: () => toast.error('Anket cevaplari silinemedi'),
+  })
+
+  const deleteQuestionResponsesMutation = useMutation({
+    mutationFn: () => driversApi.deleteQuestionResponses(id!),
+    onSuccess: () => {
+      toast.success('Soru cevaplari silindi')
+      queryClient.invalidateQueries({ queryKey: ['driver-responses', id] })
+      setShowDeleteQuestionResponsesConfirm(false)
+    },
+    onError: () => toast.error('Soru cevaplari silinemedi'),
   })
 
   const driver: Driver | null = driverData?.data || null
@@ -1264,8 +1286,19 @@ export default function DriverDetailPage() {
                 <div className="space-y-6">
                   {/* Survey Responses */}
                   <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle>Anket Cevaplari ({surveyResponses.length})</CardTitle>
+                      {surveyResponses.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDeleteSurveyResponsesConfirm(true)}
+                          className="text-red-600"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-1" />
+                          Tumunu Sil
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent>
                       {surveyResponses.length > 0 ? (
@@ -1294,8 +1327,19 @@ export default function DriverDetailPage() {
 
                   {/* Question Responses */}
                   <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle>Soru Cevaplari ({questionResponses.length})</CardTitle>
+                      {questionResponses.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDeleteQuestionResponsesConfirm(true)}
+                          className="text-red-600"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-1" />
+                          Tumunu Sil
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent>
                       {questionResponses.length > 0 ? (
@@ -1589,6 +1633,48 @@ export default function DriverDetailPage() {
               className="bg-red-600 hover:bg-red-700"
             >
               {deleteContactsMutation.isPending ? <LoadingSpinner size="sm" /> : 'Evet, Sil'}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showDeleteSurveyResponsesConfirm && (
+        <Modal isOpen onClose={() => setShowDeleteSurveyResponsesConfirm(false)} title="Anket Cevaplarini Sil">
+          <div className="mb-6">
+            <p className="text-gray-600">Tum anket cevaplarini silmek istediginize emin misiniz?</p>
+            <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg mt-2">
+              Toplam {surveyResponses.length} anket cevabi silinecektir.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowDeleteSurveyResponsesConfirm(false)}>Iptal</Button>
+            <Button
+              onClick={() => deleteSurveyResponsesMutation.mutate()}
+              disabled={deleteSurveyResponsesMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteSurveyResponsesMutation.isPending ? <LoadingSpinner size="sm" /> : 'Evet, Sil'}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showDeleteQuestionResponsesConfirm && (
+        <Modal isOpen onClose={() => setShowDeleteQuestionResponsesConfirm(false)} title="Soru Cevaplarini Sil">
+          <div className="mb-6">
+            <p className="text-gray-600">Tum soru cevaplarini silmek istediginize emin misiniz?</p>
+            <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg mt-2">
+              Toplam {questionResponses.length} soru cevabi silinecektir.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowDeleteQuestionResponsesConfirm(false)}>Iptal</Button>
+            <Button
+              onClick={() => deleteQuestionResponsesMutation.mutate()}
+              disabled={deleteQuestionResponsesMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteQuestionResponsesMutation.isPending ? <LoadingSpinner size="sm" /> : 'Evet, Sil'}
             </Button>
           </div>
         </Modal>

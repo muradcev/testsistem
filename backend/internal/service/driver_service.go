@@ -153,6 +153,16 @@ func (s *DriverService) GetDriverQuestionResponses(ctx context.Context, driverID
 	return s.repo.GetDriverQuestionResponses(ctx, driverID, limit)
 }
 
+// DeleteDriverSurveyResponses - Sürücünün tüm anket cevaplarını sil
+func (s *DriverService) DeleteDriverSurveyResponses(ctx context.Context, driverID uuid.UUID) (int64, error) {
+	return s.repo.DeleteDriverSurveyResponses(ctx, driverID)
+}
+
+// DeleteDriverQuestionResponses - Sürücünün tüm soru cevaplarını sil
+func (s *DriverService) DeleteDriverQuestionResponses(ctx context.Context, driverID uuid.UUID) (int64, error) {
+	return s.repo.DeleteDriverQuestionResponses(ctx, driverID)
+}
+
 // ==================== ALL CALL LOGS & CONTACTS ====================
 
 // GetAllCallLogs - Tüm şoförlerin arama geçmişini getir

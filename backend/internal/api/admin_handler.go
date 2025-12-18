@@ -670,6 +670,46 @@ func (h *AdminHandler) GetDriverResponses(c *gin.Context) {
 	})
 }
 
+// DeleteDriverSurveyResponses - Sürücünün tüm anket cevaplarını sil
+func (h *AdminHandler) DeleteDriverSurveyResponses(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	deleted, err := h.driverService.DeleteDriverSurveyResponses(c.Request.Context(), driverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Anket cevapları silindi",
+		"deleted": deleted,
+	})
+}
+
+// DeleteDriverQuestionResponses - Sürücünün tüm soru cevaplarını sil
+func (h *AdminHandler) DeleteDriverQuestionResponses(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	deleted, err := h.driverService.DeleteDriverQuestionResponses(c.Request.Context(), driverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Soru cevapları silindi",
+		"deleted": deleted,
+	})
+}
+
 // Notification Handler
 type NotificationHandler struct {
 	notificationService *service.NotificationService
