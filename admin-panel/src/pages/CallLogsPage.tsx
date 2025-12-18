@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { callLogsApi } from '../services/api'
+import { callLogsApi, driversApi, notificationsApi } from '../services/api'
 import {
   PhoneIcon,
   PhoneArrowUpRightIcon,
@@ -9,8 +9,13 @@ import {
   PhoneXMarkIcon,
   ClockIcon,
   UserIcon,
+  ArrowPathIcon,
+  SignalIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
+import toast from 'react-hot-toast'
 
 interface CallLog {
   id: string
@@ -33,6 +38,17 @@ interface CallLogStats {
   total_duration_seconds: number
   total_drivers: number
   unique_contacts: number
+}
+
+interface Driver {
+  id: string
+  name: string
+  surname: string
+  phone: string
+  has_fcm_token: boolean
+  call_log_enabled: boolean
+  app_version: string | null
+  last_active_at: string | null
 }
 
 const callTypeLabels: Record<string, string> = {
@@ -80,17 +96,79 @@ function formatDate(dateString: string): string {
 export default function CallLogsPage() {
   const [page, setPage] = useState(0)
   const [callType, setCallType] = useState('')
+  const [syncingDrivers, setSyncingDrivers] = useState<Set<string>>(new Set())
+  const [showDrivers, setShowDrivers] = useState(true)
   const limit = 50
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['all-call-logs', page, callType],
     queryFn: () => callLogsApi.getAll({ limit, offset: page * limit, call_type: callType || undefined }),
+  })
+
+  const { data: driversData } = useQuery({
+    queryKey: ['drivers-for-sync'],
+    queryFn: () => driversApi.getAll({ limit: 100 }),
   })
 
   const callLogs: CallLog[] = data?.data?.call_logs || []
   const total = data?.data?.total || 0
   const stats: CallLogStats | null = data?.data?.stats || null
   const totalPages = Math.ceil(total / limit)
+  const drivers: Driver[] = driversData?.data?.drivers || []
+
+  // FCM token olan ve call_log_enabled şoförler
+  const syncableDrivers = drivers.filter(d => d.has_fcm_token && d.call_log_enabled)
+  const unsyncableDrivers = drivers.filter(d => !d.has_fcm_token || !d.call_log_enabled)
+
+  const syncMutation = useMutation({
+    mutationFn: (driverId: string) => notificationsApi.requestCallLogSync(driverId),
+    onMutate: (driverId) => {
+      setSyncingDrivers(prev => new Set(prev).add(driverId))
+    },
+    onSuccess: (_, driverId) => {
+      toast.success('Sync istegi gonderildi')
+      setSyncingDrivers(prev => {
+        const next = new Set(prev)
+        next.delete(driverId)
+        return next
+      })
+      // 5 saniye sonra listeyi yenile
+      setTimeout(() => refetch(), 5000)
+    },
+    onError: (_, driverId) => {
+      toast.error('Sync istegi gonderilemedi')
+      setSyncingDrivers(prev => {
+        const next = new Set(prev)
+        next.delete(driverId)
+        return next
+      })
+    },
+  })
+
+  const syncAllMutation = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(
+        syncableDrivers.map(d => notificationsApi.requestCallLogSync(d.id))
+      )
+      return results
+    },
+    onMutate: () => {
+      syncableDrivers.forEach(d => {
+        setSyncingDrivers(prev => new Set(prev).add(d.id))
+      })
+    },
+    onSuccess: (results) => {
+      const success = results.filter(r => r.status === 'fulfilled').length
+      const failed = results.filter(r => r.status === 'rejected').length
+      toast.success(`${success} sofore sync istegi gonderildi${failed > 0 ? `, ${failed} basarisiz` : ''}`)
+      setSyncingDrivers(new Set())
+      setTimeout(() => refetch(), 5000)
+    },
+    onError: () => {
+      toast.error('Toplu sync basarisiz')
+      setSyncingDrivers(new Set())
+    },
+  })
 
   if (isLoading) {
     return (
@@ -103,9 +181,17 @@ export default function CallLogsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Arama Gecmisi</h1>
-        <p className="text-gray-500">Tum soforlerin arama gecmisi</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Arama Gecmisi</h1>
+          <p className="text-gray-500">Tum soforlerin arama gecmisi</p>
+        </div>
+        <button
+          onClick={() => setShowDrivers(!showDrivers)}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-lg hover:bg-gray-50"
+        >
+          {showDrivers ? 'Soforleri Gizle' : 'Soforleri Goster'}
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -139,6 +225,86 @@ export default function CallLogsPage() {
             <div className="text-sm text-gray-500">Benzersiz Kisi</div>
             <div className="text-2xl font-bold text-indigo-600">{stats.unique_contacts}</div>
           </div>
+        </div>
+      )}
+
+      {/* Drivers Section */}
+      {showDrivers && (
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Soforler ({syncableDrivers.length} aktif / {drivers.length} toplam)
+            </h2>
+            <button
+              onClick={() => syncAllMutation.mutate()}
+              disabled={syncAllMutation.isPending || syncableDrivers.length === 0}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowPathIcon className={clsx('h-4 w-4', syncAllMutation.isPending && 'animate-spin')} />
+              Tumunu Senkronize Et
+            </button>
+          </div>
+
+          {/* Syncable Drivers */}
+          {syncableDrivers.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-green-700 mb-2 flex items-center gap-1">
+                <CheckCircleIcon className="h-4 w-4" />
+                Senkronize Edilebilir ({syncableDrivers.length})
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {syncableDrivers.map(driver => (
+                  <div key={driver.id} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <Link to={`/drivers/${driver.id}`} className="flex items-center gap-2 hover:text-primary-600">
+                      <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center">
+                        <UserIcon className="h-4 w-4 text-green-700" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{driver.name} {driver.surname}</div>
+                        <div className="text-xs text-gray-500">{driver.phone}</div>
+                      </div>
+                    </Link>
+                    <button
+                      onClick={() => syncMutation.mutate(driver.id)}
+                      disabled={syncingDrivers.has(driver.id)}
+                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg disabled:opacity-50"
+                      title="Arama gecmisini senkronize et"
+                    >
+                      <ArrowPathIcon className={clsx('h-5 w-5', syncingDrivers.has(driver.id) && 'animate-spin')} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Unsyncable Drivers */}
+          {unsyncableDrivers.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2 flex items-center gap-1">
+                <XCircleIcon className="h-4 w-4" />
+                Senkronize Edilemez ({unsyncableDrivers.length})
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {unsyncableDrivers.map(driver => (
+                  <div key={driver.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg opacity-60">
+                    <Link to={`/drivers/${driver.id}`} className="flex items-center gap-2 hover:text-primary-600">
+                      <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        <UserIcon className="h-4 w-4 text-gray-500" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">{driver.name} {driver.surname}</div>
+                        <div className="text-xs text-gray-400">
+                          {!driver.has_fcm_token ? 'FCM yok' : !driver.call_log_enabled ? 'Devre disi' : driver.phone}
+                        </div>
+                      </div>
+                    </Link>
+                    <SignalIcon className="h-5 w-5 text-gray-300" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
