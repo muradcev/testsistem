@@ -144,9 +144,10 @@ func (s *RoutingService) GetMultiPointDistance(ctx context.Context, points [][]f
 	}, nil
 }
 
-// IsAvailable checks if OSRM service is available
+// IsAvailable checks if OSRM service is available by making a simple route query
 func (s *RoutingService) IsAvailable(ctx context.Context) bool {
-	url := fmt.Sprintf("%s/health", s.osrmBaseURL)
+	// OSRM doesn't have /health endpoint, test with a simple route query
+	url := fmt.Sprintf("%s/route/v1/driving/32.8597,39.9334;29.0121,41.0082?overview=false", s.osrmBaseURL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
