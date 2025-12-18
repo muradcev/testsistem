@@ -721,9 +721,9 @@ export default function StopsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Map - Mobile first */}
-        <div className="lg:hidden bg-white rounded-lg shadow overflow-hidden">
-          <div className="h-[250px] sm:h-[350px]">
+        {/* Map - Mobile (shown after list on mobile) */}
+        <div className="lg:hidden bg-white rounded-lg shadow overflow-hidden order-2">
+          <div className="h-[200px] sm:h-[300px]">
             <MapContainer
               center={defaultCenter}
               zoom={6}
@@ -792,7 +792,7 @@ export default function StopsPage() {
         </div>
 
         {/* List Panel */}
-        <div className="bg-white rounded-lg shadow overflow-hidden order-2 lg:order-1">
+        <div className="bg-white rounded-lg shadow overflow-hidden order-1 lg:order-1">
           <div className="p-3 sm:p-4 border-b">
             <h2 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">
               {filter === 'homes' ? 'Şoför Ev Adresleri' : filter === 'clusters' ? 'Ortak Durak Noktaları' : 'Duraklar'}
