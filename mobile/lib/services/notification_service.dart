@@ -8,6 +8,9 @@ import 'device_info_service.dart';
 import 'hybrid_location_service.dart';
 
 // Background message handler - must be top-level function
+// NOT: Notification payload olan mesajlar icin bu handler CAGIRILMAZ
+// FCM otomatik olarak bildirimi gosterir
+// Bu handler sadece data-only mesajlar icin calisir (ornegin location_request)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -18,17 +21,19 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final type = message.data['type'];
 
   // Handle location request in background - Admin "Konum İste" dediğinde
+  // Bu data-only mesaj oldugundan background handler cagrilir
   if (type == 'location_request') {
     debugPrint('[FCM] Admin location request received in background');
     await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_background');
   }
-  // Handle question notification in background - her zaman local notification göster
-  else if (type == 'question') {
-    debugPrint('[FCM] Question notification received in background');
+  // Soru bildirimleri artik Notification payload ile geliyor
+  // FCM bunlari otomatik gosteriyor, bu handler cagrilmiyor
+  // Ama eski versiyonlarla uyumluluk icin burada da handle ediyoruz
+  else if (type == 'question' && message.notification == null) {
+    // Sadece data-only soru mesajlari icin (eski versiyon uyumlulugu)
+    debugPrint('[FCM] Legacy data-only question notification received in background');
     final questionId = message.data['question_id'] ?? '';
-    final questionText = message.data['question_text'] ?? message.notification?.body ?? 'Yeni bir soru var';
-
-    // Show local notification for background questions
+    final questionText = message.data['question_text'] ?? 'Yeni bir soru var';
     await _showBackgroundQuestionNotification(questionId, questionText);
   }
 }
@@ -241,8 +246,8 @@ class NotificationService {
 
     // Handle different notification types
     if (type == 'question') {
-      // Soru bildirimi - DATA-ONLY mesaj olarak geliyor
-      // question_text data payload'da, notification payload'da değil
+      // Soru bildirimi - artik Notification payload ile geliyor
+      // Foreground'da FCM otomatik gostermiyor, biz gostermeliyiz
       final questionId = message.data['question_id'] ?? '';
       final questionText = message.data['question_text'] ?? notification?.body ?? 'Yeni bir soru var';
       debugPrint('[FCM] Question notification received in foreground: $questionId');
@@ -253,6 +258,7 @@ class NotificationService {
       await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_foreground');
     } else if (notification != null) {
       // Diğer bildirimler (notification payload varsa)
+      // Foreground'da FCM otomatik gostermiyor, biz gostermeliyiz
       await showNotification(
         id: message.hashCode,
         title: notification.title ?? 'Nakliyeo',

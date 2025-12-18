@@ -41,9 +41,12 @@ import { questionsApi, driversApi, questionFlowTemplatesApi } from '../services/
 
 interface QuestionNodeData {
   questionText: string
-  questionType: 'yes_no' | 'multiple_choice' | 'text' | 'number' | 'price' | 'province'
+  questionType: 'yes_no' | 'multiple_choice' | 'text' | 'number' | 'price' | 'province' | 'city_route' | 'date' | 'rating'
   options?: string[]
   isStart?: boolean
+  // Sehirler arasi guzergah icin
+  fromProvince?: string
+  toProvince?: string
 }
 
 interface QuestionTemplate {
@@ -62,27 +65,63 @@ interface QuestionTemplate {
 }
 
 const questionTypes = [
-  { id: 'yes_no', name: 'Evet/Hayir' },
-  { id: 'multiple_choice', name: 'Coktan Secmeli' },
-  { id: 'text', name: 'Metin' },
-  { id: 'number', name: 'Sayi' },
-  { id: 'price', name: 'Fiyat (TL)' },
-  { id: 'province', name: 'Il Secimi' },
+  { id: 'yes_no', name: 'Evet/Hayir', icon: '✅' },
+  { id: 'multiple_choice', name: 'Coktan Secmeli', icon: '📋' },
+  { id: 'text', name: 'Metin', icon: '📝' },
+  { id: 'number', name: 'Sayi', icon: '🔢' },
+  { id: 'price', name: 'Fiyat (TL)', icon: '💰' },
+  { id: 'province', name: 'Il Secimi', icon: '🏙️' },
+  { id: 'city_route', name: 'Sehirler Arasi Guzergah', icon: '🛣️' },
+  { id: 'date', name: 'Tarih', icon: '📅' },
+  { id: 'rating', name: 'Puan (1-5)', icon: '⭐' },
 ]
+
+// Turkiye illeri - Il secimi tipinde kullanilir
+export const turkishProvinces = [
+  'Adana', 'Adiyaman', 'Afyonkarahisar', 'Agri', 'Amasya', 'Ankara', 'Antalya', 'Artvin',
+  'Aydin', 'Balikesir', 'Bilecik', 'Bingol', 'Bitlis', 'Bolu', 'Burdur', 'Bursa',
+  'Canakkale', 'Cankiri', 'Corum', 'Denizli', 'Diyarbakir', 'Edirne', 'Elazig', 'Erzincan',
+  'Erzurum', 'Eskisehir', 'Gaziantep', 'Giresun', 'Gumushane', 'Hakkari', 'Hatay', 'Isparta',
+  'Mersin', 'Istanbul', 'Izmir', 'Kars', 'Kastamonu', 'Kayseri', 'Kirklareli', 'Kirsehir',
+  'Kocaeli', 'Konya', 'Kutahya', 'Malatya', 'Manisa', 'Kahramanmaras', 'Mardin', 'Mugla',
+  'Mus', 'Nevsehir', 'Nigde', 'Ordu', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop',
+  'Sivas', 'Tekirdag', 'Tokat', 'Trabzon', 'Tunceli', 'Sanliurfa', 'Usak', 'Van',
+  'Yozgat', 'Zonguldak', 'Aksaray', 'Bayburt', 'Karaman', 'Kirikkale', 'Batman', 'Sirnak',
+  'Bartin', 'Ardahan', 'Igdir', 'Yalova', 'Karabuk', 'Kilis', 'Osmaniye', 'Duzce'
+]
+
+// Get color for question type
+function getQuestionTypeColor(type: string): string {
+  switch (type) {
+    case 'yes_no': return 'bg-emerald-100 border-emerald-400'
+    case 'multiple_choice': return 'bg-blue-100 border-blue-400'
+    case 'text': return 'bg-gray-100 border-gray-400'
+    case 'number': return 'bg-orange-100 border-orange-400'
+    case 'price': return 'bg-green-100 border-green-400'
+    case 'province': return 'bg-cyan-100 border-cyan-400'
+    case 'city_route': return 'bg-purple-100 border-purple-400'
+    case 'date': return 'bg-indigo-100 border-indigo-400'
+    case 'rating': return 'bg-yellow-100 border-yellow-400'
+    default: return 'bg-white border-gray-200'
+  }
+}
 
 // Custom Node Component for Questions
 function QuestionNode({ data, selected }: NodeProps<QuestionNodeData>) {
   const isYesNo = data.questionType === 'yes_no'
   const isMultipleChoice = data.questionType === 'multiple_choice'
+  const isRating = data.questionType === 'rating'
+  const typeInfo = questionTypes.find(t => t.id === data.questionType)
+  const typeColor = getQuestionTypeColor(data.questionType)
 
   return (
     <div
-      className={`px-4 py-3 rounded-lg shadow-lg min-w-[250px] max-w-[350px] ${
+      className={`px-4 py-3 rounded-lg shadow-lg min-w-[250px] max-w-[350px] border-2 ${
         data.isStart
-          ? 'bg-green-50 border-2 border-green-500'
+          ? 'bg-green-50 border-green-500'
           : selected
-          ? 'bg-blue-50 border-2 border-blue-500'
-          : 'bg-white border-2 border-gray-200'
+          ? 'bg-blue-50 border-blue-500'
+          : typeColor
       }`}
     >
       {/* Input Handle */}
@@ -96,21 +135,44 @@ function QuestionNode({ data, selected }: NodeProps<QuestionNodeData>) {
 
       {/* Node Content */}
       <div className="space-y-2">
-        {data.isStart && (
-          <Badge variant="success" size="sm">Baslangic</Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {data.isStart && (
+            <Badge variant="success" size="sm">Baslangic</Badge>
+          )}
+          <span className="text-lg">{typeInfo?.icon}</span>
+        </div>
         <p className="text-sm font-medium text-gray-900">{data.questionText || 'Soru metni...'}</p>
         <Badge variant="default" size="sm">
-          {questionTypes.find(t => t.id === data.questionType)?.name || data.questionType}
+          {typeInfo?.name || data.questionType}
         </Badge>
 
         {isMultipleChoice && data.options && (
           <div className="flex flex-wrap gap-1 mt-1">
             {data.options.map((opt, idx) => (
-              <span key={idx} className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                {opt}
+              <span key={idx} className="text-xs bg-white/70 px-2 py-0.5 rounded border">
+                {opt || `Secenek ${idx + 1}`}
               </span>
             ))}
+          </div>
+        )}
+
+        {isRating && (
+          <div className="flex gap-1 mt-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span key={star} className="text-yellow-400">★</span>
+            ))}
+          </div>
+        )}
+
+        {data.questionType === 'city_route' && (
+          <div className="text-xs text-purple-600 mt-1">
+            🚚 Nereden → Nereye
+          </div>
+        )}
+
+        {data.questionType === 'province' && (
+          <div className="text-xs text-cyan-600 mt-1">
+            📍 81 il secenegi
           </div>
         )}
       </div>
@@ -137,7 +199,7 @@ function QuestionNode({ data, selected }: NodeProps<QuestionNodeData>) {
             <span className="text-red-600">Hayir</span>
           </div>
         </>
-      ) : isMultipleChoice && data.options ? (
+      ) : isMultipleChoice && data.options && data.options.length > 0 ? (
         <>
           {data.options.map((_, idx) => (
             <Handle
@@ -149,6 +211,29 @@ function QuestionNode({ data, selected }: NodeProps<QuestionNodeData>) {
               style={{ left: `${((idx + 1) / (data.options!.length + 1)) * 100}%` }}
             />
           ))}
+          <div className="flex justify-around text-xs text-gray-500 mt-2">
+            {data.options.map((opt, idx) => (
+              <span key={idx} className="truncate max-w-[60px]" title={opt}>
+                {opt || `${idx + 1}`}
+              </span>
+            ))}
+          </div>
+        </>
+      ) : isRating ? (
+        <>
+          {[1, 2, 3, 4, 5].map((rating) => (
+            <Handle
+              key={rating}
+              type="source"
+              position={Position.Bottom}
+              id={`rating-${rating}`}
+              className="w-2 h-2 !bg-yellow-500"
+              style={{ left: `${(rating / 6) * 100}%` }}
+            />
+          ))}
+          <div className="flex justify-around text-xs text-yellow-600 mt-2">
+            {[1, 2, 3, 4, 5].map((r) => <span key={r}>{r}★</span>)}
+          </div>
         </>
       ) : (
         <Handle
@@ -172,8 +257,8 @@ const initialNodes: Node<QuestionNodeData>[] = [
     type: 'question',
     position: { x: 250, y: 50 },
     data: {
-      questionText: 'Baslangic sorusu',
-      questionType: 'yes_no',
+      questionText: 'Soru metnini buraya yazin',
+      questionType: 'text', // Default to text, user can change
       isStart: true,
     },
   },
@@ -604,12 +689,16 @@ export default function QuestionDesignerPage() {
                   value={selectedNode.data.questionType}
                   onChange={(e) => updateNodeData({ questionType: e.target.value as QuestionNodeData['questionType'] })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  disabled={selectedNode.data.isStart}
                 >
                   {questionTypes.map((type) => (
                     <option key={type.id} value={type.id}>{type.name}</option>
                   ))}
                 </select>
+                {selectedNode.data.isStart && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Baslangic sorusu her tipte olabilir
+                  </p>
+                )}
               </div>
 
               {/* Options for multiple choice */}
@@ -618,18 +707,30 @@ export default function QuestionDesignerPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Secenekler</label>
                   <div className="space-y-2">
                     {(selectedNode.data.options || ['', '']).map((opt, idx) => (
-                      <input
-                        key={idx}
-                        type="text"
-                        value={opt}
-                        onChange={(e) => {
-                          const newOptions = [...(selectedNode.data.options || ['', ''])]
-                          newOptions[idx] = e.target.value
-                          updateNodeData({ options: newOptions })
-                        }}
-                        className="w-full border border-gray-300 rounded px-3 py-1 text-sm"
-                        placeholder={`Secenek ${idx + 1}`}
-                      />
+                      <div key={idx} className="flex gap-1">
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => {
+                            const newOptions = [...(selectedNode.data.options || ['', ''])]
+                            newOptions[idx] = e.target.value
+                            updateNodeData({ options: newOptions })
+                          }}
+                          className="flex-1 border border-gray-300 rounded px-3 py-1 text-sm"
+                          placeholder={`Secenek ${idx + 1}`}
+                        />
+                        {(selectedNode.data.options?.length || 0) > 2 && (
+                          <button
+                            onClick={() => {
+                              const newOptions = selectedNode.data.options?.filter((_, i) => i !== idx) || []
+                              updateNodeData({ options: newOptions })
+                            }}
+                            className="text-red-500 hover:text-red-700 px-2"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
                     ))}
                     <button
                       onClick={() => updateNodeData({ options: [...(selectedNode.data.options || []), ''] })}
@@ -638,6 +739,79 @@ export default function QuestionDesignerPage() {
                       + Secenek Ekle
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Province selection info */}
+              {selectedNode.data.questionType === 'province' && (
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>Il Secimi:</strong> Sofor 81 il arasından secim yapabilir.
+                    Cevap olarak secilen ilin adi doner.
+                  </p>
+                </div>
+              )}
+
+              {/* City route (from-to) */}
+              {selectedNode.data.questionType === 'city_route' && (
+                <div className="bg-purple-50 rounded-lg p-3">
+                  <p className="text-sm text-purple-800 mb-2">
+                    <strong>Sehirler Arasi Guzergah:</strong> Sofor nereden nereye tasima yaptigini secer.
+                  </p>
+                  <p className="text-xs text-purple-600">
+                    Cevap formati: "Istanbul → Ankara" seklinde doner.
+                    Bu sayede iller arasi fiyat bilgisi toplanabilir.
+                  </p>
+                </div>
+              )}
+
+              {/* Price input info */}
+              {selectedNode.data.questionType === 'price' && (
+                <div className="bg-green-50 rounded-lg p-3">
+                  <p className="text-sm text-green-800">
+                    <strong>Fiyat Girisi:</strong> Sofor TL cinsinden fiyat girer.
+                    Sayi klavyesi acilir. Ornek: 15000
+                  </p>
+                </div>
+              )}
+
+              {/* Number input info */}
+              {selectedNode.data.questionType === 'number' && (
+                <div className="bg-orange-50 rounded-lg p-3">
+                  <p className="text-sm text-orange-800">
+                    <strong>Sayi Girisi:</strong> Sofor sayi deger girer.
+                    Ornek: Kac ton yuk tasiyorsunuz?
+                  </p>
+                </div>
+              )}
+
+              {/* Date input info */}
+              {selectedNode.data.questionType === 'date' && (
+                <div className="bg-indigo-50 rounded-lg p-3">
+                  <p className="text-sm text-indigo-800">
+                    <strong>Tarih Secimi:</strong> Sofor takvimden tarih secer.
+                    Ornek: Ne zaman musait olursunuz?
+                  </p>
+                </div>
+              )}
+
+              {/* Rating input info */}
+              {selectedNode.data.questionType === 'rating' && (
+                <div className="bg-yellow-50 rounded-lg p-3">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Puan (1-5):</strong> Sofor 1-5 arasi yildiz puani verir.
+                    Ornek: Hizmetimizi nasil degerlendirirsiniz?
+                  </p>
+                </div>
+              )}
+
+              {/* Text input info */}
+              {selectedNode.data.questionType === 'text' && (
+                <div className="bg-gray-100 rounded-lg p-3">
+                  <p className="text-sm text-gray-700">
+                    <strong>Serbest Metin:</strong> Sofor istedigini yazabilir.
+                    Ornek: Eklemek istediginiz bir sey var mi?
+                  </p>
                 </div>
               )}
 

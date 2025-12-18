@@ -128,14 +128,38 @@ interface FollowUpQuestion {
 }
 
 const questionTypes = [
-  { id: 'yes_no', name: 'Evet/Hayir' },
-  { id: 'multiple_choice', name: 'Coktan Secmeli' },
-  { id: 'text', name: 'Metin' },
-  { id: 'number', name: 'Sayi' },
-  { id: 'price', name: 'Fiyat (TL)' },
-  { id: 'province', name: 'Il Secimi' },
-  { id: 'province_district', name: 'Il-Ilce Secimi' },
+  { id: 'yes_no', name: 'Evet/Hayir', icon: '✅' },
+  { id: 'multiple_choice', name: 'Coktan Secmeli', icon: '📋' },
+  { id: 'text', name: 'Metin', icon: '📝' },
+  { id: 'number', name: 'Sayi', icon: '🔢' },
+  { id: 'price', name: 'Fiyat (TL)', icon: '💰' },
+  { id: 'province', name: 'Il Secimi', icon: '🏙️' },
+  { id: 'province_district', name: 'Il-Ilce Secimi', icon: '📍' },
+  { id: 'city_route', name: 'Sehirler Arasi', icon: '🛣️' },
+  { id: 'date', name: 'Tarih', icon: '📅' },
+  { id: 'rating', name: 'Puan', icon: '⭐' },
 ]
+
+// Soru kategorileri - cevaplari filtrelemek icin
+const questionCategories = [
+  { id: 'price', name: 'Fiyat/Ucret', keywords: ['fiyat', 'ucret', 'para', 'tl', 'lira', 'odeme', 'maas', 'kazanc'] },
+  { id: 'location', name: 'Konum/Guzergah', keywords: ['il', 'sehir', 'konum', 'nerede', 'guzergah', 'yol', 'rota', 'nerden', 'nereye'] },
+  { id: 'availability', name: 'Musaitlik', keywords: ['musait', 'bos', 'yuk', 'sefer', 'is', 'uygun'] },
+  { id: 'vehicle', name: 'Arac/Dorse', keywords: ['arac', 'tir', 'kamyon', 'dorse', 'plaka', 'arac'] },
+  { id: 'time', name: 'Zaman/Tarih', keywords: ['saat', 'gun', 'tarih', 'zaman', 'ne zaman', 'kac gun'] },
+  { id: 'other', name: 'Diger', keywords: [] },
+]
+
+// Sorunun kategorisini belirle
+function getQuestionCategory(questionText: string): string {
+  const lowerText = questionText.toLowerCase()
+  for (const cat of questionCategories) {
+    if (cat.keywords.some(keyword => lowerText.includes(keyword))) {
+      return cat.id
+    }
+  }
+  return 'other'
+}
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'error' | 'info' }> = {
   draft: { label: 'Taslak', variant: 'default' },
@@ -169,6 +193,8 @@ export default function QuestionsPage() {
   const [historySearch, setHistorySearch] = useState('')
   const [historyFilterDriver, setHistoryFilterDriver] = useState('all')
   const [historyFilterDate, setHistoryFilterDate] = useState('all')
+  const [historyFilterType, setHistoryFilterType] = useState('all')
+  const [historyFilterCategory, setHistoryFilterCategory] = useState('all')
 
   // Queries
   const { data: pendingData, isLoading: pendingLoading } = useQuery({
@@ -309,9 +335,16 @@ export default function QuestionsPage() {
           if (answerDate < monthAgo) return false
         }
       }
+      // Soru tipi filtresi
+      if (historyFilterType !== 'all' && q.question_type !== historyFilterType) return false
+      // Kategori filtresi
+      if (historyFilterCategory !== 'all') {
+        const questionCategory = getQuestionCategory(q.question_text)
+        if (questionCategory !== historyFilterCategory) return false
+      }
       return true
     })
-  }, [answeredQuestions, historySearch, historyFilterDriver, historyFilterDate])
+  }, [answeredQuestions, historySearch, historyFilterDriver, historyFilterDate, historyFilterType, historyFilterCategory])
 
   const uniqueDriversInHistory = useMemo(() => {
     return Array.from(
@@ -507,39 +540,69 @@ export default function QuestionsPage() {
 
                 {/* Filters */}
                 <div className="bg-gray-50 rounded-xl p-4 border">
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="flex-1">
-                      <SearchInput
-                        value={historySearch}
-                        onChange={setHistorySearch}
-                        placeholder="Soru, cevap veya sofor ara..."
-                      />
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                      <div className="flex-1">
+                        <SearchInput
+                          value={historySearch}
+                          onChange={setHistorySearch}
+                          placeholder="Soru, cevap veya sofor ara..."
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Select
+                          value={historyFilterDriver}
+                          onChange={setHistoryFilterDriver}
+                          options={[
+                            { value: 'all', label: 'Tum Soforler' },
+                            ...uniqueDriversInHistory.map(d => ({
+                              value: d.id,
+                              label: `${d.name} ${d.surname}`
+                            }))
+                          ]}
+                          className="w-48"
+                        />
+                        <Select
+                          value={historyFilterDate}
+                          onChange={setHistoryFilterDate}
+                          options={[
+                            { value: 'all', label: 'Tum Zamanlar' },
+                            { value: 'today', label: 'Bugun' },
+                            { value: 'week', label: 'Son 7 Gun' },
+                            { value: 'month', label: 'Son 30 Gun' },
+                          ]}
+                          className="w-40"
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-3">
+                    {/* Soru Tipi ve Kategori Filtreleri */}
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <span className="text-sm text-gray-600 font-medium">Filtrele:</span>
                       <Select
-                        value={historyFilterDriver}
-                        onChange={setHistoryFilterDriver}
+                        value={historyFilterType}
+                        onChange={setHistoryFilterType}
                         options={[
-                          { value: 'all', label: 'Tum Soforler' },
-                          ...uniqueDriversInHistory.map(d => ({
-                            value: d.id,
-                            label: `${d.name} ${d.surname}`
+                          { value: 'all', label: 'Tum Soru Tipleri' },
+                          ...questionTypes.map(t => ({
+                            value: t.id,
+                            label: `${t.icon} ${t.name}`
                           }))
                         ]}
                         className="w-48"
                       />
                       <Select
-                        value={historyFilterDate}
-                        onChange={setHistoryFilterDate}
+                        value={historyFilterCategory}
+                        onChange={setHistoryFilterCategory}
                         options={[
-                          { value: 'all', label: 'Tum Zamanlar' },
-                          { value: 'today', label: 'Bugun' },
-                          { value: 'week', label: 'Son 7 Gun' },
-                          { value: 'month', label: 'Son 30 Gun' },
+                          { value: 'all', label: 'Tum Kategoriler' },
+                          ...questionCategories.map(c => ({
+                            value: c.id,
+                            label: c.name
+                          }))
                         ]}
-                        className="w-40"
+                        className="w-44"
                       />
-                      {(historySearch || historyFilterDriver !== 'all' || historyFilterDate !== 'all') && (
+                      {(historySearch || historyFilterDriver !== 'all' || historyFilterDate !== 'all' || historyFilterType !== 'all' || historyFilterCategory !== 'all') && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -547,6 +610,8 @@ export default function QuestionsPage() {
                             setHistorySearch('')
                             setHistoryFilterDriver('all')
                             setHistoryFilterDate('all')
+                            setHistoryFilterType('all')
+                            setHistoryFilterCategory('all')
                           }}
                         >
                           Temizle
