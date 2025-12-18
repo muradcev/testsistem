@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"nakliyeo-mobil/internal/data"
+	"nakliyeo-mobil/internal/logger"
 	"nakliyeo-mobil/internal/models"
 	"nakliyeo-mobil/internal/repository"
 
@@ -12,11 +15,67 @@ import (
 )
 
 type TransportService struct {
-	repo *repository.TransportRepository
+	repo           *repository.TransportRepository
+	routingService *RoutingService
 }
 
-func NewTransportService(repo *repository.TransportRepository) *TransportService {
-	return &TransportService{repo: repo}
+func NewTransportService(repo *repository.TransportRepository, routingService *RoutingService) *TransportService {
+	return &TransportService{
+		repo:           repo,
+		routingService: routingService,
+	}
+}
+
+// calculateDistanceForProvinces - İki il arasındaki OSRM mesafesini hesapla
+func (s *TransportService) calculateDistanceForProvinces(ctx context.Context, originProvince, destProvince string) *int {
+	if s.routingService == nil {
+		logger.Debug("RoutingService not available, skipping distance calculation")
+		return nil
+	}
+
+	if originProvince == "" || destProvince == "" {
+		return nil
+	}
+
+	// İl adlarını normalize et
+	origin := data.NormalizeProvinceName(originProvince)
+	dest := data.NormalizeProvinceName(destProvince)
+
+	// Koordinatları al
+	originCoord, originExists := data.GetProvinceCoordinate(origin)
+	destCoord, destExists := data.GetProvinceCoordinate(dest)
+
+	if !originExists {
+		logger.Debug("Origin province not found in coordinates map: " + originProvince)
+		return nil
+	}
+
+	if !destExists {
+		logger.Debug("Destination province not found in coordinates map: " + destProvince)
+		return nil
+	}
+
+	// OSRM ile karayolu mesafesi hesapla (fallback ile)
+	distance, isOSRM, err := s.routingService.CalculateRouteDistanceWithFallback(
+		ctx,
+		originCoord.Latitude, originCoord.Longitude,
+		destCoord.Latitude, destCoord.Longitude,
+	)
+
+	if err != nil {
+		logger.Warn("Failed to calculate distance: " + err.Error())
+		return nil
+	}
+
+	distanceInt := int(distance)
+
+	if isOSRM {
+		logger.Debug(fmt.Sprintf("OSRM distance: %s -> %s = %d km", originProvince, destProvince, distanceInt))
+	} else {
+		logger.Debug(fmt.Sprintf("Haversine distance: %s -> %s = %d km (OSRM unavailable)", originProvince, destProvince, distanceInt))
+	}
+
+	return &distanceInt
 }
 
 // Create - Yeni taşıma kaydı oluştur
@@ -55,9 +114,12 @@ func (s *TransportService) Create(ctx context.Context, req *models.CreateTranspo
 		record.CargoWeight = &weight
 	}
 
-	// Mesafe
-	if req.DistanceKm != nil {
+	// Mesafe - Manuel girilmişse onu kullan, yoksa OSRM ile hesapla
+	if req.DistanceKm != nil && *req.DistanceKm > 0 {
 		record.DistanceKm = req.DistanceKm
+	} else if req.OriginProvince != nil && req.DestinationProvince != nil && *req.OriginProvince != "" && *req.DestinationProvince != "" {
+		// Otomatik OSRM mesafe hesaplama
+		record.DistanceKm = s.calculateDistanceForProvinces(ctx, *req.OriginProvince, *req.DestinationProvince)
 	}
 
 	// Para birimi
@@ -129,9 +191,12 @@ func (s *TransportService) Update(ctx context.Context, id uuid.UUID, req *models
 		record.CargoWeight = &weight
 	}
 
-	// Mesafe
-	if req.DistanceKm != nil {
+	// Mesafe - Manuel girilmişse onu kullan, yoksa OSRM ile hesapla
+	if req.DistanceKm != nil && *req.DistanceKm > 0 {
 		record.DistanceKm = req.DistanceKm
+	} else if req.OriginProvince != nil && req.DestinationProvince != nil && *req.OriginProvince != "" && *req.DestinationProvince != "" {
+		// Otomatik OSRM mesafe hesaplama (güncelleme sırasında da)
+		record.DistanceKm = s.calculateDistanceForProvinces(ctx, *req.OriginProvince, *req.DestinationProvince)
 	}
 
 	// Para birimi
@@ -163,4 +228,10 @@ func (s *TransportService) GetPricesByRoute(ctx context.Context, origin, destina
 		limit = 20
 	}
 	return s.repo.GetPricesByRoute(ctx, origin, destination, limit)
+}
+
+// CalculateDistance - Dışarıdan mesafe hesaplama (API için)
+func (s *TransportService) CalculateDistance(ctx context.Context, originProvince, destProvince string) (*int, error) {
+	distance := s.calculateDistanceForProvinces(ctx, originProvince, destProvince)
+	return distance, nil
 }

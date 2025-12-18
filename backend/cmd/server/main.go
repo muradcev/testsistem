@@ -83,8 +83,8 @@ func main() {
 	surveyService := service.NewSurveyService(surveyRepo)
 	adminService := service.NewAdminService(adminRepo, settingsRepo)
 	notificationService := service.NewNotificationService(os.Getenv("FCM_CREDENTIALS"))
-	routingService := service.NewRoutingService(os.Getenv("OSRM_URL"))
-	transportService := service.NewTransportService(transportRepo)
+	routingService := service.NewRoutingServiceWithRedis(os.Getenv("OSRM_URL"), redis.Client)
+	transportService := service.NewTransportService(transportRepo, routingService)
 	geocodingService := service.NewGeocodingService()
 	// SMS servisi kaldırıldı
 
@@ -450,6 +450,10 @@ func main() {
 		adminGroup.GET("/routing/distance", routingHandler.GetRouteDistance)
 		adminGroup.GET("/routing/distance-fallback", routingHandler.GetRouteDistanceWithFallback)
 		adminGroup.GET("/routing/status", routingHandler.CheckOSRMStatus)
+		adminGroup.GET("/routing/cache-stats", routingHandler.GetCacheStats)
+		adminGroup.DELETE("/routing/cache", routingHandler.ClearCache)
+		adminGroup.POST("/routing/batch", routingHandler.GetBatchDistances)
+		adminGroup.POST("/routing/province-matrix", routingHandler.GetProvinceDistanceMatrix)
 	}
 
 	// WebSocket endpoint

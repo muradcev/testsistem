@@ -548,3 +548,37 @@ export const questionFlowTemplatesApi = {
     api.post(`/admin/question-templates/${id}/duplicate`, { name }),
   incrementUsage: (id: string) => api.post(`/admin/question-templates/${id}/use`),
 }
+
+// Routing (OSRM - Karayolu Mesafe Hesaplama)
+export const routingApi = {
+  // İki nokta arası mesafe
+  getDistance: (fromLat: number, fromLon: number, toLat: number, toLon: number) =>
+    api.get('/admin/routing/distance', {
+      params: { from_lat: fromLat, from_lon: fromLon, to_lat: toLat, to_lon: toLon },
+    }),
+
+  // Mesafe (fallback ile)
+  getDistanceWithFallback: (fromLat: number, fromLon: number, toLat: number, toLon: number) =>
+    api.get('/admin/routing/distance-fallback', {
+      params: { from_lat: fromLat, from_lon: fromLon, to_lat: toLat, to_lon: toLon },
+    }),
+
+  // OSRM durumu
+  getStatus: () => api.get('/admin/routing/status'),
+
+  // Cache istatistikleri
+  getCacheStats: () => api.get('/admin/routing/cache-stats'),
+
+  // Cache temizle
+  clearCache: () => api.delete('/admin/routing/cache'),
+
+  // Toplu mesafe hesaplama
+  getBatchDistances: (
+    origins: Array<{ latitude: number; longitude: number; name?: string }>,
+    destinations: Array<{ latitude: number; longitude: number; name?: string }>
+  ) => api.post('/admin/routing/batch', { origins, destinations }),
+
+  // İl bazlı mesafe matrisi
+  getProvinceMatrix: (provinces: string[]) =>
+    api.post('/admin/routing/province-matrix', { provinces }),
+}

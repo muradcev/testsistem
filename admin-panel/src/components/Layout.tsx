@@ -29,6 +29,7 @@ import {
   MegaphoneIcon,
   CurrencyDollarIcon,
   GlobeAltIcon,
+  CalculatorIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -86,6 +87,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Analitik', href: '/analytics', icon: ChartBarIcon },
       { name: 'Fiyat Raporları', href: '/transport-records', icon: CurrencyDollarIcon },
+      { name: 'Mesafe Hesaplama', href: '/distance-calculator', icon: CalculatorIcon },
       { name: 'Raporlar', href: '/reports', icon: DocumentChartBarIcon },
       { name: 'Hata Takip', href: '/error-monitoring', icon: BugAntIcon },
     ],
