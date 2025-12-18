@@ -12,9 +12,12 @@ interface LiveLocation {
   latitude: number
   longitude: number
   speed: number
-  status: string
+  current_status: string
   updated_at: string
   province?: string
+  district?: string
+  is_moving?: boolean
+  activity_type?: string
   phone_in_use?: boolean
 }
 
@@ -48,7 +51,7 @@ export default function LiveTrackingPage() {
     queryFn: () => driversApi.getAll({ limit: 500 }),
   })
 
-  const liveLocations: LiveLocation[] = liveData?.data?.drivers || []
+  const liveLocations: LiveLocation[] = liveData?.data?.locations || []
   const drivers: Driver[] = driversData?.data?.drivers || []
 
   // Şoför bilgilerini birleştir
@@ -271,8 +274,10 @@ export default function LiveTrackingPage() {
                         >
                           {loc.driver_name} {loc.driver_surname}
                         </Link>
-                        {loc.province && (
-                          <div className="text-xs text-gray-500">{loc.province}</div>
+                        {(loc.province || loc.district) && (
+                          <div className="text-xs text-gray-500">
+                            {loc.province}{loc.district ? `, ${loc.district}` : ''}
+                          </div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -297,7 +302,7 @@ export default function LiveTrackingPage() {
                         </a>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(loc.status)}
+                        {getStatusBadge(loc.current_status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {loc.phone_in_use ? (
