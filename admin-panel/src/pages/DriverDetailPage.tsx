@@ -1124,20 +1124,67 @@ export default function DriverDetailPage() {
             {/* Communication Tab */}
             <TabsContent value="communication">
               <div className="space-y-6">
+                {/* Feature Flag Warnings */}
+                {(!driver.call_log_enabled || !driver.contacts_enabled) && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-amber-800">Ozellik Kisitlamalari</h4>
+                        <p className="text-sm text-amber-700 mt-1">
+                          Bu surucu icin asagidaki ozellikler <strong>kapali</strong> durumda.
+                          Senkronizasyon calisabilmesi icin Ayarlar sekmesinden ozellikleri acmaniz gerekir:
+                        </p>
+                        <ul className="text-sm text-amber-700 mt-2 space-y-1">
+                          {!driver.call_log_enabled && (
+                            <li className="flex items-center gap-2">
+                              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                              Arama Gecmisi Erisimi: <strong>Kapali</strong>
+                            </li>
+                          )}
+                          {!driver.contacts_enabled && (
+                            <li className="flex items-center gap-2">
+                              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                              Rehber Erisimi: <strong>Kapali</strong>
+                            </li>
+                          )}
+                        </ul>
+                        <Link
+                          to="#"
+                          onClick={() => setActiveTab('settings')}
+                          className="inline-flex items-center gap-1 text-sm text-amber-800 font-medium mt-2 hover:underline"
+                        >
+                          <Cog6ToothIcon className="h-4 w-4" />
+                          Ayarlara Git
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Call Logs */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
                       <PhoneIcon className="h-5 w-5" />
                       Arama Gecmisi ({callLogs.length})
+                      {!driver.call_log_enabled && (
+                        <Badge variant="error" size="sm">Ozellik Kapali</Badge>
+                      )}
                     </CardTitle>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => requestCallLogSyncMutation.mutate()}
+                        onClick={() => {
+                          if (!driver.call_log_enabled) {
+                            toast.error('Arama gecmisi ozelligi bu surucu icin kapali. Ayarlar sekmesinden acin.')
+                            return
+                          }
+                          requestCallLogSyncMutation.mutate()
+                        }}
                         disabled={requestCallLogSyncMutation.isPending}
-                        className="text-blue-600"
+                        className={driver.call_log_enabled ? "text-blue-600" : "text-gray-400"}
                       >
                         {requestCallLogSyncMutation.isPending ? <LoadingSpinner size="sm" /> : '🔄 Senkronize Et'}
                       </Button>
@@ -1217,14 +1264,23 @@ export default function DriverDetailPage() {
                     <CardTitle className="flex items-center gap-2">
                       <UserGroupIcon className="h-5 w-5" />
                       Rehber ({contacts.length})
+                      {!driver.contacts_enabled && (
+                        <Badge variant="error" size="sm">Ozellik Kapali</Badge>
+                      )}
                     </CardTitle>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => requestContactSyncMutation.mutate()}
+                        onClick={() => {
+                          if (!driver.contacts_enabled) {
+                            toast.error('Rehber ozelligi bu surucu icin kapali. Ayarlar sekmesinden acin.')
+                            return
+                          }
+                          requestContactSyncMutation.mutate()
+                        }}
                         disabled={requestContactSyncMutation.isPending}
-                        className="text-blue-600"
+                        className={driver.contacts_enabled ? "text-blue-600" : "text-gray-400"}
                       >
                         {requestContactSyncMutation.isPending ? <LoadingSpinner size="sm" /> : '🔄 Senkronize Et'}
                       </Button>
