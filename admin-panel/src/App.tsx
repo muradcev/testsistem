@@ -21,6 +21,7 @@ import NotificationTemplatesPage from './pages/NotificationTemplatesPage'
 import ReportsPage from './pages/ReportsPage'
 import ErrorMonitoringPage from './pages/ErrorMonitoringPage'
 import StopsPage from './pages/StopsPage'
+import MapViewPage from './pages/MapViewPage'
 import AuditLogsPage from './pages/AuditLogsPage'
 import CallLogsPage from './pages/CallLogsPage'
 import ContactsPage from './pages/ContactsPage'
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="error-monitoring" element={<ErrorMonitoringPage />} />
         <Route path="stops" element={<StopsPage />} />
+        <Route path="map-view" element={<MapViewPage />} />
         <Route path="surveys" element={<SurveysPage />} />
         <Route path="questions" element={<QuestionsPage />} />
         <Route path="question-designer" element={<QuestionDesignerPage />} />

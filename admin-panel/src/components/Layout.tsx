@@ -28,6 +28,7 @@ import {
   RectangleStackIcon,
   MegaphoneIcon,
   CurrencyDollarIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -63,6 +64,7 @@ const navigationGroups: NavGroup[] = [
       { name: 'Canlı Takip', href: '/live-tracking', icon: SignalIcon },
       { name: 'Isı Haritası', href: '/heat-map', icon: FireIcon },
       { name: 'Durak Yönetimi', href: '/stops', icon: TruckIcon },
+      { name: 'Harita Görünümü', href: '/map-view', icon: GlobeAltIcon },
     ],
   },
   {

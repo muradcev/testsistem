@@ -150,10 +150,17 @@ const locationTypeIcons: Record<string, string> = {
   unknown: '❓',
 }
 
-// Grid boyutu (yaklaşık 500m) - 500 metre içindeki duraklar birleştirilir
-const CLUSTER_GRID_SIZE = 0.0045
+// Mesafe seçenekleri (derece cinsinden, yaklaşık metre karşılıkları)
+const CLUSTER_DISTANCES = [
+  { value: 0.001, label: '100m', meters: 100 },
+  { value: 0.002, label: '200m', meters: 200 },
+  { value: 0.0045, label: '500m', meters: 500 },
+  { value: 0.009, label: '1km', meters: 1000 },
+  { value: 0.018, label: '2km', meters: 2000 },
+  { value: 0.045, label: '5km', meters: 5000 },
+]
 
-function clusterStops(stops: Stop[]): ClusteredStop[] {
+function clusterStops(stops: Stop[], gridSize: number = 0.0045): ClusteredStop[] {
   const grid: Record<string, ClusteredStop> = {}
 
   // Filter out stops with invalid coordinates
@@ -163,14 +170,14 @@ function clusterStops(stops: Stop[]): ClusteredStop[] {
   )
 
   validStops.forEach((stop) => {
-    const gridLat = Math.floor(stop.latitude / CLUSTER_GRID_SIZE) * CLUSTER_GRID_SIZE
-    const gridLng = Math.floor(stop.longitude / CLUSTER_GRID_SIZE) * CLUSTER_GRID_SIZE
-    const key = `${gridLat.toFixed(4)}_${gridLng.toFixed(4)}`
+    const gridLat = Math.floor(stop.latitude / gridSize) * gridSize
+    const gridLng = Math.floor(stop.longitude / gridSize) * gridSize
+    const key = `${gridLat.toFixed(5)}_${gridLng.toFixed(5)}`
 
     if (!grid[key]) {
       grid[key] = {
-        lat: gridLat + CLUSTER_GRID_SIZE / 2,
-        lng: gridLng + CLUSTER_GRID_SIZE / 2,
+        lat: gridLat + gridSize / 2,
+        lng: gridLng + gridSize / 2,
         stops: [],
         uniqueDrivers: [],
         totalDuration: 0,
@@ -220,6 +227,7 @@ export default function StopsPage() {
   const [stopName, setStopName] = useState('')
   const [selectedDriverId, setSelectedDriverId] = useState<string>('')
   const [showDetectModal, setShowDetectModal] = useState(false)
+  const [clusterDistance, setClusterDistance] = useState(0.0045) // Default 500m
 
   // Get location types
   const { data: typesData, error: typesError } = useQuery({
@@ -400,7 +408,7 @@ export default function StopsPage() {
   const homesTotal = homesData?.data?.total || 0
 
   // Kümelenmiş duraklar
-  const clusteredStops = useMemo(() => clusterStops(stops), [stops])
+  const clusteredStops = useMemo(() => clusterStops(stops, clusterDistance), [stops, clusterDistance])
 
   // Filtrelenmiş kümeler (arama)
   const filteredClusters = useMemo(() => {
@@ -521,161 +529,259 @@ export default function StopsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Durak Yönetimi</h1>
-          <p className="text-gray-500">Şoför duraklarını analiz edin ve yönetin</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Durak Yönetimi</h1>
+          <p className="text-sm sm:text-base text-gray-500">Şoför duraklarını analiz edin ve yönetin</p>
         </div>
         <button
           onClick={() => setShowDetectModal(true)}
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+          className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm sm:text-base"
         >
           <PlayIcon className="h-5 w-5" />
-          Durakları Tespit Et
+          <span className="hidden sm:inline">Durakları Tespit Et</span>
+          <span className="sm:hidden">Tespit Et</span>
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <MapPinIcon className="h-5 w-5 text-blue-600" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg flex-shrink-0">
+              <MapPinIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Toplam Durak</p>
-              <p className="text-xl font-bold text-gray-900">{stats.totalStops}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <UserGroupIcon className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Sürücü Sayısı</p>
-              <p className="text-xl font-bold text-gray-900">{stats.uniqueDrivers}</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-gray-500 truncate">Toplam Durak</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">{stats.totalStops}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <ChartBarIcon className="h-5 w-5 text-purple-600" />
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg flex-shrink-0">
+              <UserGroupIcon className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Küme Sayısı</p>
-              <p className="text-xl font-bold text-gray-900">{stats.clusters}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <TruckIcon className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Ortak Noktalar</p>
-              <p className="text-xl font-bold text-gray-900">{stats.hotSpots}</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-gray-500 truncate">Sürücü Sayısı</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">{stats.uniqueDrivers}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <ClockIcon className="h-5 w-5 text-yellow-600" />
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg flex-shrink-0">
+              <ChartBarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Ort. Bekleme</p>
-              <p className="text-xl font-bold text-gray-900">{formatDuration(stats.avgDuration)}</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-gray-500 truncate">Küme Sayısı</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">{stats.clusters}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg flex-shrink-0">
+              <TruckIcon className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-gray-500 truncate">Ortak Noktalar</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">{stats.hotSpots}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 col-span-2 sm:col-span-1">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-yellow-100 rounded-lg flex-shrink-0">
+              <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-gray-500 truncate">Ort. Bekleme</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">{formatDuration(stats.avgDuration)}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-4 border-b">
-        <button
-          onClick={() => { setFilter('clusters'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
-          className={`pb-2 px-4 font-medium flex items-center gap-1 ${
-            filter === 'clusters'
-              ? 'text-primary-600 border-b-2 border-primary-600'
-              : 'text-gray-500'
-          }`}
-        >
-          <ChartBarIcon className="h-4 w-4" />
-          Kümelenmiş ({clusteredStops.length})
-        </button>
-        <button
-          onClick={() => { setFilter('uncategorized'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
-          className={`pb-2 px-4 font-medium ${
-            filter === 'uncategorized'
-              ? 'text-primary-600 border-b-2 border-primary-600'
-              : 'text-gray-500'
-          }`}
-        >
-          Kategorize Edilmemiş
-        </button>
-        <button
-          onClick={() => { setFilter('all'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
-          className={`pb-2 px-4 font-medium ${
-            filter === 'all'
-              ? 'text-primary-600 border-b-2 border-primary-600'
-              : 'text-gray-500'
-          }`}
-        >
-          Tüm Duraklar
-        </button>
-        <button
-          onClick={() => { setFilter('homes'); setSelectedCluster(null); setSelectedStop(null); }}
-          className={`pb-2 px-4 font-medium flex items-center gap-1 ${
-            filter === 'homes'
-              ? 'text-primary-600 border-b-2 border-primary-600'
-              : 'text-gray-500'
-          }`}
-        >
-          <HomeIcon className="h-4 w-4" />
-          Şoför Evleri ({homesTotal})
-        </button>
-
-        {filter === 'all' && (
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="ml-auto border border-gray-300 rounded-lg px-3 py-1"
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 border-b pb-2 sm:pb-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <button
+            onClick={() => { setFilter('clusters'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
+            className={`pb-2 px-3 sm:px-4 font-medium flex items-center gap-1 text-sm sm:text-base ${
+              filter === 'clusters'
+                ? 'text-primary-600 border-b-2 border-primary-600'
+                : 'text-gray-500'
+            }`}
           >
-            <option value="">Tüm Tipler</option>
-            {locationTypes.map((type) => (
-              <option key={type.value} value={type.value}>
-                {locationTypeIcons[type.value]} {type.label}
-              </option>
-            ))}
-          </select>
-        )}
+            <ChartBarIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Kümelenmiş</span>
+            <span className="sm:hidden">Kümeler</span>
+            <span className="text-xs">({clusteredStops.length})</span>
+          </button>
+          <button
+            onClick={() => { setFilter('uncategorized'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
+            className={`pb-2 px-3 sm:px-4 font-medium text-sm sm:text-base ${
+              filter === 'uncategorized'
+                ? 'text-primary-600 border-b-2 border-primary-600'
+                : 'text-gray-500'
+            }`}
+          >
+            <span className="hidden sm:inline">Kategorize Edilmemiş</span>
+            <span className="sm:hidden">Kategorisiz</span>
+          </button>
+          <button
+            onClick={() => { setFilter('all'); setSelectedType(''); setSelectedCluster(null); setSelectedStop(null); }}
+            className={`pb-2 px-3 sm:px-4 font-medium text-sm sm:text-base ${
+              filter === 'all'
+                ? 'text-primary-600 border-b-2 border-primary-600'
+                : 'text-gray-500'
+            }`}
+          >
+            <span className="hidden sm:inline">Tüm Duraklar</span>
+            <span className="sm:hidden">Tümü</span>
+          </button>
+          <button
+            onClick={() => { setFilter('homes'); setSelectedCluster(null); setSelectedStop(null); }}
+            className={`pb-2 px-3 sm:px-4 font-medium flex items-center gap-1 text-sm sm:text-base ${
+              filter === 'homes'
+                ? 'text-primary-600 border-b-2 border-primary-600'
+                : 'text-gray-500'
+            }`}
+          >
+            <HomeIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Şoför Evleri</span>
+            <span className="sm:hidden">Evler</span>
+            <span className="text-xs">({homesTotal})</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 sm:ml-auto">
+          {filter === 'clusters' && (
+            <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+              <span className="text-xs text-gray-500 whitespace-nowrap">Mesafe:</span>
+              <select
+                value={clusterDistance}
+                onChange={(e) => setClusterDistance(parseFloat(e.target.value))}
+                className="text-sm border-0 bg-transparent font-medium text-primary-600 focus:ring-0 cursor-pointer"
+              >
+                {CLUSTER_DISTANCES.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {filter === 'all' && (
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-1 text-sm"
+            >
+              <option value="">Tüm Tipler</option>
+              {locationTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {locationTypeIcons[type.value]} {type.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Map - Mobile first */}
+        <div className="lg:hidden bg-white rounded-lg shadow overflow-hidden">
+          <div className="h-[250px] sm:h-[350px]">
+            <MapContainer
+              center={defaultCenter}
+              zoom={6}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <MapController center={mapCenter} zoom={mapZoom} />
+
+              {filter === 'homes' ? (
+                homes.filter(home => home.latitude != null && home.longitude != null).map((home) => (
+                  <div key={home.id}>
+                    <Marker
+                      position={[home.latitude, home.longitude]}
+                      icon={homeIcon}
+                    >
+                      <Popup>
+                        <div className="text-sm">
+                          <strong>{home.driver_name || 'Şoför'}</strong>
+                          <br />
+                          <span className="text-lg">🏠</span> {home.name || 'Ev'}
+                        </div>
+                      </Popup>
+                    </Marker>
+                    <Circle
+                      center={[home.latitude, home.longitude]}
+                      radius={home.radius || 500}
+                      pathOptions={{
+                        color: home.is_active ? '#22c55e' : '#ef4444',
+                        fillColor: home.is_active ? '#22c55e' : '#ef4444',
+                        fillOpacity: 0.2,
+                      }}
+                    />
+                  </div>
+                ))
+              ) : filter === 'clusters' ? (
+                filteredClusters.filter(c => c.lat != null && c.lng != null).map((cluster, index) => (
+                  <Marker
+                    key={index}
+                    position={[cluster.lat, cluster.lng]}
+                    icon={selectedCluster === cluster
+                      ? selectedIcon
+                      : createClusterIcon(cluster.stops.length, cluster.uniqueDrivers.length)
+                    }
+                    eventHandlers={{
+                      click: () => handleClusterSelect(cluster),
+                    }}
+                  />
+                ))
+              ) : (
+                stops.filter(stop => stop.latitude != null && stop.longitude != null).map((stop) => (
+                  <Marker
+                    key={stop.id}
+                    position={[stop.latitude, stop.longitude]}
+                    icon={selectedStop?.id === stop.id ? selectedIcon : new L.Icon.Default()}
+                    eventHandlers={{
+                      click: () => handleStopSelect(stop),
+                    }}
+                  />
+                ))
+              )}
+            </MapContainer>
+          </div>
+        </div>
+
         {/* List Panel */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-4 border-b">
-            <h2 className="font-semibold mb-3">
+        <div className="bg-white rounded-lg shadow overflow-hidden order-2 lg:order-1">
+          <div className="p-3 sm:p-4 border-b">
+            <h2 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">
               {filter === 'homes' ? 'Şoför Ev Adresleri' : filter === 'clusters' ? 'Ortak Durak Noktaları' : 'Duraklar'}
             </h2>
             {filter === 'clusters' && (
               <div className="relative">
-                <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <MagnifyingGlassIcon className="h-4 w-4 sm:h-5 sm:w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="İl, ilçe veya sürücü ara..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full pl-9 sm:pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                 />
               </div>
             )}
           </div>
-          <div className="max-h-[600px] overflow-y-auto">
+          <div className="max-h-[400px] sm:max-h-[500px] lg:max-h-[600px] overflow-y-auto">
             {(isLoading || (filter === 'homes' && homesLoading)) ? (
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -822,8 +928,8 @@ export default function StopsPage() {
           </div>
         </div>
 
-        {/* Map */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow overflow-hidden">
+        {/* Map - Desktop only */}
+        <div className="hidden lg:block lg:col-span-2 bg-white rounded-lg shadow overflow-hidden order-1 lg:order-2">
           <div className="p-4 border-b flex items-center justify-between">
             <h2 className="font-semibold">Harita</h2>
             {(selectedStop || selectedCluster) && (
@@ -982,13 +1088,13 @@ export default function StopsPage() {
 
       {/* Cluster Detail Panel */}
       {selectedCluster && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <MapPinIcon className="h-5 w-5 text-blue-600" />
-              {selectedCluster.province}, {selectedCluster.district} - Detaylı Analiz
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+            <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <MapPinIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+              <span className="truncate">{selectedCluster.province}, {selectedCluster.district} - Detaylı Analiz</span>
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <select
                 onChange={(e) => {
                   if (e.target.value && confirm(`Bu kümedeki ${selectedCluster.stops.length} durağın tipini değiştirmek istediğinize emin misiniz?`)) {
@@ -999,10 +1105,10 @@ export default function StopsPage() {
                   }
                   e.target.value = ''
                 }}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-2"
+                className="text-xs sm:text-sm border border-gray-200 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2"
                 disabled={bulkUpdateMutation.isPending}
               >
-                <option value="">Toplu Tip Değiştir</option>
+                <option value="">Toplu Tip</option>
                 {locationTypes.map(type => (
                   <option key={type.value} value={type.value}>
                     {locationTypeIcons[type.value]} {type.label}
@@ -1016,23 +1122,24 @@ export default function StopsPage() {
                   }
                 }}
                 disabled={bulkDeleteMutation.isPending}
-                className="flex items-center gap-1 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
               >
                 <TrashIcon className="h-4 w-4" />
-                {bulkDeleteMutation.isPending ? 'Siliniyor...' : 'Tümünü Sil'}
+                <span className="hidden sm:inline">{bulkDeleteMutation.isPending ? 'Siliniyor...' : 'Tümünü Sil'}</span>
+                <span className="sm:hidden">{bulkDeleteMutation.isPending ? '...' : 'Sil'}</span>
               </button>
               <button
                 onClick={() => setSelectedCluster(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 p-1"
               >
                 ✕
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             <div>
-              <h4 className="font-medium text-gray-700 mb-2">Özet</h4>
-              <ul className="space-y-2 text-sm">
+              <h4 className="font-medium text-gray-700 mb-2 text-sm sm:text-base">Özet</h4>
+              <ul className="space-y-2 text-xs sm:text-sm">
                 <li className="flex justify-between"><span>Toplam Durak:</span> <strong>{selectedCluster.stops.length}</strong></li>
                 <li className="flex justify-between"><span>Farklı Sürücü:</span> <strong>{selectedCluster.uniqueDrivers.length}</strong></li>
                 <li className="flex justify-between"><span>Toplam Bekleme:</span> <strong>{formatDuration(selectedCluster.totalDuration)}</strong></li>
@@ -1040,15 +1147,15 @@ export default function StopsPage() {
               </ul>
             </div>
             <div className="md:col-span-2">
-              <h4 className="font-medium text-gray-700 mb-2">Bu Noktada Duran Sürücüler</h4>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
+              <h4 className="font-medium text-gray-700 mb-2 text-sm sm:text-base">Bu Noktada Duran Sürücüler</h4>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="min-w-full text-xs sm:text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 py-2 text-left">Sürücü</th>
-                      <th className="px-3 py-2 text-left">Durak Sayısı</th>
-                      <th className="px-3 py-2 text-left">Toplam Süre</th>
-                      <th className="px-3 py-2 text-left">Son Ziyaret</th>
+                      <th className="px-2 sm:px-3 py-2 text-left">Sürücü</th>
+                      <th className="px-2 sm:px-3 py-2 text-left">Durak</th>
+                      <th className="px-2 sm:px-3 py-2 text-left">Süre</th>
+                      <th className="px-2 sm:px-3 py-2 text-left hidden sm:table-cell">Son Ziyaret</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1059,10 +1166,10 @@ export default function StopsPage() {
                       const lastVisit = validDates.length > 0 ? new Date(Math.max(...validDates)) : null
                       return (
                         <tr key={driverId} className="border-b">
-                          <td className="px-3 py-2 font-medium">{driverStops[0].driver_name}</td>
-                          <td className="px-3 py-2">{driverStops.length}</td>
-                          <td className="px-3 py-2">{formatDuration(totalDuration)}</td>
-                          <td className="px-3 py-2 text-gray-500">{lastVisit ? lastVisit.toLocaleDateString('tr-TR') : '-'}</td>
+                          <td className="px-2 sm:px-3 py-2 font-medium truncate max-w-[100px] sm:max-w-none">{driverStops[0].driver_name}</td>
+                          <td className="px-2 sm:px-3 py-2">{driverStops.length}</td>
+                          <td className="px-2 sm:px-3 py-2">{formatDuration(totalDuration)}</td>
+                          <td className="px-2 sm:px-3 py-2 text-gray-500 hidden sm:table-cell">{lastVisit ? lastVisit.toLocaleDateString('tr-TR') : '-'}</td>
                         </tr>
                       )
                     })}
@@ -1076,8 +1183,8 @@ export default function StopsPage() {
 
       {/* Categorization Modal */}
       {selectedStop && !showHomeModal && filter !== 'clusters' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl p-4 sm:p-6 w-full sm:max-w-lg sm:mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Durak Düzenle</h3>
 
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
@@ -1180,8 +1287,8 @@ export default function StopsPage() {
 
       {/* Home Creation Modal */}
       {showHomeModal && selectedStop && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl p-4 sm:p-6 w-full sm:max-w-md sm:mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <HomeIcon className="h-5 w-5 text-green-600" />
               Ev Adresi Ekle
@@ -1254,8 +1361,8 @@ export default function StopsPage() {
 
       {/* Edit Home Modal */}
       {editingHome && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl p-4 sm:p-6 w-full sm:max-w-md sm:mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <PencilIcon className="h-5 w-5 text-primary-600" />
               Ev Adresini Düzenle
@@ -1334,8 +1441,8 @@ export default function StopsPage() {
 
       {/* Detect Stops Modal */}
       {showDetectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl p-4 sm:p-6 w-full sm:max-w-lg sm:mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <PlayIcon className="h-5 w-5 text-primary-600" />
               Durak Tespiti
