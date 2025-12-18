@@ -82,6 +82,7 @@ func main() {
 	surveyService := service.NewSurveyService(surveyRepo)
 	adminService := service.NewAdminService(adminRepo, settingsRepo)
 	notificationService := service.NewNotificationService(os.Getenv("FCM_CREDENTIALS"))
+	routingService := service.NewRoutingService(os.Getenv("OSRM_URL"))
 	// SMS servisi kaldırıldı
 
 	// WebSocket hub
@@ -425,6 +426,12 @@ func main() {
 		// Public app config (mobil uygulama için)
 		publicConfigHandler := api.NewConfigHandler(cargoRepo, settingsRepo)
 		apiGroup.GET("/config/app", publicConfigHandler.GetAppConfig)
+
+		// Routing (OSRM - Karayolu Mesafe Hesaplama)
+		routingHandler := api.NewRoutingHandler(routingService)
+		adminGroup.GET("/routing/distance", routingHandler.GetRouteDistance)
+		adminGroup.GET("/routing/distance-fallback", routingHandler.GetRouteDistanceWithFallback)
+		adminGroup.GET("/routing/status", routingHandler.CheckOSRMStatus)
 	}
 
 	// WebSocket endpoint
