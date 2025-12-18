@@ -22,8 +22,8 @@ WORKDIR /data
 # Copy processed data from builder
 COPY --from=builder /data/turkey.osrm* ./
 
-# Expose port
-EXPOSE 5000
+# Expose port (Railway assigns PORT dynamically)
+EXPOSE ${PORT:-5000}
 
-# Run OSRM with MLD algorithm (faster)
-CMD ["osrm-routed", "--algorithm", "mld", "--max-table-size", "10000", "/data/turkey.osrm"]
+# Run OSRM with MLD algorithm - use shell form to expand $PORT
+CMD osrm-routed --algorithm mld --max-table-size 10000 --port ${PORT:-5000} /data/turkey.osrm
