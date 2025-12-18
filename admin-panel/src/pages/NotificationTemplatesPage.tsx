@@ -106,17 +106,17 @@ export default function NotificationTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Bildirim Şablonları</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Bildirim Şablonları</h1>
         <button
           onClick={() => {
             setEditingTemplate(null)
             setShowModal(true)
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 w-full sm:w-auto"
         >
           <PlusIcon className="h-5 w-5" />
-          Yeni Şablon
+          <span>Yeni Şablon</span>
         </button>
       </div>
 
@@ -250,15 +250,15 @@ function TemplateModal({
   ]
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+      <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl max-w-2xl w-full sm:mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 border-b">
+          <h2 className="text-lg sm:text-xl font-semibold">
             {template ? 'Şablonu Düzenle' : 'Yeni Bildirim Şablonu'}
           </h2>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -384,17 +384,17 @@ function TemplateModal({
           </div>
         </div>
 
-        <div className="p-6 border-t flex justify-end gap-3">
+        <div className="p-4 sm:p-6 border-t flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 w-full sm:w-auto"
           >
             İptal
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 w-full sm:w-auto"
           >
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

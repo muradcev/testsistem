@@ -183,12 +183,12 @@ export default function SurveysPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Anketler</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Anketler</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+          className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
         >
           <PlusIcon className="h-5 w-5" />
           Yeni Anket
@@ -197,6 +197,7 @@ export default function SurveysPage() {
 
       {/* Surveys list */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -281,6 +282,7 @@ export default function SurveysPage() {
             ))}
           </tbody>
         </table>
+        </div>
 
         {surveys.length === 0 && (
           <div className="text-center py-12 text-gray-500">
@@ -292,12 +294,12 @@ export default function SurveysPage() {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4">
+          <div className="flex items-end sm:items-center justify-center min-h-screen px-0 sm:px-4">
             <div
               className="fixed inset-0 bg-black/50"
               onClick={closeModal}
             ></div>
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="relative bg-white rounded-t-2xl sm:rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">
                   {selectedSurvey ? 'Anketi Düzenle' : 'Yeni Anket'}
@@ -465,7 +467,7 @@ export default function SurveysPage() {
       {/* Responses Modal */}
       {showResponsesModal && selectedSurvey && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4">
+          <div className="flex items-end sm:items-center justify-center min-h-screen px-0 sm:px-4">
             <div
               className="fixed inset-0 bg-black/50"
               onClick={() => {
@@ -473,7 +475,7 @@ export default function SurveysPage() {
                 setSelectedSurvey(null)
               }}
             ></div>
-            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
+            <div className="relative bg-white rounded-t-2xl sm:rounded-lg shadow-xl max-w-2xl w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">
                   {selectedSurvey.title} - Yanıtlar
@@ -490,6 +492,7 @@ export default function SurveysPage() {
               </div>
 
               {responses.length > 0 ? (
+                <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -518,6 +521,7 @@ export default function SurveysPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               ) : (
                 <p className="text-center text-gray-500 py-8">
                   Henüz yanıt yok

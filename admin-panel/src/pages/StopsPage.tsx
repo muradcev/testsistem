@@ -86,6 +86,9 @@ const selectedIcon = L.divIcon({
   iconAnchor: [15, 15],
 })
 
+// Default marker icon (created once, not on every render)
+const defaultStopIcon = new L.Icon.Default()
+
 interface Stop {
   id: string
   driver_id: string
@@ -201,8 +204,14 @@ function MapController({ center, zoom }: { center: [number, number] | null; zoom
   const map = useMap()
 
   useEffect(() => {
-    if (center) {
-      map.flyTo(center, zoom, { duration: 0.5 })
+    // Validate center coordinates before flying
+    if (center && center[0] != null && center[1] != null &&
+        !isNaN(center[0]) && !isNaN(center[1])) {
+      try {
+        map.flyTo(center, zoom, { duration: 0.5 })
+      } catch (error) {
+        console.warn('MapController flyTo error:', error)
+      }
     }
   }, [center, zoom, map])
 
@@ -468,28 +477,48 @@ export default function StopsPage() {
 
   // Haritada konuma git
   const flyToLocation = (lat: number, lng: number, zoom: number = 14) => {
+    // Validate coordinates before setting
+    if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) {
+      console.warn('Invalid coordinates for flyToLocation:', lat, lng)
+      return
+    }
     setMapCenter([lat, lng])
     setMapZoom(zoom)
   }
 
   // Durak seçildiğinde haritada göster
   const handleStopSelect = (stop: Stop) => {
+    if (!stop) return
     setSelectedStop(stop)
     setSelectedCluster(null)
     setStopName(stop.name || '')
-    flyToLocation(stop.latitude, stop.longitude, 15)
+    // Only fly to location if coordinates are valid
+    if (stop.latitude != null && stop.longitude != null &&
+        !isNaN(stop.latitude) && !isNaN(stop.longitude)) {
+      flyToLocation(stop.latitude, stop.longitude, 15)
+    }
   }
 
   // Küme seçildiğinde haritada göster
   const handleClusterSelect = (cluster: ClusteredStop) => {
+    if (!cluster) return
     setSelectedCluster(cluster)
     setSelectedStop(null)
-    flyToLocation(cluster.lat, cluster.lng, 14)
+    // Only fly to location if coordinates are valid
+    if (cluster.lat != null && cluster.lng != null &&
+        !isNaN(cluster.lat) && !isNaN(cluster.lng)) {
+      flyToLocation(cluster.lat, cluster.lng, 14)
+    }
   }
 
   // Ev seçildiğinde haritada göster
   const handleHomeSelect = (home: DriverHome) => {
-    flyToLocation(home.latitude, home.longitude, 15)
+    if (!home) return
+    // Only fly to location if coordinates are valid
+    if (home.latitude != null && home.longitude != null &&
+        !isNaN(home.latitude) && !isNaN(home.longitude)) {
+      flyToLocation(home.latitude, home.longitude, 15)
+    }
   }
 
   // Exclude 'home' from location types when categorizing
@@ -751,7 +780,7 @@ export default function StopsPage() {
                   <Marker
                     key={stop.id}
                     position={[stop.latitude, stop.longitude]}
-                    icon={selectedStop?.id === stop.id ? selectedIcon : new L.Icon.Default()}
+                    icon={selectedStop?.id === stop.id ? selectedIcon : defaultStopIcon}
                     eventHandlers={{
                       click: () => handleStopSelect(stop),
                     }}
@@ -1054,7 +1083,7 @@ export default function StopsPage() {
                     <Marker
                       key={stop.id}
                       position={[stop.latitude, stop.longitude]}
-                      icon={selectedStop?.id === stop.id ? selectedIcon : new L.Icon.Default()}
+                      icon={selectedStop?.id === stop.id ? selectedIcon : defaultStopIcon}
                       eventHandlers={{
                         click: () => handleStopSelect(stop),
                       }}
@@ -1300,7 +1329,7 @@ export default function StopsPage() {
                 {selectedStop.province}, {selectedStop.district}
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                {selectedStop.latitude.toFixed(6)}, {selectedStop.longitude.toFixed(6)}
+                {selectedStop.latitude?.toFixed(6) || '-'}, {selectedStop.longitude?.toFixed(6) || '-'}
               </p>
             </div>
 

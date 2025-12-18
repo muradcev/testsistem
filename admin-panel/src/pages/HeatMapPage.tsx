@@ -215,17 +215,17 @@ export default function HeatMapPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <FireIcon className="h-7 w-7 text-orange-500" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <FireIcon className="h-6 w-6 sm:h-7 sm:w-7 text-orange-500" />
             Isı Haritası
           </h1>
-          <p className="text-gray-500">Konum yoğunluk analizi</p>
+          <p className="text-sm sm:text-base text-gray-500">Konum yoğunluk analizi</p>
         </div>
 
         {/* Time Range Filter */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(['1h', '6h', '24h', '7d'] as const).map((range) => (
             <button
               key={range}
@@ -236,17 +236,17 @@ export default function HeatMapPage() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {range === '1h' && 'Son 1 Saat'}
-              {range === '6h' && 'Son 6 Saat'}
-              {range === '24h' && 'Son 24 Saat'}
-              {range === '7d' && 'Son 7 Gün'}
+              {range === '1h' && '1 Saat'}
+              {range === '6h' && '6 Saat'}
+              {range === '24h' && '24 Saat'}
+              {range === '7d' && '7 Gün'}
             </button>
           ))}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -297,8 +297,8 @@ export default function HeatMapPage() {
       </div>
 
       {/* Map */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="h-[600px] rounded-lg overflow-hidden">
+      <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+        <div className="h-[350px] sm:h-[500px] lg:h-[600px] rounded-lg overflow-hidden">
           <MapContainer
             center={center}
             zoom={6}
@@ -347,26 +347,26 @@ export default function HeatMapPage() {
         </div>
 
         {/* Legend */}
-        <div className="mt-4 flex items-center justify-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-            <span className="text-sm text-gray-600">Çok Az</span>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-blue-500"></div>
+            <span className="text-xs sm:text-sm text-gray-600">Çok Az</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-green-500"></div>
-            <span className="text-sm text-gray-600">Az</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500"></div>
+            <span className="text-xs sm:text-sm text-gray-600">Az</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-            <span className="text-sm text-gray-600">Orta</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-yellow-500"></div>
+            <span className="text-xs sm:text-sm text-gray-600">Orta</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-            <span className="text-sm text-gray-600">Yoğun</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-orange-500"></div>
+            <span className="text-xs sm:text-sm text-gray-600">Yoğun</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-red-500"></div>
-            <span className="text-sm text-gray-600">Çok Yoğun</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-red-500"></div>
+            <span className="text-xs sm:text-sm text-gray-600">Çok Yoğun</span>
           </div>
         </div>
       </div>

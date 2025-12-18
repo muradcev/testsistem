@@ -359,16 +359,16 @@ export default function QuestionsPage() {
         subtitle="Soforlere soru gonderin ve cevaplari yonetin"
         icon={QuestionMarkCircleIcon}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link to="/question-designer">
               <Button variant="outline" className="gap-2">
                 <RectangleStackIcon className="h-5 w-5" />
-                Soru Tasarimcisi
+                <span className="hidden sm:inline">Soru Tasarimcisi</span>
               </Button>
             </Link>
             <Button onClick={() => setShowCreateModal(true)} className="gap-2">
               <PlusIcon className="h-5 w-5" />
-              Yeni Soru
+              <span className="hidden sm:inline">Yeni Soru</span>
             </Button>
           </div>
         }

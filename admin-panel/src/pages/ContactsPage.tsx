@@ -216,36 +216,39 @@ export default function ContactsPage() {
 
       {/* Search */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Şoför adı, kişi adı veya telefon numarası ile ara..."
+              placeholder="Şoför adı, kişi adı veya telefon..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
-          <button
-            onClick={handleSearch}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-          >
-            Ara
-          </button>
-          {search && (
+          <div className="flex gap-2">
             <button
-              onClick={() => {
-                setSearch('')
-                setSearchInput('')
-                setExpandedDriverId(null)
-              }}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              onClick={handleSearch}
+              className="flex-1 sm:flex-none px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center justify-center gap-2"
             >
-              Temizle
+              <MagnifyingGlassIcon className="h-4 w-4 sm:hidden" />
+              <span>Ara</span>
             </button>
-          )}
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch('')
+                  setSearchInput('')
+                  setExpandedDriverId(null)
+                }}
+                className="flex-1 sm:flex-none px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              >
+                Temizle
+              </button>
+            )}
+          </div>
         </div>
         {search && (
           <div className="mt-2 text-sm text-gray-500">
@@ -390,8 +393,8 @@ export default function ContactsPage() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && deleteTarget && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
                 <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
@@ -415,21 +418,21 @@ export default function ContactsPage() {
               )}
             </p>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
               <button
                 onClick={() => {
                   setShowDeleteModal(false)
                   setDeleteTarget(null)
                 }}
                 disabled={isDeleting}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2.5 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
               >
                 İptal
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                className="w-full sm:w-auto px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
                   <>

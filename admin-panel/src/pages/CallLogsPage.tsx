@@ -181,16 +181,18 @@ export default function CallLogsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Arama Gecmisi</h1>
           <p className="text-gray-500">Tum soforlerin arama gecmisi</p>
         </div>
         <button
           onClick={() => setShowDrivers(!showDrivers)}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-lg hover:bg-gray-50"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2"
         >
-          {showDrivers ? 'Soforleri Gizle' : 'Soforleri Goster'}
+          <UserIcon className="h-4 w-4" />
+          <span className="hidden sm:inline">{showDrivers ? 'Soforleri Gizle' : 'Soforleri Goster'}</span>
+          <span className="sm:hidden">{showDrivers ? 'Gizle' : 'Goster'}</span>
         </button>
       </div>
 
@@ -231,17 +233,18 @@ export default function CallLogsPage() {
       {/* Drivers Section */}
       {showDrivers && (
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
               Soforler ({syncableDrivers.length} aktif / {drivers.length} toplam)
             </h2>
             <button
               onClick={() => syncAllMutation.mutate()}
               disabled={syncAllMutation.isPending || syncableDrivers.length === 0}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ArrowPathIcon className={clsx('h-4 w-4', syncAllMutation.isPending && 'animate-spin')} />
-              Tumunu Senkronize Et
+              <span className="hidden sm:inline">Tumunu Senkronize Et</span>
+              <span className="sm:hidden">Hepsini Sync</span>
             </button>
           </div>
 
@@ -417,23 +420,23 @@ export default function CallLogsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-4 py-3 flex items-center justify-between border-t">
+          <div className="px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t">
             <div className="text-sm text-gray-500">Toplam {total} arama</div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+                className="px-3 py-1.5 border rounded text-sm disabled:opacity-50 hover:bg-gray-50"
               >
                 Onceki
               </button>
-              <span className="px-3 py-1 text-sm">
-                Sayfa {page + 1} / {totalPages}
+              <span className="px-3 py-1.5 text-sm bg-gray-50 rounded">
+                {page + 1} / {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={(page + 1) * limit >= total}
-                className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+                className="px-3 py-1.5 border rounded text-sm disabled:opacity-50 hover:bg-gray-50"
               >
                 Sonraki
               </button>

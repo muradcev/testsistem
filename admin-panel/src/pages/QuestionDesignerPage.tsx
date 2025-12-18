@@ -27,6 +27,7 @@ import {
   XMarkIcon,
   FolderIcon,
   TagIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline'
 import {
   PageHeader,
@@ -277,6 +278,7 @@ export default function QuestionDesignerPage() {
   const [templateName, setTemplateName] = useState('')
   const [templateDescription, setTemplateDescription] = useState('')
   const [templateCategory, setTemplateCategory] = useState('')
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // Track currently loaded template for editing
   const [currentTemplate, setCurrentTemplate] = useState<QuestionTemplate | null>(null)
@@ -602,6 +604,10 @@ export default function QuestionDesignerPage() {
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node<QuestionNodeData>) => {
     setSelectedNode(node)
     setShowNodeEditor(true)
+    // Auto-open mobile sidebar on mobile
+    if (window.innerWidth < 1024) {
+      setMobileSidebarOpen(true)
+    }
   }, [])
 
   return (
@@ -611,24 +617,34 @@ export default function QuestionDesignerPage() {
         subtitle={currentTemplate ? `Duzenleniyor: ${currentTemplate.name}` : "Surukle-birak ile algoritmik soru zincirleri olusturun"}
         icon={QuestionMarkCircleIcon}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {currentTemplate && (
-              <Badge variant="info" className="self-center">
+              <Badge variant="info" className="self-center hidden sm:inline-flex">
                 {currentTemplate.name}
               </Badge>
             )}
             <Button variant="outline" onClick={() => setShowTemplates(true)} className="gap-2">
               <FolderIcon className="h-5 w-5" />
-              Sablonlar
+              <span className="hidden sm:inline">Sablonlar</span>
             </Button>
             <Button variant="outline" onClick={clearCanvas} className="gap-2">
               <ArrowPathIcon className="h-5 w-5" />
-              Yeni
+              <span className="hidden sm:inline">Yeni</span>
             </Button>
             <Button onClick={() => { setSendFromTemplate(null); setShowSendModal(true); }} className="gap-2">
               <PaperAirplaneIcon className="h-5 w-5" />
-              Gonder
+              <span className="hidden sm:inline">Gonder</span>
             </Button>
+            {/* Mobile Edit Button */}
+            {selectedNode && (
+              <Button
+                variant="outline"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="lg:hidden gap-2"
+              >
+                <PencilSquareIcon className="h-5 w-5" />
+              </Button>
+            )}
           </div>
         }
       />
@@ -655,17 +671,50 @@ export default function QuestionDesignerPage() {
           <div className="absolute bottom-4 left-4 z-10">
             <Button onClick={addNode} className="gap-2 shadow-lg">
               <PlusIcon className="h-5 w-5" />
-              Soru Ekle
+              <span className="hidden sm:inline">Soru Ekle</span>
+              <span className="sm:hidden">Ekle</span>
             </Button>
           </div>
+
+          {/* Mobile Edit FAB - Shows when node is selected */}
+          {selectedNode && !mobileSidebarOpen && (
+            <div className="absolute bottom-4 right-4 z-10 lg:hidden">
+              <Button
+                onClick={() => setMobileSidebarOpen(true)}
+                className="gap-2 shadow-lg bg-primary-600 hover:bg-primary-700"
+              >
+                <PencilSquareIcon className="h-5 w-5" />
+                Duzenle
+              </Button>
+            </div>
+          )}
         </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {mobileSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
 
         {/* Node Editor Sidebar */}
         {showNodeEditor && selectedNode && (
-          <div className="w-80 border-l bg-white p-4 overflow-y-auto">
+          <div className={`
+            fixed inset-y-0 right-0 z-50 w-full sm:w-80 bg-white shadow-xl transform transition-transform duration-300 ease-in-out
+            lg:relative lg:inset-auto lg:transform-none lg:shadow-none lg:border-l
+            ${mobileSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+            p-4 overflow-y-auto
+          `}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Soru Duzenle</h3>
-              <button onClick={() => setShowNodeEditor(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => {
+                  setShowNodeEditor(false)
+                  setMobileSidebarOpen(false)
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>

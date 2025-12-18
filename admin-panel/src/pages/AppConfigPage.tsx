@@ -210,30 +210,29 @@ export default function AppConfigPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Uygulama Ayarları</h1>
-          <p className="text-gray-500">
-            Mobil uygulamada görüntülenecek seçenekleri yönetin
-          </p>
-        </div>
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Uygulama Ayarları</h1>
+        <p className="text-sm sm:text-base text-gray-500">
+          Mobil uygulamada görüntülenecek seçenekleri yönetin
+        </p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-8">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="flex space-x-4 sm:space-x-8 min-w-max">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              className={`py-3 sm:py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <tab.icon className="h-5 w-5" />
-              {tab.label}
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               {tab.count !== undefined && (
                 <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
                   {tab.count}
@@ -247,16 +246,17 @@ export default function AppConfigPage() {
       {/* Cargo Types */}
       {activeTab === 'cargo' && (
         <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b flex items-center justify-between">
+          <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="font-semibold">Yük Tipleri</h2>
             <button
               onClick={() => setEditModal({ type: 'cargo', item: {} })}
-              className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+              className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 w-full sm:w-auto"
             >
               <PlusIcon className="h-5 w-5" />
               Yeni Ekle
             </button>
           </div>
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -302,6 +302,7 @@ export default function AppConfigPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -309,11 +310,11 @@ export default function AppConfigPage() {
       {activeTab === 'vehicles' && (
         <div className="space-y-4">
           <div className="bg-white rounded-lg shadow">
-            <div className="p-4 border-b flex items-center justify-between">
+            <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h2 className="font-semibold">Araç Markaları</h2>
               <button
                 onClick={() => setEditModal({ type: 'vehicles', item: {} })}
-                className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+                className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 w-full sm:w-auto"
               >
                 <PlusIcon className="h-5 w-5" />
                 Yeni Marka
@@ -396,16 +397,17 @@ export default function AppConfigPage() {
       {/* Trailer Types */}
       {activeTab === 'trailers' && (
         <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b flex items-center justify-between">
+          <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="font-semibold">Dorse Tipleri</h2>
             <button
               onClick={() => setEditModal({ type: 'trailers', item: {} })}
-              className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+              className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 w-full sm:w-auto"
             >
               <PlusIcon className="h-5 w-5" />
               Yeni Ekle
             </button>
           </div>
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -447,6 +449,7 @@ export default function AppConfigPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -538,9 +541,9 @@ function EditModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4">
+      <div className="flex items-end sm:items-center justify-center min-h-screen sm:px-4">
         <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
-        <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div className="relative bg-white rounded-t-2xl sm:rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">{title}</h2>
             <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
@@ -614,17 +617,17 @@ function EditModal({
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 İptal
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
               >
                 Kaydet
               </button>
@@ -658,9 +661,9 @@ function ModelModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4">
+      <div className="flex items-end sm:items-center justify-center min-h-screen sm:px-4">
         <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
-        <div className="relative bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+        <div className="relative bg-white rounded-t-2xl sm:rounded-lg shadow-xl max-w-sm w-full p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">
               {model ? 'Model Düzenle' : 'Yeni Model'}
@@ -685,17 +688,17 @@ function ModelModal({
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 İptal
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
               >
                 Kaydet
               </button>

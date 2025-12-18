@@ -206,41 +206,41 @@ export default function TransportRecordsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fiyat Raporlari</h1>
-          <p className="text-gray-500">Tasima kayitlari ve fiyat analizleri</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Fiyat Raporlari</h1>
+          <p className="text-sm sm:text-base text-gray-500">Tasima kayitlari ve fiyat analizleri</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowStats(!showStats)}
             className={clsx(
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+              'flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors',
               showStats ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 border hover:bg-gray-50'
             )}
           >
             <ChartBarIcon className="h-5 w-5" />
-            Istatistikler
+            <span className="hidden sm:inline">Istatistikler</span>
           </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={clsx(
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+              'flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors',
               showFilters ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border hover:bg-gray-50'
             )}
           >
             <FunnelIcon className="h-5 w-5" />
-            Filtreler
+            <span className="hidden sm:inline">Filtreler</span>
             {hasActiveFilters && (
               <span className="ml-1 px-2 py-0.5 text-xs bg-red-500 text-white rounded-full">!</span>
             )}
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
           >
             <PlusIcon className="h-5 w-5" />
-            Yeni Kayit
+            <span className="hidden sm:inline">Yeni Kayit</span>
           </button>
         </div>
       </div>
@@ -654,9 +654,9 @@ function RecordModal({ record, drivers, trailerTypes, onClose, onSuccess }: Reco
   const isLoading = createMutation.isPending || updateMutation.isPending
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+      <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
           <h2 className="text-lg font-semibold text-gray-900">
             {record ? 'Kayit Duzenle' : 'Yeni Tasima Kaydi'}
           </h2>
@@ -683,7 +683,7 @@ function RecordModal({ record, drivers, trailerTypes, onClose, onSuccess }: Reco
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Plate */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Plaka</label>
@@ -712,7 +712,7 @@ function RecordModal({ record, drivers, trailerTypes, onClose, onSuccess }: Reco
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Origin */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Yukleme Ili</label>
@@ -744,7 +744,7 @@ function RecordModal({ record, drivers, trailerTypes, onClose, onSuccess }: Reco
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Origin District */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Yukleme Ilcesi</label>
@@ -770,7 +770,7 @@ function RecordModal({ record, drivers, trailerTypes, onClose, onSuccess }: Reco
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Transport Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tasima Tarihi</label>
@@ -809,7 +809,7 @@ function RecordModal({ record, drivers, trailerTypes, onClose, onSuccess }: Reco
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Cargo Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Yuk Tipi</label>

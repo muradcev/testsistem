@@ -135,9 +135,9 @@ export default function AnnouncementsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Duyurular</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Duyurular</h1>
           <p className="text-sm text-gray-500">Mobil uygulamada gorunecek duyuru ve icerikler</p>
         </div>
         <button
@@ -145,10 +145,10 @@ export default function AnnouncementsPage() {
             setEditingAnnouncement(null)
             setShowModal(true)
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 w-full sm:w-auto"
         >
           <PlusIcon className="h-5 w-5" />
-          Yeni Duyuru
+          <span>Yeni Duyuru</span>
         </button>
       </div>
 
@@ -374,16 +374,16 @@ function AnnouncementModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b flex items-center gap-3">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+      <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl max-w-2xl w-full sm:mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 border-b flex items-center gap-3">
           <MegaphoneIcon className="h-6 w-6 text-primary-600" />
-          <h2 className="text-xl font-semibold">
+          <h2 className="text-lg sm:text-xl font-semibold">
             {announcement ? 'Duyuruyu Duzenle' : 'Yeni Duyuru'}
           </h2>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -556,17 +556,17 @@ function AnnouncementModal({
           </div>
         </div>
 
-        <div className="p-6 border-t flex justify-end gap-3">
+        <div className="p-4 sm:p-6 border-t flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 w-full sm:w-auto"
           >
             Iptal
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 w-full sm:w-auto"
           >
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
