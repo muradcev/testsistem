@@ -147,14 +147,17 @@ func (r *DriverRepository) UpdateFCMToken(ctx context.Context, driverID uuid.UUI
 	return err
 }
 
-func (r *DriverRepository) UpdateLocation(ctx context.Context, driverID uuid.UUID, lat, lng float64, status string) error {
+func (r *DriverRepository) UpdateLocation(ctx context.Context, driverID uuid.UUID, lat, lng float64, status, province, district string) error {
 	query := `
 		UPDATE drivers SET
 			last_latitude = $2, last_longitude = $3, last_location_at = $4,
-			current_status = $5, updated_at = $4
+			current_status = $5,
+			province = COALESCE(NULLIF($6, ''), province),
+			district = COALESCE(NULLIF($7, ''), district),
+			updated_at = $4
 		WHERE id = $1
 	`
-	_, err := r.db.Pool.Exec(ctx, query, driverID, lat, lng, time.Now(), status)
+	_, err := r.db.Pool.Exec(ctx, query, driverID, lat, lng, time.Now(), status, province, district)
 	return err
 }
 

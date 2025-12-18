@@ -13,18 +13,20 @@ import (
 )
 
 type LocationHandler struct {
-	locationService *service.LocationService
-	tripService     *service.TripService
-	driverService   *service.DriverService
-	wsHub           *websocket.Hub
+	locationService   *service.LocationService
+	tripService       *service.TripService
+	driverService     *service.DriverService
+	geocodingService  *service.GeocodingService
+	wsHub             *websocket.Hub
 }
 
-func NewLocationHandler(locationService *service.LocationService, tripService *service.TripService, driverService *service.DriverService, wsHub *websocket.Hub) *LocationHandler {
+func NewLocationHandler(locationService *service.LocationService, tripService *service.TripService, driverService *service.DriverService, geocodingService *service.GeocodingService, wsHub *websocket.Hub) *LocationHandler {
 	return &LocationHandler{
-		locationService: locationService,
-		tripService:     tripService,
-		driverService:   driverService,
-		wsHub:           wsHub,
+		locationService:  locationService,
+		tripService:      tripService,
+		driverService:    driverService,
+		geocodingService: geocodingService,
+		wsHub:            wsHub,
 	}
 }
 
@@ -62,7 +64,19 @@ func (h *LocationHandler) SaveLocation(c *gin.Context) {
 	if req.IsMoving {
 		status = "moving"
 	}
-	if err := h.driverService.UpdateLocation(c.Request.Context(), userID, req.Latitude, req.Longitude, status); err != nil {
+
+	// Reverse geocoding ile il/ilçe bilgisi al
+	province, district := "", ""
+	if h.geocodingService != nil {
+		geoResult := h.geocodingService.ReverseGeocodeAsync(req.Latitude, req.Longitude)
+		if geoResult != nil {
+			province = geoResult.Province
+			district = geoResult.District
+			fmt.Printf("[LocationHandler] Geocoding result: %s, %s\n", province, district)
+		}
+	}
+
+	if err := h.driverService.UpdateLocation(c.Request.Context(), userID, req.Latitude, req.Longitude, status, province, district); err != nil {
 		fmt.Printf("[LocationHandler] SaveLocation - Error updating driver location: %v\n", err)
 		// Hata olsa bile devam et, konum zaten kaydedildi
 	}
@@ -121,7 +135,19 @@ func (h *LocationHandler) SaveBatchLocations(c *gin.Context) {
 		if lastLoc.IsMoving {
 			status = "moving"
 		}
-		if err := h.driverService.UpdateLocation(c.Request.Context(), userID, lastLoc.Latitude, lastLoc.Longitude, status); err != nil {
+
+		// Reverse geocoding ile il/ilçe bilgisi al
+		province, district := "", ""
+		if h.geocodingService != nil {
+			geoResult := h.geocodingService.ReverseGeocodeAsync(lastLoc.Latitude, lastLoc.Longitude)
+			if geoResult != nil {
+				province = geoResult.Province
+				district = geoResult.District
+				fmt.Printf("[LocationHandler] SaveBatchLocations - Geocoding result: %s, %s\n", province, district)
+			}
+		}
+
+		if err := h.driverService.UpdateLocation(c.Request.Context(), userID, lastLoc.Latitude, lastLoc.Longitude, status, province, district); err != nil {
 			// Hata olsa bile devam et
 			fmt.Printf("[LocationHandler] SaveBatchLocations - Error updating driver location: %v\n", err)
 		}

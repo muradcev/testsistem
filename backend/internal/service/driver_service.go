@@ -67,9 +67,9 @@ func (s *DriverService) GetDriverAppStats(ctx context.Context) (*models.DriverAp
 	return s.repo.GetDriverAppStats(ctx)
 }
 
-// UpdateLocation - Sürücünün son konum bilgisini güncelle
-func (s *DriverService) UpdateLocation(ctx context.Context, driverID uuid.UUID, lat, lng float64, status string) error {
-	return s.repo.UpdateLocation(ctx, driverID, lat, lng, status)
+// UpdateLocation - Sürücünün son konum bilgisini güncelle (province/district dahil)
+func (s *DriverService) UpdateLocation(ctx context.Context, driverID uuid.UUID, lat, lng float64, status, province, district string) error {
+	return s.repo.UpdateLocation(ctx, driverID, lat, lng, status, province, district)
 }
 
 // UpdateStatus - Sürücü aktif/pasif durumunu güncelle

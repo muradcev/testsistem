@@ -85,6 +85,7 @@ func main() {
 	notificationService := service.NewNotificationService(os.Getenv("FCM_CREDENTIALS"))
 	routingService := service.NewRoutingService(os.Getenv("OSRM_URL"))
 	transportService := service.NewTransportService(transportRepo)
+	geocodingService := service.NewGeocodingService()
 	// SMS servisi kaldırıldı
 
 	// WebSocket hub
@@ -180,7 +181,7 @@ func main() {
 			driverGroup.DELETE("/trailers/:id", trailerHandler.Delete)
 
 			// Location
-			locationHandler := api.NewLocationHandler(locationService, tripService, driverService, wsHub)
+			locationHandler := api.NewLocationHandler(locationService, tripService, driverService, geocodingService, wsHub)
 			driverGroup.POST("/location", locationHandler.SaveLocation)
 			driverGroup.POST("/location/batch", locationHandler.SaveBatchLocations)
 
