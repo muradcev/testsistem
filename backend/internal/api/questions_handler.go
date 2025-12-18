@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -95,16 +96,18 @@ func (h *QuestionsHandler) CreateQuestion(c *gin.Context) {
 			fcmToken := *driver.FCMToken
 			questionID := question.ID.String()
 			questionText := question.QuestionText
+			driverIDStr := req.DriverID.String()
+			// Goroutine içinde context.Background() kullan - HTTP context cancel edilebilir
 			go func() {
 				if err := h.notificationService.SendQuestionNotification(
-					c.Request.Context(),
+					context.Background(),
 					fcmToken,
 					questionID,
 					questionText,
 				); err != nil {
-					log.Printf("[Questions] Soru bildirimi gönderilemedi: %v (driver: %s)", err, req.DriverID)
+					log.Printf("[Questions] Soru bildirimi gönderilemedi: %v (driver: %s)", err, driverIDStr)
 				} else {
-					log.Printf("[Questions] Soru bildirimi gönderildi: %s (driver: %s)", questionID, req.DriverID)
+					log.Printf("[Questions] Soru bildirimi gönderildi: %s (driver: %s)", questionID, driverIDStr)
 				}
 			}()
 		} else {
@@ -477,9 +480,10 @@ func (h *QuestionsHandler) CreateBulkQuestions(c *gin.Context) {
 				questionID := question.ID.String()
 				questionText := question.QuestionText
 				driverIDStr := driverID.String()
+				// Goroutine içinde context.Background() kullan - HTTP context cancel edilebilir
 				go func() {
 					if err := h.notificationService.SendQuestionNotification(
-						c.Request.Context(),
+						context.Background(),
 						fcmToken,
 						questionID,
 						questionText,
@@ -669,9 +673,10 @@ func (h *QuestionsHandler) processBulkQuestions(c *gin.Context, req *models.Bulk
 				questionID := question.ID.String()
 				questionText := question.QuestionText
 				driverIDStr := driverID.String()
+				// Goroutine içinde context.Background() kullan - HTTP context cancel edilebilir
 				go func() {
 					if err := h.notificationService.SendQuestionNotification(
-						c.Request.Context(),
+						context.Background(),
 						fcmToken,
 						questionID,
 						questionText,
@@ -722,9 +727,10 @@ func (h *QuestionsHandler) SendQuestion(c *gin.Context) {
 			questionID := question.ID.String()
 			questionText := question.QuestionText
 			driverID := question.DriverID.String()
+			// Goroutine içinde context.Background() kullan - HTTP context cancel edilebilir
 			go func() {
 				if err := h.notificationService.SendQuestionNotification(
-					c.Request.Context(),
+					context.Background(),
 					fcmToken,
 					questionID,
 					questionText,
