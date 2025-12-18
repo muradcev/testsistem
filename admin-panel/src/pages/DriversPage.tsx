@@ -108,6 +108,8 @@ export default function DriversPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['drivers', page, limit],
     queryFn: () => driversApi.getAll({ limit, offset: page * limit }),
+    refetchInterval: 30000, // Her 30 saniyede bir yenile (son konum için)
+    refetchIntervalInBackground: true, // Sayfa arka plandayken de yenile
   })
 
   const drivers: Driver[] = data?.data?.drivers || []
