@@ -179,7 +179,9 @@ func (s *NotificationService) SendSurveyNotification(ctx context.Context, token 
 	return s.SendToDevice(ctx, token, message)
 }
 
-// SendQuestionNotification - Soru bildirimi gönder (Notification payload ile - her zaman görünür)
+// SendQuestionNotification - Soru bildirimi gönder (Data-only - duplicate önleme için)
+// Data-only mesaj kullanarak tüm platformlarda tek bildirim garantisi sağlanır
+// Mobil uygulama local notification ile bildirimi gösterir
 func (s *NotificationService) SendQuestionNotification(ctx context.Context, token string, questionID string, questionText string) error {
 	if token == "" {
 		return nil
@@ -196,32 +198,21 @@ func (s *NotificationService) SendQuestionNotification(ctx context.Context, toke
 		return nil
 	}
 
-	// Notification payload ile gönder - FCM otomatik olarak bildirimi gösterir
-	// Bu, uygulama kapalı olsa bile her zaman çalışır
+	// Data-only mesaj gönder - mobil uygulama local notification gösterecek
+	// Bu sayede foreground/background fark etmeksizin TEK bildirim gösterilir
 	fcmMessage := &messaging.Message{
 		Token: token,
-		Notification: &messaging.Notification{
-			Title: "Yeni Soru",
-			Body:  body,
-		},
 		Data: map[string]string{
 			"type":          "question",
 			"action":        "open_question",
 			"question_id":   questionID,
 			"question_text": body,
+			"title":         "Yeni Soru",
+			"body":          body,
 			"click_action":  "FLUTTER_NOTIFICATION_CLICK",
 		},
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
-			Notification: &messaging.AndroidNotification{
-				Sound:            "default",
-				ChannelID:        "nakliyeo_questions",
-				ClickAction:      "FLUTTER_NOTIFICATION_CLICK",
-				DefaultSound:     true,
-				DefaultVibrateTimings: true,
-				Priority:         messaging.PriorityMax,
-				Visibility:       messaging.VisibilityPublic,
-			},
 		},
 		APNS: &messaging.APNSConfig{
 			Headers: map[string]string{
@@ -229,9 +220,6 @@ func (s *NotificationService) SendQuestionNotification(ctx context.Context, toke
 			},
 			Payload: &messaging.APNSPayload{
 				Aps: &messaging.Aps{
-					Sound:            "default",
-					Badge:            intPtr(1),
-					MutableContent:   true,
 					ContentAvailable: true,
 				},
 			},
@@ -244,7 +232,7 @@ func (s *NotificationService) SendQuestionNotification(ctx context.Context, toke
 		return err
 	}
 
-	log.Printf("[FCM] Soru bildirimi gönderildi (notification+data) - Response: %s, QuestionID: %s", response, questionID)
+	log.Printf("[FCM] Soru bildirimi gönderildi (data-only) - Response: %s, QuestionID: %s", response, questionID)
 	return nil
 }
 

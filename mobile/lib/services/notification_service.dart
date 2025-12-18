@@ -26,14 +26,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     debugPrint('[FCM] Admin location request received in background');
     await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_background');
   }
-  // Soru bildirimleri artik Notification payload ile geliyor
-  // FCM bunlari otomatik gosteriyor, bu handler cagrilmiyor
-  // Ama eski versiyonlarla uyumluluk icin burada da handle ediyoruz
-  else if (type == 'question' && message.notification == null) {
-    // Sadece data-only soru mesajlari icin (eski versiyon uyumlulugu)
-    debugPrint('[FCM] Legacy data-only question notification received in background');
+  // Soru bildirimleri data-only olarak geliyor - duplicate önlemek için
+  // Bu handler hem foreground hem background için local notification gösterir
+  else if (type == 'question') {
+    debugPrint('[FCM] Question notification received in background (data-only)');
     final questionId = message.data['question_id'] ?? '';
-    final questionText = message.data['question_text'] ?? 'Yeni bir soru var';
+    final questionText = message.data['question_text'] ?? message.data['body'] ?? 'Yeni bir soru var';
     await _showBackgroundQuestionNotification(questionId, questionText);
   }
 }
@@ -246,11 +244,11 @@ class NotificationService {
 
     // Handle different notification types
     if (type == 'question') {
-      // Soru bildirimi - artik Notification payload ile geliyor
-      // Foreground'da FCM otomatik gostermiyor, biz gostermeliyiz
+      // Soru bildirimi - data-only olarak geliyor (duplicate önleme)
+      // Foreground'da local notification gösteriyoruz
       final questionId = message.data['question_id'] ?? '';
-      final questionText = message.data['question_text'] ?? notification?.body ?? 'Yeni bir soru var';
-      debugPrint('[FCM] Question notification received in foreground: $questionId');
+      final questionText = message.data['question_text'] ?? message.data['body'] ?? 'Yeni bir soru var';
+      debugPrint('[FCM] Question notification received in foreground (data-only): $questionId');
       await showQuestionNotification(questionId, questionText);
     } else if (type == 'location_request') {
       // Konum isteği - sessiz, bildirim gösterme
