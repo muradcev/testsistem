@@ -275,6 +275,8 @@ func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, m
 				d.name,
 				d.surname,
 				d.current_status,
+				d.province,
+				d.district,
 				v.plate
 			FROM locations l
 			INNER JOIN drivers d ON l.driver_id = d.id
@@ -296,7 +298,7 @@ func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, m
 	for rows.Next() {
 		var loc models.LiveLocation
 		var name, surname string
-		var currentStatus *string
+		var currentStatus, province, district *string
 		var recordedAt time.Time
 
 		err := rows.Scan(
@@ -311,6 +313,8 @@ func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, m
 			&name,
 			&surname,
 			&currentStatus,
+			&province,
+			&district,
 			&loc.VehiclePlate,
 		)
 		if err != nil {
@@ -324,6 +328,12 @@ func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, m
 			loc.CurrentStatus = *currentStatus
 		} else {
 			loc.CurrentStatus = "unknown"
+		}
+		if province != nil {
+			loc.Province = *province
+		}
+		if district != nil {
+			loc.District = *district
 		}
 
 		locations = append(locations, loc)

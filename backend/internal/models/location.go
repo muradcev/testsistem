@@ -106,6 +106,8 @@ type LiveLocation struct {
 	DriverID      uuid.UUID    `json:"driver_id"`
 	DriverName    string       `json:"driver_name"`
 	DriverSurname string       `json:"driver_surname"`
+	Province      string       `json:"province,omitempty"`
+	District      string       `json:"district,omitempty"`
 	Latitude      float64      `json:"latitude"`
 	Longitude     float64      `json:"longitude"`
 	Speed         *float64     `json:"speed,omitempty"`
