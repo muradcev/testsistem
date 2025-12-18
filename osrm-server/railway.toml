@@ -5,7 +5,5 @@ dockerfilePath = "Dockerfile"
 [deploy]
 numReplicas = 1
 startCommand = "osrm-routed --algorithm mld --max-table-size 10000 /data/turkey.osrm"
-healthcheckPath = "/route/v1/driving/32.8597,39.9334;29.0121,41.0082?overview=false"
-healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
