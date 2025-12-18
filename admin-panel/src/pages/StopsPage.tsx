@@ -156,7 +156,13 @@ const CLUSTER_GRID_SIZE = 0.0045
 function clusterStops(stops: Stop[]): ClusteredStop[] {
   const grid: Record<string, ClusteredStop> = {}
 
-  stops.forEach((stop) => {
+  // Filter out stops with invalid coordinates
+  const validStops = stops.filter(s =>
+    s.latitude != null && s.longitude != null &&
+    !isNaN(s.latitude) && !isNaN(s.longitude)
+  )
+
+  validStops.forEach((stop) => {
     const gridLat = Math.floor(stop.latitude / CLUSTER_GRID_SIZE) * CLUSTER_GRID_SIZE
     const gridLng = Math.floor(stop.longitude / CLUSTER_GRID_SIZE) * CLUSTER_GRID_SIZE
     const key = `${gridLat.toFixed(4)}_${gridLng.toFixed(4)}`
@@ -175,7 +181,7 @@ function clusterStops(stops: Stop[]): ClusteredStop[] {
 
     grid[key].stops.push(stop)
     grid[key].totalDuration += stop.duration_minutes || 0
-    if (!grid[key].uniqueDrivers.includes(stop.driver_id)) {
+    if (stop.driver_id && !grid[key].uniqueDrivers.includes(stop.driver_id)) {
       grid[key].uniqueDrivers.push(stop.driver_id)
     }
   })
@@ -212,6 +218,8 @@ export default function StopsPage() {
     radius: 500,
   })
   const [stopName, setStopName] = useState('')
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('')
+  const [showDetectModal, setShowDetectModal] = useState(false)
 
   // Get location types
   const { data: typesData, error: typesError } = useQuery({
@@ -242,6 +250,13 @@ export default function StopsPage() {
     enabled: filter === 'homes',
   })
 
+  // Get all drivers for selection
+  const { data: driversData } = useQuery({
+    queryKey: ['drivers-for-stops'],
+    queryFn: () => api.get('/admin/drivers?limit=500'),
+  })
+  const allDrivers = driversData?.data?.drivers || []
+
   // Log errors for debugging
   if (typesError) console.error('Types error:', typesError)
   if (stopsError) console.error('Stops error:', stopsError)
@@ -262,12 +277,27 @@ export default function StopsPage() {
     },
   })
 
-  // Detect stops mutation
+  // Detect stops mutation (all drivers)
   const detectMutation = useMutation({
     mutationFn: () => api.post('/admin/stops/detect-all'),
     onSuccess: (res) => {
       toast.success(`${res.data.detected_stops} yeni durak tespit edildi`)
       queryClient.invalidateQueries({ queryKey: ['stops'] })
+      setShowDetectModal(false)
+    },
+    onError: () => {
+      toast.error('Durak tespiti başarısız')
+    },
+  })
+
+  // Detect stops for specific driver
+  const detectForDriverMutation = useMutation({
+    mutationFn: (driverId: string) => api.post(`/admin/stops/detect/${driverId}`),
+    onSuccess: (res) => {
+      toast.success(`${res.data.detected_stops} yeni durak tespit edildi`)
+      queryClient.invalidateQueries({ queryKey: ['stops'] })
+      setShowDetectModal(false)
+      setSelectedDriverId('')
     },
     onError: () => {
       toast.error('Durak tespiti başarısız')
@@ -497,12 +527,11 @@ export default function StopsPage() {
           <p className="text-gray-500">Şoför duraklarını analiz edin ve yönetin</p>
         </div>
         <button
-          onClick={() => detectMutation.mutate()}
-          disabled={detectMutation.isPending}
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+          onClick={() => setShowDetectModal(true)}
+          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
         >
           <PlayIcon className="h-5 w-5" />
-          {detectMutation.isPending ? 'Tespit Ediliyor...' : 'Durakları Tespit Et'}
+          Durakları Tespit Et
         </button>
       </div>
 
@@ -819,7 +848,7 @@ export default function StopsPage() {
               <MapController center={mapCenter} zoom={mapZoom} />
 
               {filter === 'homes' ? (
-                homes.map((home) => (
+                homes.filter(home => home.latitude != null && home.longitude != null).map((home) => (
                   <div key={home.id}>
                     <Marker
                       position={[home.latitude, home.longitude]}
@@ -827,17 +856,17 @@ export default function StopsPage() {
                     >
                       <Popup>
                         <div className="text-sm">
-                          <strong>{home.driver_name}</strong>
+                          <strong>{home.driver_name || 'Şoför'}</strong>
                           <br />
-                          <span className="text-lg">🏠</span> {home.name}
+                          <span className="text-lg">🏠</span> {home.name || 'Ev'}
                           <br />
-                          Yarıçap: {home.radius}m
+                          Yarıçap: {home.radius || 500}m
                         </div>
                       </Popup>
                     </Marker>
                     <Circle
                       center={[home.latitude, home.longitude]}
-                      radius={home.radius}
+                      radius={home.radius || 500}
                       pathOptions={{
                         color: home.is_active ? '#22c55e' : '#ef4444',
                         fillColor: home.is_active ? '#22c55e' : '#ef4444',
@@ -849,7 +878,7 @@ export default function StopsPage() {
               ) : filter === 'clusters' ? (
                 <>
                   {/* Kümeleri göster */}
-                  {filteredClusters.map((cluster, index) => (
+                  {filteredClusters.filter(c => c.lat != null && c.lng != null).map((cluster, index) => (
                     <Marker
                       key={index}
                       position={[cluster.lat, cluster.lng]}
@@ -890,7 +919,7 @@ export default function StopsPage() {
                     </Marker>
                   ))}
                   {/* Seçili kümenin duraklarını göster */}
-                  {selectedCluster && selectedCluster.stops.map((stop) => (
+                  {selectedCluster && selectedCluster.stops.filter(s => s.latitude != null && s.longitude != null).map((stop) => (
                     <Circle
                       key={stop.id}
                       center={[stop.latitude, stop.longitude]}
@@ -915,18 +944,18 @@ export default function StopsPage() {
                 </>
               ) : (
                 <>
-                  {stops.map((stop) => (
+                  {stops.filter(stop => stop.latitude != null && stop.longitude != null).map((stop) => (
                     <Marker
                       key={stop.id}
                       position={[stop.latitude, stop.longitude]}
-                      icon={selectedStop?.id === stop.id ? selectedIcon : undefined}
+                      icon={selectedStop?.id === stop.id ? selectedIcon : new L.Icon.Default()}
                       eventHandlers={{
                         click: () => handleStopSelect(stop),
                       }}
                     >
                       <Popup>
                         <div className="text-sm">
-                          <strong>{stop.driver_name}</strong>
+                          <strong>{stop.driver_name || 'Bilinmeyen'}</strong>
                           {stop.name && (
                             <>
                               <br />
@@ -934,7 +963,7 @@ export default function StopsPage() {
                             </>
                           )}
                           <br />
-                          <span className="text-2xl">{locationTypeIcons[stop.location_type]}</span>{' '}
+                          <span className="text-2xl">{locationTypeIcons[stop.location_type] || '❓'}</span>{' '}
                           {stop.location_label || 'Belirlenmedi'}
                           <br />
                           Süre: {formatDuration(stop.duration_minutes)}
@@ -1297,6 +1326,90 @@ export default function StopsPage() {
                 className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
               >
                 {updateHomeMutation.isPending ? 'Kaydediliyor...' : 'Güncelle'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detect Stops Modal */}
+      {showDetectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <PlayIcon className="h-5 w-5 text-primary-600" />
+              Durak Tespiti
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Şoförlerin konum verilerinden sık durulan noktaları tespit edin.
+              Belirli bir şoför seçebilir veya tüm şoförler için tespit yapabilirsiniz.
+            </p>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Şoför Seçimi
+                </label>
+                <select
+                  value={selectedDriverId}
+                  onChange={(e) => setSelectedDriverId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="">Tüm Şoförler</option>
+                  {allDrivers.map((driver: any) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.name} {driver.surname} - {driver.phone}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedDriverId && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>Seçili Şoför:</strong>{' '}
+                    {allDrivers.find((d: any) => d.id === selectedDriverId)?.name}{' '}
+                    {allDrivers.find((d: any) => d.id === selectedDriverId)?.surname}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Bu şoförün konum geçmişinden duraklar tespit edilecek.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowDetectModal(false)
+                  setSelectedDriverId('')
+                }}
+                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedDriverId) {
+                    detectForDriverMutation.mutate(selectedDriverId)
+                  } else {
+                    detectMutation.mutate()
+                  }
+                }}
+                disabled={detectMutation.isPending || detectForDriverMutation.isPending}
+                className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {(detectMutation.isPending || detectForDriverMutation.isPending) ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    Tespit Ediliyor...
+                  </>
+                ) : (
+                  <>
+                    <PlayIcon className="h-4 w-4" />
+                    {selectedDriverId ? 'Şoför İçin Tespit Et' : 'Tüm Şoförler İçin Tespit Et'}
+                  </>
+                )}
               </button>
             </div>
           </div>
