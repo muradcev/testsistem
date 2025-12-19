@@ -1210,188 +1210,150 @@ export default function StopsPage() {
         </div>
       )}
 
-      {/* Categorization Modal - Redesigned with side-by-side layout */}
+      {/* Categorization Panel - Right side drawer instead of modal */}
       {selectedStop && !showHomeModal && filter !== 'clusters' && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <MapPinIcon className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">Durak Düzenle</h3>
-                  <p className="text-sm text-white/80">{selectedStop.driver_name}</p>
+        <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ease-out">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <MapPinIcon className="h-5 w-5 flex-shrink-0" />
+              <div className="min-w-0">
+                <h3 className="font-semibold truncate">Durak Düzenle</h3>
+                <p className="text-xs text-white/80 truncate">{selectedStop.driver_name}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { setSelectedStop(null); setStopName(''); }}
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
+            >
+              <span className="text-lg">✕</span>
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Location Info Card */}
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-start gap-2">
+                <MapPinIcon className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">
+                    {selectedStop.province || 'Bilinmeyen'}, {selectedStop.district || ''}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {selectedStop.latitude?.toFixed(5)}, {selectedStop.longitude?.toFixed(5)}
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => { setSelectedStop(null); setStopName(''); }}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <span className="text-xl">✕</span>
-              </button>
             </div>
 
-            {/* Content - Two columns on desktop */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-0">
-                {/* Left: Map */}
-                <div className="h-[200px] lg:h-full lg:min-h-[400px] relative bg-gray-100">
-                  {selectedStop.latitude && selectedStop.longitude && (
-                    <MapContainer
-                      center={[selectedStop.latitude, selectedStop.longitude]}
-                      zoom={15}
-                      style={{ height: '100%', width: '100%' }}
-                      zoomControl={false}
-                      dragging={false}
-                      scrollWheelZoom={false}
-                    >
-                      <TileLayer
-                        attribution='&copy; OpenStreetMap'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <Marker
-                        position={[selectedStop.latitude, selectedStop.longitude]}
-                        icon={selectedIcon}
-                      />
-                      <Circle
-                        center={[selectedStop.latitude, selectedStop.longitude]}
-                        radius={100}
-                        pathOptions={{
-                          color: '#ef4444',
-                          fillColor: '#ef4444',
-                          fillOpacity: 0.2,
-                        }}
-                      />
-                    </MapContainer>
-                  )}
-                  {/* Location overlay */}
-                  <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur rounded-lg p-3 shadow-lg">
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPinIcon className="h-4 w-4 text-red-500 flex-shrink-0" />
-                      <span className="font-medium truncate">
-                        {selectedStop.province || 'Bilinmeyen'}, {selectedStop.district || ''}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1 ml-6">
-                      {selectedStop.latitude?.toFixed(5)}, {selectedStop.longitude?.toFixed(5)}
-                    </p>
-                  </div>
-                </div>
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-blue-50 rounded-xl p-3 text-center">
+                <ClockIcon className="h-4 w-4 mx-auto text-blue-600 mb-1" />
+                <p className="text-sm font-bold text-blue-700">
+                  {formatDuration(selectedStop.duration_minutes)}
+                </p>
+                <p className="text-xs text-blue-600">Bekleme</p>
+              </div>
+              <div className="bg-purple-50 rounded-xl p-3 text-center">
+                <span className="text-xl block">
+                  {locationTypeIcons[selectedStop.location_type] || '❓'}
+                </span>
+                <p className="text-xs text-purple-600 font-medium truncate">
+                  {selectedStop.location_label || 'Belirlenmedi'}
+                </p>
+              </div>
+            </div>
 
-                {/* Right: Controls */}
-                <div className="p-6 space-y-5 lg:border-l">
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-blue-50 rounded-xl p-3 text-center">
-                      <ClockIcon className="h-5 w-5 mx-auto text-blue-600 mb-1" />
-                      <p className="text-lg font-bold text-blue-700">
-                        {formatDuration(selectedStop.duration_minutes)}
-                      </p>
-                      <p className="text-xs text-blue-600">Bekleme Süresi</p>
-                    </div>
-                    <div className="bg-purple-50 rounded-xl p-3 text-center">
-                      <span className="text-2xl block mb-1">
-                        {locationTypeIcons[selectedStop.location_type] || '❓'}
-                      </span>
-                      <p className="text-xs text-purple-600 font-medium truncate">
-                        {selectedStop.location_label || 'Belirlenmedi'}
-                      </p>
-                    </div>
-                  </div>
+            <div className="text-xs text-gray-500 flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2">
+              <span>📅</span>
+              {selectedStop.started_at ? new Date(selectedStop.started_at).toLocaleString('tr-TR') : '-'}
+            </div>
 
-                  <div className="text-sm text-gray-500 flex items-center gap-2">
-                    <span>📅</span>
-                    {selectedStop.started_at ? new Date(selectedStop.started_at).toLocaleString('tr-TR') : '-'}
-                  </div>
+            {/* Stop Name Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Durak Adı (İsteğe Bağlı)
+              </label>
+              <input
+                type="text"
+                value={stopName}
+                onChange={(e) => setStopName(e.target.value)}
+                placeholder="Örn: Fabrika, Depo, Terminal..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              />
+              {stopName && (
+                <button
+                  onClick={() => updateMutation.mutate({
+                    stopId: selectedStop.id,
+                    name: stopName,
+                  })}
+                  disabled={updateMutation.isPending}
+                  className="mt-2 w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm font-medium"
+                >
+                  {updateMutation.isPending ? 'Kaydediliyor...' : 'Sadece Adı Kaydet'}
+                </button>
+              )}
+            </div>
 
-                  {/* Stop Name Input */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Durak Adı (İsteğe Bağlı)
-                    </label>
-                    <input
-                      type="text"
-                      value={stopName}
-                      onChange={(e) => setStopName(e.target.value)}
-                      placeholder="Örn: Fabrika Girişi, Depo, Terminal..."
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-primary-500 focus:ring-0 transition-colors"
-                    />
-                    {stopName && (
-                      <button
-                        onClick={() => updateMutation.mutate({
-                          stopId: selectedStop.id,
-                          name: stopName,
-                        })}
-                        disabled={updateMutation.isPending}
-                        className="mt-2 w-full py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 text-sm font-medium transition-colors"
-                      >
-                        {updateMutation.isPending ? 'Kaydediliyor...' : 'Sadece Adı Kaydet'}
-                      </button>
-                    )}
-                  </div>
+            {/* Save as Home option */}
+            <button
+              onClick={handleSetAsHome}
+              className="w-full flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 text-green-700 transition-colors"
+            >
+              <HomeIcon className="h-5 w-5 flex-shrink-0" />
+              <div className="text-left min-w-0">
+                <span className="font-medium text-sm block">Ev Olarak Kaydet</span>
+                <span className="text-xs text-green-600">Max 2 ev adresi</span>
+              </div>
+            </button>
 
-                  {/* Save as Home option */}
+            {/* Category Selection */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                Durak Tipini Seçin:
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {categorizableTypes.map((type) => (
                   <button
-                    onClick={handleSetAsHome}
-                    className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl hover:from-green-100 hover:to-emerald-100 text-green-700 transition-all"
+                    key={type.value}
+                    onClick={() => updateMutation.mutate({
+                      stopId: selectedStop.id,
+                      locationType: type.value,
+                      name: stopName || undefined,
+                    })}
+                    disabled={updateMutation.isPending}
+                    className="flex flex-col items-center gap-0.5 p-2 border border-gray-100 rounded-lg hover:border-primary-300 hover:bg-primary-50 disabled:opacity-50 transition-colors"
                   >
-                    <HomeIcon className="h-6 w-6" />
-                    <div className="text-left">
-                      <span className="font-semibold block">Ev Olarak Kaydet</span>
-                      <span className="text-xs text-green-600">Max 2 ev adresi eklenebilir</span>
-                    </div>
+                    <span className="text-lg">{locationTypeIcons[type.value]}</span>
+                    <span className="text-[10px] text-gray-600 truncate w-full text-center leading-tight">{type.label}</span>
                   </button>
-
-                  {/* Category Selection */}
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-3">
-                      Durak Tipini Seçin{stopName ? ' ve Kaydet' : ''}:
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {categorizableTypes.map((type) => (
-                        <button
-                          key={type.value}
-                          onClick={() => updateMutation.mutate({
-                            stopId: selectedStop.id,
-                            locationType: type.value,
-                            name: stopName || undefined,
-                          })}
-                          disabled={updateMutation.isPending}
-                          className="flex flex-col items-center gap-1 p-3 border-2 border-gray-100 rounded-xl hover:border-primary-300 hover:bg-primary-50 disabled:opacity-50 transition-all"
-                        >
-                          <span className="text-2xl">{locationTypeIcons[type.value]}</span>
-                          <span className="text-xs text-gray-600 truncate w-full text-center">{type.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
+          </div>
 
-            {/* Footer */}
-            <div className="border-t bg-gray-50 px-6 py-4 flex justify-between gap-3">
-              <button
-                onClick={() => {
-                  if (confirm('Bu durağı silmek istediğinize emin misiniz?')) {
-                    deleteStopMutation.mutate(selectedStop.id)
-                  }
-                }}
-                disabled={deleteStopMutation.isPending}
-                className="px-5 py-2.5 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 disabled:opacity-50 flex items-center gap-2 font-medium transition-colors"
-              >
-                <TrashIcon className="h-4 w-4" />
-                {deleteStopMutation.isPending ? 'Siliniyor...' : 'Sil'}
-              </button>
-              <button
-                onClick={() => { setSelectedStop(null); setStopName(''); }}
-                className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 font-medium transition-colors"
-              >
-                Kapat
-              </button>
-            </div>
+          {/* Footer */}
+          <div className="border-t bg-gray-50 px-4 py-3 flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => {
+                if (confirm('Bu durağı silmek istediğinize emin misiniz?')) {
+                  deleteStopMutation.mutate(selectedStop.id)
+                }
+              }}
+              disabled={deleteStopMutation.isPending}
+              className="flex-1 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm font-medium"
+            >
+              <TrashIcon className="h-4 w-4" />
+              {deleteStopMutation.isPending ? 'Siliniyor...' : 'Sil'}
+            </button>
+            <button
+              onClick={() => { setSelectedStop(null); setStopName(''); }}
+              className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium"
+            >
+              Kapat
+            </button>
           </div>
         </div>
       )}
