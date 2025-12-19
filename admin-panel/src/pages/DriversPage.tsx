@@ -115,6 +115,7 @@ export default function DriversPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [appStatusFilter, setAppStatusFilter] = useState('all')
   const [regionFilter, setRegionFilter] = useState('all')
+  const [permissionFilter, setPermissionFilter] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
   const limit = 20
 
@@ -154,9 +155,65 @@ export default function DriversPage() {
         }
       }
 
+      // Permission filter
+      if (permissionFilter !== 'all') {
+        switch (permissionFilter) {
+          case 'all_granted':
+            // Tüm izinler tam
+            if (!isPermissionGranted(driver.location_permission) ||
+                !isPermissionGranted(driver.notification_permission) ||
+                !isPermissionGranted(driver.contacts_permission) ||
+                !isPermissionGranted(driver.call_log_permission) ||
+                !driver.battery_optimization_disabled) {
+              return false
+            }
+            break
+          case 'missing_any':
+            // En az bir izin eksik
+            if (isPermissionGranted(driver.location_permission) &&
+                isPermissionGranted(driver.notification_permission) &&
+                isPermissionGranted(driver.contacts_permission) &&
+                isPermissionGranted(driver.call_log_permission) &&
+                driver.battery_optimization_disabled) {
+              return false
+            }
+            break
+          case 'location_granted':
+            if (!isPermissionGranted(driver.location_permission)) return false
+            break
+          case 'location_denied':
+            if (isPermissionGranted(driver.location_permission)) return false
+            break
+          case 'notification_granted':
+            if (!isPermissionGranted(driver.notification_permission)) return false
+            break
+          case 'notification_denied':
+            if (isPermissionGranted(driver.notification_permission)) return false
+            break
+          case 'contacts_granted':
+            if (!isPermissionGranted(driver.contacts_permission)) return false
+            break
+          case 'contacts_denied':
+            if (isPermissionGranted(driver.contacts_permission)) return false
+            break
+          case 'call_log_granted':
+            if (!isPermissionGranted(driver.call_log_permission)) return false
+            break
+          case 'call_log_denied':
+            if (isPermissionGranted(driver.call_log_permission)) return false
+            break
+          case 'battery_disabled':
+            if (!driver.battery_optimization_disabled) return false
+            break
+          case 'battery_enabled':
+            if (driver.battery_optimization_disabled) return false
+            break
+        }
+      }
+
       return true
     })
-  }, [drivers, search, statusFilter, appStatusFilter, regionFilter])
+  }, [drivers, search, statusFilter, appStatusFilter, regionFilter, permissionFilter])
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -299,12 +356,33 @@ export default function DriversPage() {
                   options={regions.map(r => ({ value: r.value, label: r.label }))}
                   className="w-44"
                 />
-                {(statusFilter !== 'all' || appStatusFilter !== 'all' || regionFilter !== 'all') && (
+                <Select
+                  value={permissionFilter}
+                  onChange={setPermissionFilter}
+                  options={[
+                    { value: 'all', label: 'Tüm İzinler' },
+                    { value: 'all_granted', label: '✅ Tüm İzinler Tam' },
+                    { value: 'missing_any', label: '⚠️ Eksik İzin Var' },
+                    { value: 'location_granted', label: '📍 Konum İzni Var' },
+                    { value: 'location_denied', label: '❌ Konum İzni Yok' },
+                    { value: 'notification_granted', label: '🔔 Bildirim İzni Var' },
+                    { value: 'notification_denied', label: '🔕 Bildirim İzni Yok' },
+                    { value: 'contacts_granted', label: '👥 Rehber İzni Var' },
+                    { value: 'contacts_denied', label: '👤 Rehber İzni Yok' },
+                    { value: 'call_log_granted', label: '📞 Arama Geçmişi Var' },
+                    { value: 'call_log_denied', label: '📵 Arama Geçmişi Yok' },
+                    { value: 'battery_disabled', label: '🔋 Pil Opt. Devre Dışı' },
+                    { value: 'battery_enabled', label: '🪫 Pil Opt. Aktif' },
+                  ]}
+                  className="w-52"
+                />
+                {(statusFilter !== 'all' || appStatusFilter !== 'all' || regionFilter !== 'all' || permissionFilter !== 'all') && (
                   <button
                     onClick={() => {
                       setStatusFilter('all')
                       setAppStatusFilter('all')
                       setRegionFilter('all')
+                      setPermissionFilter('all')
                     }}
                     className="text-sm text-primary-600 hover:text-primary-700"
                   >
