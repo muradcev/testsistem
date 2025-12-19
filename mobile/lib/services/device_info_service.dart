@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'battery_optimization_service.dart';
 
 /// Merkezi cihaz bilgisi ve izin yonetimi servisi
 /// Tum cihaz bilgisi, izinler ve FCM token tek noktadan yonetilir
@@ -96,7 +97,11 @@ class DeviceInfoService {
       // 3. Tum izinleri topla
       final permissions = await _collectAllPermissions();
 
-      // 4. Veriyi hazirla
+      // 4. Pil optimizasyonu durumunu kontrol et
+      final batteryOptDisabled = await BatteryOptimizationService.isIgnoringBatteryOptimizations();
+      debugPrint('[DeviceInfo] Battery optimization disabled: $batteryOptDisabled');
+
+      // 5. Veriyi hazirla
       final data = <String, dynamic>{
         'app_version': _appVersion,
         'app_build_number': _appBuildNumber,
@@ -110,9 +115,10 @@ class DeviceInfoService {
         'phone_permission': permissions['phone'] ?? 'unknown',
         'call_log_permission': permissions['call_log'] ?? 'unknown', // Android 9+ için READ_CALL_LOG
         'notification_permission': permissions['notification'] ?? 'unknown',
+        'battery_optimization_disabled': batteryOptDisabled,
       };
 
-      // 5. FCM token varsa ekle
+      // 6. FCM token varsa ekle
       if (_fcmToken != null && _fcmToken!.isNotEmpty) {
         data['fcm_token'] = _fcmToken;
         debugPrint('[DeviceInfo] FCM token included');
@@ -122,7 +128,7 @@ class DeviceInfoService {
 
       debugPrint('[DeviceInfo] Sending data: $data');
 
-      // 6. Gonder
+      // 7. Gonder
       final response = await _apiService!.sendDeviceInfo(data);
 
       if (response.statusCode == 200 || response.statusCode == 201) {

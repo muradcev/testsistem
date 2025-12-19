@@ -51,6 +51,7 @@ func (r *DriverRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.D
 			app_version, app_build_number, device_model, device_os, device_os_version,
 			last_active_at, app_installed_at, push_enabled, location_permission, background_location_enabled,
 			contacts_permission, phone_permission, call_log_permission, notification_permission,
+			COALESCE(battery_optimization_disabled, false),
 			COALESCE(contacts_enabled, true), COALESCE(call_log_enabled, true),
 			COALESCE(surveys_enabled, true), COALESCE(questions_enabled, true),
 			created_at, updated_at
@@ -68,6 +69,7 @@ func (r *DriverRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.D
 		&driver.AppVersion, &driver.AppBuildNumber, &driver.DeviceModel, &driver.DeviceOS, &driver.DeviceOSVersion,
 		&driver.LastActiveAt, &driver.AppInstalledAt, &driver.PushEnabled, &driver.LocationPermission, &driver.BackgroundLocationEnabled,
 		&driver.ContactsPermission, &driver.PhonePermission, &driver.CallLogPermission, &driver.NotificationPermission,
+		&driver.BatteryOptimizationDisabled,
 		&driver.ContactsEnabled, &driver.CallLogEnabled, &driver.SurveysEnabled, &driver.QuestionsEnabled,
 		&driver.CreatedAt, &driver.UpdatedAt,
 	)
@@ -90,6 +92,7 @@ func (r *DriverRepository) GetByPhone(ctx context.Context, phone string) (*model
 			app_version, app_build_number, device_model, device_os, device_os_version,
 			last_active_at, app_installed_at, push_enabled, location_permission, background_location_enabled,
 			contacts_permission, phone_permission, call_log_permission, notification_permission,
+			COALESCE(battery_optimization_disabled, false),
 			COALESCE(contacts_enabled, true), COALESCE(call_log_enabled, true),
 			COALESCE(surveys_enabled, true), COALESCE(questions_enabled, true),
 			created_at, updated_at
@@ -107,6 +110,7 @@ func (r *DriverRepository) GetByPhone(ctx context.Context, phone string) (*model
 		&driver.AppVersion, &driver.AppBuildNumber, &driver.DeviceModel, &driver.DeviceOS, &driver.DeviceOSVersion,
 		&driver.LastActiveAt, &driver.AppInstalledAt, &driver.PushEnabled, &driver.LocationPermission, &driver.BackgroundLocationEnabled,
 		&driver.ContactsPermission, &driver.PhonePermission, &driver.CallLogPermission, &driver.NotificationPermission,
+		&driver.BatteryOptimizationDisabled,
 		&driver.ContactsEnabled, &driver.CallLogEnabled, &driver.SurveysEnabled, &driver.QuestionsEnabled,
 		&driver.CreatedAt, &driver.UpdatedAt,
 	)
@@ -354,6 +358,7 @@ func (r *DriverRepository) UpdateDeviceInfo(ctx context.Context, driverID uuid.U
 			phone_permission = COALESCE(NULLIF($13, ''), phone_permission),
 			call_log_permission = COALESCE(NULLIF($14, ''), call_log_permission),
 			notification_permission = COALESCE(NULLIF($15, ''), notification_permission),
+			battery_optimization_disabled = $16,
 			updated_at = $10
 		WHERE id = $1
 	`
@@ -374,6 +379,7 @@ func (r *DriverRepository) UpdateDeviceInfo(ctx context.Context, driverID uuid.U
 		info.PhonePermission,
 		info.CallLogPermission,
 		info.NotificationPermission,
+		info.BatteryOptimizationDisabled,
 	)
 
 	return err
@@ -398,7 +404,8 @@ func (r *DriverRepository) GetDriverAppStats(ctx context.Context) (*models.Drive
 			COUNT(*) FILTER (WHERE last_active_at > NOW() - INTERVAL '7 days') as active_last_7d,
 			COUNT(*) FILTER (WHERE app_version IS NOT NULL AND last_active_at IS NULL) as never_active,
 			COUNT(*) FILTER (WHERE push_enabled = true) as push_enabled_count,
-			COUNT(*) FILTER (WHERE background_location_enabled = true) as background_loc_count
+			COUNT(*) FILTER (WHERE background_location_enabled = true) as background_loc_count,
+			COUNT(*) FILTER (WHERE battery_optimization_disabled = true) as battery_optimization_disabled_count
 		FROM drivers
 	`
 
@@ -413,6 +420,7 @@ func (r *DriverRepository) GetDriverAppStats(ctx context.Context) (*models.Drive
 		&stats.NeverActive,
 		&stats.PushEnabledCount,
 		&stats.BackgroundLocCount,
+		&stats.BatteryOptimizationDisabledCount,
 	)
 
 	if err != nil {

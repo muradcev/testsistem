@@ -84,6 +84,7 @@ interface Driver {
   app_version?: string
   device_os?: string
   has_app?: boolean
+  battery_optimization_disabled?: boolean
   vehicles: Array<{
     id: string
     brand: string
@@ -708,6 +709,22 @@ export default function DriverDetailPage() {
                         <dt className="text-sm text-gray-500">Son Aktivite</dt>
                         <dd className="text-sm font-medium">
                           {formatTimeElapsed(driver.last_active_at)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Pil Optimizasyonu</dt>
+                        <dd className="text-sm font-medium flex items-center gap-2">
+                          {driver.battery_optimization_disabled ? (
+                            <>
+                              <span className="text-green-600">✓ Devre Disi</span>
+                              <span className="text-xs text-gray-400">(Arka plan takibi aktif)</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-red-600">✗ Aktif</span>
+                              <span className="text-xs text-gray-400">(Konum takibi sorunlu olabilir)</span>
+                            </>
+                          )}
                         </dd>
                       </div>
                     </dl>

@@ -45,6 +45,9 @@ type Driver struct {
 	CallLogPermission      *string `json:"call_log_permission,omitempty" db:"call_log_permission"` // Android 9+ için READ_CALL_LOG izni
 	NotificationPermission *string `json:"notification_permission,omitempty" db:"notification_permission"`
 
+	// Pil optimizasyonu durumu (Android)
+	BatteryOptimizationDisabled bool `json:"battery_optimization_disabled" db:"battery_optimization_disabled"`
+
 	// Özellik flag'leri (admin tarafından kontrol edilir)
 	ContactsEnabled  bool `json:"contacts_enabled" db:"contacts_enabled"`
 	CallLogEnabled   bool `json:"call_log_enabled" db:"call_log_enabled"`
@@ -143,23 +146,25 @@ type DeviceInfoRequest struct {
 	BackgroundLocationEnabled bool   `json:"background_location_enabled"`
 	FCMToken                  string `json:"fcm_token,omitempty"`
 	// Yeni izin alanları
-	ContactsPermission     string `json:"contacts_permission,omitempty"`     // granted, denied, permanently_denied
-	PhonePermission        string `json:"phone_permission,omitempty"`        // granted, denied, permanently_denied (CALL_PHONE izni)
-	CallLogPermission      string `json:"call_log_permission,omitempty"`     // granted, denied, permanently_denied (Android 9+ READ_CALL_LOG izni)
-	NotificationPermission string `json:"notification_permission,omitempty"` // granted, denied
+	ContactsPermission          string `json:"contacts_permission,omitempty"`           // granted, denied, permanently_denied
+	PhonePermission             string `json:"phone_permission,omitempty"`              // granted, denied, permanently_denied (CALL_PHONE izni)
+	CallLogPermission           string `json:"call_log_permission,omitempty"`           // granted, denied, permanently_denied (Android 9+ READ_CALL_LOG izni)
+	NotificationPermission      string `json:"notification_permission,omitempty"`       // granted, denied
+	BatteryOptimizationDisabled bool   `json:"battery_optimization_disabled,omitempty"` // Android pil optimizasyonu devre dışı mı
 }
 
 // DriverAppStats - Admin panel için uygulama istatistikleri
 type DriverAppStats struct {
-	TotalDrivers       int `json:"total_drivers"`
-	DriversWithApp     int `json:"drivers_with_app"`
-	IOSCount           int `json:"ios_count"`
-	AndroidCount       int `json:"android_count"`
-	ActiveLast24h      int `json:"active_last_24h"`
-	ActiveLast7d       int `json:"active_last_7d"`
-	NeverActive        int `json:"never_active"`
-	PushEnabledCount   int `json:"push_enabled_count"`
-	BackgroundLocCount int `json:"background_loc_count"`
+	TotalDrivers                    int `json:"total_drivers"`
+	DriversWithApp                  int `json:"drivers_with_app"`
+	IOSCount                        int `json:"ios_count"`
+	AndroidCount                    int `json:"android_count"`
+	ActiveLast24h                   int `json:"active_last_24h"`
+	ActiveLast7d                    int `json:"active_last_7d"`
+	NeverActive                     int `json:"never_active"`
+	PushEnabledCount                int `json:"push_enabled_count"`
+	BackgroundLocCount              int `json:"background_loc_count"`
+	BatteryOptimizationDisabledCount int `json:"battery_optimization_disabled_count"` // Pil optimizasyonu devre dışı olanlar
 }
 
 // DriverDetailResponse - Admin panel için şoför detay yanıtı (araç ve dorse dahil)
@@ -199,10 +204,11 @@ type DriverDetailResponse struct {
 	LocationPermission        string     `json:"location_permission,omitempty"`
 
 	// İzin durumları (cihazdan gelen)
-	ContactsPermission     *string `json:"contacts_permission,omitempty"`
-	PhonePermission        *string `json:"phone_permission,omitempty"`
-	CallLogPermission      *string `json:"call_log_permission,omitempty"` // Android 9+ READ_CALL_LOG izni
-	NotificationPermission *string `json:"notification_permission,omitempty"`
+	ContactsPermission          *string `json:"contacts_permission,omitempty"`
+	PhonePermission             *string `json:"phone_permission,omitempty"`
+	CallLogPermission           *string `json:"call_log_permission,omitempty"`           // Android 9+ READ_CALL_LOG izni
+	NotificationPermission      *string `json:"notification_permission,omitempty"`
+	BatteryOptimizationDisabled bool    `json:"battery_optimization_disabled"`           // Android pil optimizasyonu devre dışı mı
 
 	// Özellik flag'leri (admin tarafından kontrol)
 	ContactsEnabled  bool `json:"contacts_enabled"`
