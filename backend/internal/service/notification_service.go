@@ -290,28 +290,18 @@ func (s *NotificationService) SendLocationRequest(ctx context.Context, token str
 		return nil
 	}
 
-	// Notification + Data mesajı gönder
-	// Bu sayede uygulama kapalı olsa bile bildirim gösterilir
-	// Mobil uygulama bildirime tıklandığında konum gönderir
+	// Data-only mesaj gönder (sessiz - kullanıcı görmez)
+	// Uygulama açıksa veya arka plandaysa konum otomatik gönderilir
+	// Not: Uygulama tamamen kapalıysa çalışmaz - bunun için soru/duyuru gönderilmeli
 	fcmMessage := &messaging.Message{
 		Token: token,
-		Notification: &messaging.Notification{
-			Title: "Nakliyeo",
-			Body:  "Konumunuz isteniyor",
-		},
 		Data: map[string]string{
-			"type":         "location_request",
-			"request_id":   requestID,
-			"action":       "send_location",
-			"click_action": "FLUTTER_NOTIFICATION_CLICK",
+			"type":       "location_request",
+			"request_id": requestID,
+			"action":     "send_location",
 		},
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
-			Notification: &messaging.AndroidNotification{
-				Sound:       "default",
-				ClickAction: "FLUTTER_NOTIFICATION_CLICK",
-				ChannelID:   "location_channel",
-			},
 		},
 		APNS: &messaging.APNSConfig{
 			Headers: map[string]string{
@@ -319,7 +309,6 @@ func (s *NotificationService) SendLocationRequest(ctx context.Context, token str
 			},
 			Payload: &messaging.APNSPayload{
 				Aps: &messaging.Aps{
-					Sound:            "default",
 					ContentAvailable: true,
 				},
 			},
