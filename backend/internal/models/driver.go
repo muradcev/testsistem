@@ -110,6 +110,15 @@ type DriverListItem struct {
 	// Bildirim bilgileri
 	PushEnabled bool `json:"push_enabled"`
 	HasFCMToken bool `json:"has_fcm_token"` // FCM token kayıtlı mı
+
+	// İzin bilgileri
+	LocationPermission           string `json:"location_permission"`
+	BackgroundLocationEnabled    bool   `json:"background_location_enabled"`
+	NotificationPermission       string `json:"notification_permission"`
+	ContactsPermission           string `json:"contacts_permission"`
+	PhonePermission              string `json:"phone_permission"`
+	CallLogPermission            string `json:"call_log_permission"`
+	BatteryOptimizationDisabled  bool   `json:"battery_optimization_disabled"`
 }
 
 // GetAppStatus - LastActiveAt'e göre uygulama durumunu belirler

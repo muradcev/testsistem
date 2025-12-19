@@ -51,6 +51,19 @@ interface Driver {
   app_status: 'active' | 'inactive' | 'stale' | 'never_installed'
   push_enabled: boolean
   has_fcm_token: boolean
+  // İzin bilgileri
+  location_permission: string
+  background_location_enabled: boolean
+  notification_permission: string
+  contacts_permission: string
+  phone_permission: string
+  call_log_permission: string
+  battery_optimization_disabled: boolean
+}
+
+// İzin durumu için yardımcı fonksiyon
+function isPermissionGranted(permission: string): boolean {
+  return permission === 'granted' || permission === 'always' || permission === 'while_in_use'
 }
 
 function formatTimeElapsed(dateString: string | null): string {
@@ -387,6 +400,9 @@ export default function DriversPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Durum
                   </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                    İzinler
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">
                     Son Konum
                   </th>
@@ -450,6 +466,55 @@ export default function DriversPage() {
                       <Badge variant={statusConfig[driver.status]?.variant || 'default'} dot>
                         {statusConfig[driver.status]?.label || 'Bilinmiyor'}
                       </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                      <div className="flex items-center gap-1.5 justify-center">
+                        <span
+                          title={`Konum: ${driver.location_permission || 'Bilinmiyor'}${driver.background_location_enabled ? ' (Arka plan aktif)' : ''}`}
+                          className={clsx(
+                            'text-sm',
+                            isPermissionGranted(driver.location_permission) ? 'text-green-600' : 'text-red-500'
+                          )}
+                        >
+                          {isPermissionGranted(driver.location_permission) ? '📍' : '❌'}
+                        </span>
+                        <span
+                          title={`Bildirim: ${driver.notification_permission || 'Bilinmiyor'}`}
+                          className={clsx(
+                            'text-sm',
+                            isPermissionGranted(driver.notification_permission) ? 'text-green-600' : 'text-red-500'
+                          )}
+                        >
+                          {isPermissionGranted(driver.notification_permission) ? '🔔' : '🔕'}
+                        </span>
+                        <span
+                          title={`Rehber: ${driver.contacts_permission || 'Bilinmiyor'}`}
+                          className={clsx(
+                            'text-sm',
+                            isPermissionGranted(driver.contacts_permission) ? 'text-green-600' : 'text-red-500'
+                          )}
+                        >
+                          {isPermissionGranted(driver.contacts_permission) ? '👥' : '👤'}
+                        </span>
+                        <span
+                          title={`Arama Geçmişi: ${driver.call_log_permission || 'Bilinmiyor'}`}
+                          className={clsx(
+                            'text-sm',
+                            isPermissionGranted(driver.call_log_permission) ? 'text-green-600' : 'text-red-500'
+                          )}
+                        >
+                          {isPermissionGranted(driver.call_log_permission) ? '📞' : '📵'}
+                        </span>
+                        <span
+                          title={`Pil Optimizasyonu: ${driver.battery_optimization_disabled ? 'Devre Dışı (İyi)' : 'Aktif (Sorunlu)'}`}
+                          className={clsx(
+                            'text-sm',
+                            driver.battery_optimization_disabled ? 'text-green-600' : 'text-red-500'
+                          )}
+                        >
+                          {driver.battery_optimization_disabled ? '🔋' : '🪫'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap hidden xl:table-cell">
                       {driver.last_latitude && driver.last_longitude ? (

@@ -183,7 +183,11 @@ func (r *DriverRepository) GetAll(ctx context.Context, limit, offset int) ([]mod
 			d.is_active, d.current_status, d.last_latitude, d.last_longitude, d.last_location_at,
 			d.created_at, COUNT(v.id) as vehicle_count,
 			d.app_version, d.device_os, d.last_active_at, d.app_installed_at,
-			d.push_enabled, (d.fcm_token IS NOT NULL AND d.fcm_token != '') as has_fcm_token
+			d.push_enabled, (d.fcm_token IS NOT NULL AND d.fcm_token != '') as has_fcm_token,
+			COALESCE(d.location_permission, ''), COALESCE(d.background_location_enabled, false),
+			COALESCE(d.notification_permission, ''), COALESCE(d.contacts_permission, ''),
+			COALESCE(d.phone_permission, ''), COALESCE(d.call_log_permission, ''),
+			COALESCE(d.battery_optimization_disabled, false)
 		FROM drivers d
 		LEFT JOIN vehicles v ON d.id = v.driver_id AND v.is_active = true
 		GROUP BY d.id
@@ -206,6 +210,10 @@ func (r *DriverRepository) GetAll(ctx context.Context, limit, offset int) ([]mod
 			&d.CreatedAt, &d.VehicleCount,
 			&d.AppVersion, &d.DeviceOS, &d.LastActiveAt, &d.AppInstalledAt,
 			&d.PushEnabled, &d.HasFCMToken,
+			&d.LocationPermission, &d.BackgroundLocationEnabled,
+			&d.NotificationPermission, &d.ContactsPermission,
+			&d.PhonePermission, &d.CallLogPermission,
+			&d.BatteryOptimizationDisabled,
 		)
 		if err != nil {
 			return nil, 0, err
