@@ -11,6 +11,7 @@ import '../../services/notification_service.dart';
 import '../../services/call_tracking_service.dart';
 import '../../services/hybrid_location_service.dart';
 import '../../services/device_info_service.dart';
+import '../../services/battery_optimization_service.dart';
 import '../../config/theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _checkPendingNotificationRoute();
       _initLocation();
       _initHybridLocation();
+      _checkBatteryOptimization(); // Pil optimizasyonu kontrolü
       _loadQuestionsAndShowDialog();
       _loadAnnouncements();
       _sendFcmToken();
@@ -112,6 +114,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (success) {
       debugPrint('[HomeScreen] Immediate location sent (trigger: $trigger)');
     }
+  }
+
+  /// Pil optimizasyonu kontrolü - devre dışı bırakılmamışsa kullanıcıya sor
+  Future<void> _checkBatteryOptimization() async {
+    if (!mounted) return;
+    // Biraz gecikme ekle - diğer izin dialogları kapansın
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    await BatteryOptimizationService.checkAndRequestOptimization(context);
   }
 
   Future<void> _startCallTracking() async {
