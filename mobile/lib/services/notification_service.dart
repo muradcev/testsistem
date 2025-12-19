@@ -273,12 +273,9 @@ class NotificationService {
         debugPrint('[FCM] App opened from terminated state via notification');
         debugPrint('[FCM] Initial message data: ${initialMessage.data}');
 
-        // Konum isteği ise hemen konum gönder
-        final type = initialMessage.data['type'];
-        if (type == 'location_request') {
-          debugPrint('[FCM] Location request from terminated state, sending location...');
-          await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_terminated');
-        }
+        // HER bildirimden uygulama açıldığında konum gönder
+        debugPrint('[FCM] Sending location on app open from notification...');
+        await HybridLocationService.sendImmediateLocation(trigger: 'notification_app_open');
 
         // Store as pending - will be processed when navigation callback is set
         _pendingNavigationMessage = initialMessage;
@@ -380,13 +377,15 @@ class NotificationService {
   void _handleNotificationTap(RemoteMessage message) async {
     debugPrint('[FCM] Notification tapped: ${message.data}');
 
+    // HER bildirime tıklandığında konum gönder (soru, duyuru, vs.)
+    // Bu sayede admin "Konum İste" için ayrı bildirim göndermeye gerek kalmaz
+    debugPrint('[FCM] Sending location on notification tap...');
+    HybridLocationService.sendImmediateLocation(trigger: 'notification_tap');
+
     final type = message.data['type'];
 
-    // Konum isteği bildirimine tıklandı - hemen konum gönder
+    // Konum isteği ise sadece ana ekrana git
     if (type == 'location_request') {
-      debugPrint('[FCM] Location request notification tapped, sending location...');
-      await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_tap');
-      // Ana ekrana yönlendir
       if (onNavigate != null) {
         onNavigate?.call('/');
       }
@@ -421,6 +420,10 @@ class NotificationService {
     final payload = response.payload;
     if (payload != null) {
       debugPrint('Local notification tapped: $payload');
+
+      // HER bildirime tıklandığında konum gönder
+      debugPrint('[FCM] Sending location on local notification tap...');
+      HybridLocationService.sendImmediateLocation(trigger: 'local_notification_tap');
 
       // If navigation callback is not set yet, wait and retry
       if (onNavigate == null) {

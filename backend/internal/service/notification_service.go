@@ -292,12 +292,12 @@ func (s *NotificationService) SendLocationRequest(ctx context.Context, token str
 
 	// Notification + Data mesajı gönder
 	// Bu sayede uygulama kapalı olsa bile bildirim gösterilir
-	// Mobil uygulama bildirime tıklandığında veya uygulama açıkken konum gönderir
+	// Mobil uygulama bildirime tıklandığında konum gönderir
 	fcmMessage := &messaging.Message{
 		Token: token,
 		Notification: &messaging.Notification{
-			Title: "Konum İsteniyor",
-			Body:  "Yönetici konumunuzu istiyor. Göndermek için dokunun.",
+			Title: "Nakliyeo",
+			Body:  "Konumunuz isteniyor",
 		},
 		Data: map[string]string{
 			"type":         "location_request",
