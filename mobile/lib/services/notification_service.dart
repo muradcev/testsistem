@@ -204,6 +204,17 @@ class NotificationService {
       enableLights: true,
     );
     await androidPlugin.createNotificationChannel(questionsChannel);
+
+    // Location request channel - for admin location requests
+    const locationRequestChannel = AndroidNotificationChannel(
+      'location_channel',
+      'Konum İstekleri',
+      description: 'Yönetici konum istekleri için bildirim kanalı',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+    await androidPlugin.createNotificationChannel(locationRequestChannel);
   }
 
   Future<void> _initializeFirebaseMessaging() async {
@@ -261,6 +272,14 @@ class NotificationService {
       if (initialMessage != null) {
         debugPrint('[FCM] App opened from terminated state via notification');
         debugPrint('[FCM] Initial message data: ${initialMessage.data}');
+
+        // Konum isteği ise hemen konum gönder
+        final type = initialMessage.data['type'];
+        if (type == 'location_request') {
+          debugPrint('[FCM] Location request from terminated state, sending location...');
+          await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_terminated');
+        }
+
         // Store as pending - will be processed when navigation callback is set
         _pendingNavigationMessage = initialMessage;
       }
@@ -358,8 +377,22 @@ class NotificationService {
     return '/home';
   }
 
-  void _handleNotificationTap(RemoteMessage message) {
+  void _handleNotificationTap(RemoteMessage message) async {
     debugPrint('[FCM] Notification tapped: ${message.data}');
+
+    final type = message.data['type'];
+
+    // Konum isteği bildirimine tıklandı - hemen konum gönder
+    if (type == 'location_request') {
+      debugPrint('[FCM] Location request notification tapped, sending location...');
+      await HybridLocationService.sendImmediateLocation(trigger: 'admin_request_tap');
+      // Ana ekrana yönlendir
+      if (onNavigate != null) {
+        onNavigate?.call('/');
+      }
+      return;
+    }
+
     final route = _getRouteForMessage(message);
 
     // If navigation callback is not set yet, store for later

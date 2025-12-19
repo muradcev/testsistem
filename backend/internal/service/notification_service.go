@@ -276,7 +276,9 @@ func (s *NotificationService) SendBroadcastNotification(ctx context.Context, tok
 	return s.SendToDevices(ctx, tokens, message)
 }
 
-// SendLocationRequest - Şoförden anlık konum isteği gönder (sessiz bildirim)
+// SendLocationRequest - Şoförden anlık konum isteği gönder
+// Not: Uygulama kapalıyken çalışması için notification içerir
+// Kullanıcı bildirime tıkladığında veya uygulama açıkken otomatik konum gönderilir
 func (s *NotificationService) SendLocationRequest(ctx context.Context, token string, requestID string) error {
 	if token == "" {
 		return nil
@@ -288,16 +290,28 @@ func (s *NotificationService) SendLocationRequest(ctx context.Context, token str
 		return nil
 	}
 
-	// Data-only mesaj gönder (sessiz, kullanıcı görmez)
+	// Notification + Data mesajı gönder
+	// Bu sayede uygulama kapalı olsa bile bildirim gösterilir
+	// Mobil uygulama bildirime tıklandığında veya uygulama açıkken konum gönderir
 	fcmMessage := &messaging.Message{
 		Token: token,
+		Notification: &messaging.Notification{
+			Title: "Konum İsteniyor",
+			Body:  "Yönetici konumunuzu istiyor. Göndermek için dokunun.",
+		},
 		Data: map[string]string{
-			"type":       "location_request",
-			"request_id": requestID,
-			"action":     "send_location",
+			"type":         "location_request",
+			"request_id":   requestID,
+			"action":       "send_location",
+			"click_action": "FLUTTER_NOTIFICATION_CLICK",
 		},
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
+			Notification: &messaging.AndroidNotification{
+				Sound:       "default",
+				ClickAction: "FLUTTER_NOTIFICATION_CLICK",
+				ChannelID:   "location_channel",
+			},
 		},
 		APNS: &messaging.APNSConfig{
 			Headers: map[string]string{
@@ -305,6 +319,7 @@ func (s *NotificationService) SendLocationRequest(ctx context.Context, token str
 			},
 			Payload: &messaging.APNSPayload{
 				Aps: &messaging.Aps{
+					Sound:            "default",
 					ContentAvailable: true,
 				},
 			},
