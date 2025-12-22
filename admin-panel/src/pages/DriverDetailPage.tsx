@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { driversApi, notificationsApi, driverHomesApi } from '../services/api'
+import { useRouteGeometry } from '../hooks/useRouteGeometry'
 import { formatTurkeyDate } from '../utils/dateUtils'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet'
 import {
@@ -569,7 +570,12 @@ export default function DriverDetailPage() {
   }
 
   const lastLocation = locations.length > 0 ? locations[0] : null
-  const routeCoords: [number, number][] = locations.map((l) => [l.latitude, l.longitude])
+
+  // OSRM ile gerçek karayolu rotası al
+  const { geometry: routeCoords, isLoading: routeLoading } = useRouteGeometry(
+    locations,
+    { enabled: locations.length >= 2, maxPoints: 50 }
+  )
 
   return (
     <div className="space-y-6">

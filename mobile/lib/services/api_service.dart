@@ -128,11 +128,24 @@ class ApiService {
 
   Future<void> _handleLogout() async {
     debugPrint('[API] Handling logout - clearing tokens and redirecting');
+
+    // Önce refresh token ile son bir deneme yap
+    final prefs = await SharedPreferences.getInstance();
+    final refreshToken = prefs.getString(StorageKeys.refreshToken);
+
+    if (refreshToken != null && !_isRefreshing) {
+      debugPrint('[API] Attempting final token refresh before logout...');
+      final refreshed = await _tryRefreshToken();
+      if (refreshed) {
+        debugPrint('[API] Token refreshed successfully, cancelling logout');
+        return; // Logout iptal - token yenilendi
+      }
+    }
+
     await clearToken();
     await _clearRefreshToken();
 
     // SharedPreferences'dan login durumunu temizle
-    final prefs = await SharedPreferences.getInstance();
     await prefs.remove(StorageKeys.isLoggedIn);
     await prefs.remove(StorageKeys.userId);
     await prefs.remove(StorageKeys.userPhone);

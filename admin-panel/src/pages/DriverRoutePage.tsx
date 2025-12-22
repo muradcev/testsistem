@@ -19,6 +19,7 @@ import { tr } from 'date-fns/locale'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { driversApi } from '../services/api'
+import { useRouteGeometry } from '../hooks/useRouteGeometry'
 
 // Fix for default marker icon
 try {
@@ -324,6 +325,7 @@ export default function DriverRoutePage() {
   const [timelinePosition, setTimelinePosition] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playSpeed, setPlaySpeed] = useState(1)
+  const [showOsrmRoute, setShowOsrmRoute] = useState(true) // OSRM yol rotası göster
   const animationRef = useRef<number | null>(null)
 
   // Calculate date range
@@ -372,6 +374,12 @@ export default function DriverRoutePage() {
     const baseStats = calculateStats(allLocations)
     return { ...baseStats, totalStops: stops.length }
   }, [allLocations, stops])
+
+  // OSRM ile gerçek karayolu rotası al
+  const { geometry: osrmGeometry, isLoading: osrmLoading } = useRouteGeometry(
+    locations,
+    { enabled: locations.length >= 2 && showOsrmRoute, maxPoints: 50 }
+  )
 
   // Create polyline segments with colors based on speed (use simplified for performance)
   const routeSegments = useMemo(() => {
@@ -494,6 +502,23 @@ export default function DriverRoutePage() {
             ))}
           </div>
 
+          {/* OSRM Toggle */}
+          <button
+            onClick={() => setShowOsrmRoute(!showOsrmRoute)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              showOsrmRoute
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+            }`}
+          >
+            {osrmLoading ? (
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+            ) : (
+              <MapPinIcon className="h-4 w-4" />
+            )}
+            {showOsrmRoute ? 'Yol Rotasi' : 'GPS Izleri'}
+          </button>
+
           {/* Refresh Button */}
           <button
             onClick={() => refetch()}
@@ -590,18 +615,29 @@ export default function DriverRoutePage() {
             />
             <MapBoundsFitter locations={locations} />
 
-            {/* Route segments with speed-based colors */}
-            {routeSegments.map((segment, index) => (
+            {/* Route - OSRM yol rotası veya GPS izleri (hız bazlı renkler) */}
+            {showOsrmRoute && osrmGeometry.length > 1 ? (
               <Polyline
-                key={index}
-                positions={segment.positions}
+                positions={osrmGeometry}
                 pathOptions={{
-                  color: segment.color,
+                  color: '#3b82f6',
                   weight: 4,
                   opacity: 0.8,
                 }}
               />
-            ))}
+            ) : (
+              routeSegments.map((segment, index) => (
+                <Polyline
+                  key={index}
+                  positions={segment.positions}
+                  pathOptions={{
+                    color: segment.color,
+                    weight: 4,
+                    opacity: 0.8,
+                  }}
+                />
+              ))
+            )}
 
             {/* Start marker */}
             <CircleMarker

@@ -199,6 +199,12 @@ func main() {
 			driverAnnouncementHandler := api.NewAnnouncementHandler(announcementRepo, driverRepo, auditRepo)
 			driverGroup.GET("/announcements", driverAnnouncementHandler.GetActiveAnnouncements)
 			driverGroup.POST("/announcements/:id/dismiss", driverAnnouncementHandler.DismissAnnouncement)
+
+			// Trip Events & Geofencing (Akıllı Sefer Algılama)
+			tripHandler := api.NewTripHandler(db.Pool)
+			driverGroup.POST("/trip-events", tripHandler.SaveTripEvent)
+			driverGroup.GET("/geofences", tripHandler.GetGeofences)
+			driverGroup.POST("/geofence-events", tripHandler.SaveGeofenceEvent)
 		}
 
 		// Protected admin routes
@@ -454,6 +460,7 @@ func main() {
 		adminGroup.DELETE("/routing/cache", routingHandler.ClearCache)
 		adminGroup.POST("/routing/batch", routingHandler.GetBatchDistances)
 		adminGroup.POST("/routing/province-matrix", routingHandler.GetProvinceDistanceMatrix)
+		adminGroup.POST("/routing/route-geometry", routingHandler.GetRouteGeometry)
 	}
 
 	// WebSocket endpoint

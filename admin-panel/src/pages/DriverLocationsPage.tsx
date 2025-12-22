@@ -126,11 +126,14 @@ export default function DriverLocationsPage() {
 
   // Filter and search
   const filteredDrivers = drivers.filter((driver) => {
-    // Search filter
+    // Search filter (ad, soyad, telefon, araç plakası, dorse plakası)
+    const searchLower = search.toLowerCase()
     const searchMatch =
-      driver.name.toLowerCase().includes(search.toLowerCase()) ||
-      driver.surname.toLowerCase().includes(search.toLowerCase()) ||
-      driver.phone.includes(search)
+      driver.name.toLowerCase().includes(searchLower) ||
+      driver.surname.toLowerCase().includes(searchLower) ||
+      driver.phone.includes(search) ||
+      driver.vehicles?.some((v: { plate: string }) => v.plate?.toLowerCase().includes(searchLower)) ||
+      driver.trailers?.some((t: { plate: string }) => t.plate?.toLowerCase().includes(searchLower))
 
     if (!searchMatch) return false
 

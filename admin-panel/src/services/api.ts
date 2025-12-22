@@ -581,4 +581,8 @@ export const routingApi = {
   // İl bazlı mesafe matrisi
   getProvinceMatrix: (provinces: string[]) =>
     api.post('/admin/routing/province-matrix', { provinces }),
+
+  // Rota geometrisi (OSRM üzerinden gerçek karayolu rotası)
+  getRouteGeometry: (points: [number, number][]) =>
+    api.post('/admin/routing/route-geometry', { points }),
 }

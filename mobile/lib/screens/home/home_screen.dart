@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +13,11 @@ import '../../services/call_tracking_service.dart';
 import '../../services/hybrid_location_service.dart';
 import '../../services/device_info_service.dart';
 import '../../services/battery_optimization_service.dart';
+import '../../services/manufacturer_settings_service.dart';
+import '../../services/location_status_service.dart';
 import '../../config/theme.dart';
+import '../../widgets/location_health_widget.dart';
+import '../../services/trip_detection_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,13 +38,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _checkPendingNotificationRoute();
       _initLocation();
       _initHybridLocation();
+      _startLocationStatusMonitoring(); // GPS ve bağlantı durumu izleme
       _checkBatteryOptimization(); // Pil optimizasyonu kontrolü
+      _checkManufacturerSettings(); // Üretici özel ayarları kontrolü
       _loadQuestionsAndShowDialog();
       _loadAnnouncements();
       _sendFcmToken();
       _refreshDeviceInfo();
       _checkVehicles();
       _startCallTracking();
+      _syncHomeLocation(); // Ev koordinatlarını senkronize et
     });
   }
 
@@ -64,7 +72,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    LocationStatusService.stopMonitoring();
     super.dispose();
+  }
+
+  /// GPS ve bağlantı durumu izlemeyi başlat
+  Future<void> _startLocationStatusMonitoring() async {
+    await LocationStatusService.startMonitoring(
+      onGpsStatusChanged: (isEnabled) {
+        if (mounted && !isEnabled) {
+          // GPS kapatıldığında uyarı göster
+          LocationStatusService.showGpsWarningDialog(context);
+        }
+      },
+      onConnectivityChanged: (isOnline) {
+        debugPrint('[HomeScreen] Connectivity: ${isOnline ? "ONLINE" : "OFFLINE"}');
+      },
+    );
+
+    // İlk açılışta GPS kapalıysa uyar
+    if (!LocationStatusService.isGpsEnabled && mounted) {
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        LocationStatusService.showGpsWarningDialog(context);
+      }
+    }
+  }
+
+  /// Üretici özel pil ayarlarını kontrol et ve göster
+  Future<void> _checkManufacturerSettings() async {
+    if (!Platform.isAndroid) return;
+    if (!mounted) return;
+
+    // Pil optimizasyonu kontrolünden sonra göster (3 saniye bekle)
+    await Future.delayed(const Duration(seconds: 4));
+    if (!mounted) return;
+
+    final shouldShow = await ManufacturerSettingsService.shouldShowSettingsDialog();
+    if (shouldShow && mounted) {
+      await ManufacturerSettingsService.showSettingsDialog(context);
+    }
   }
 
   @override
@@ -93,6 +140,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await deviceInfoService.sendAllInfo();
   }
 
+  /// Şoför profilinden ev koordinatlarını senkronize et
+  /// Bu sayede sefer bitişi ev bölgesinde daha hızlı algılanır
+  Future<void> _syncHomeLocation() async {
+    if (!mounted) return;
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final profile = authProvider.user;
+      if (profile != null) {
+        await TripDetectionService.syncHomeFromProfile(profile);
+        debugPrint('[HomeScreen] Home location synced from profile');
+      }
+    } catch (e) {
+      debugPrint('[HomeScreen] Failed to sync home location: $e');
+    }
+  }
+
   /// Hibrit konum servisini başlat
   Future<void> _initHybridLocation() async {
     debugPrint('[HomeScreen] Initializing hybrid location service...');
@@ -100,6 +163,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await HybridLocationService.initialize();
       await HybridLocationService.startWorkManagerMode();
       debugPrint('[HomeScreen] WorkManager started (15 dk interval, no notification)');
+
+      // Geofence bölgelerini sunucudan senkronize et
+      await HybridLocationService.syncGeofences();
 
       // İlk konumu hemen gönder
       _sendImmediateLocation('app_opened');
@@ -404,6 +470,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 },
               ),
               const SizedBox(height: 16),
+
+              // Location Health Widget - Konum takip durumu
+              const LocationHealthWidget(),
+              const SizedBox(height: 8),
 
               // Announcements section
               Consumer<AnnouncementsProvider>(

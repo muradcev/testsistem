@@ -194,6 +194,48 @@ func (h *RoutingHandler) ClearCache(c *gin.Context) {
 	})
 }
 
+// RouteGeometryRequest - Rota geometrisi isteği
+type RouteGeometryRequest struct {
+	Points [][]float64 `json:"points" binding:"required"` // [[lat, lon], ...]
+}
+
+// GetRouteGeometry - Verilen noktalar arasındaki rota geometrisini al (OSRM)
+// POST /api/v1/admin/routing/route-geometry
+// Body: { "points": [[39.9, 32.8], [41.0, 29.0], ...] }
+func (h *RoutingHandler) GetRouteGeometry(c *gin.Context) {
+	var req RouteGeometryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek: " + err.Error()})
+		return
+	}
+
+	if len(req.Points) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "En az 2 nokta gerekli"})
+		return
+	}
+
+	// Her nokta [lat, lon] formatında olmalı
+	for i, point := range req.Points {
+		if len(point) != 2 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Nokta " + strconv.Itoa(i) + " geçersiz format, [lat, lon] olmalı"})
+			return
+		}
+	}
+
+	result, err := h.routingService.GetRouteGeometry(c.Request.Context(), req.Points)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"geometry":         result.Geometry,
+		"distance_km":      result.DistanceKm,
+		"duration_minutes": result.DurationMinutes,
+		"point_count":      len(result.Geometry),
+	})
+}
+
 // BatchDistanceRequest - Toplu mesafe hesaplama isteği
 type BatchDistanceRequest struct {
 	Origins      []CoordinateRequest `json:"origins" binding:"required"`

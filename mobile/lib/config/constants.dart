@@ -49,6 +49,15 @@ class StorageKeys {
   static const String userPhone = 'user_phone';
   static const String isLoggedIn = 'is_logged_in';
   static const String pendingLocations = 'pending_locations';
+  // Akıllı konum takibi için
+  static const String lastLatitude = 'last_latitude';
+  static const String lastLongitude = 'last_longitude';
+  static const String lastLocationTime = 'last_location_time';
+  static const String lastSpeed = 'last_speed';
+  static const String isMoving = 'is_moving';
+  static const String bufferedLocations = 'buffered_locations';
+  static const String lastSendTime = 'last_send_time';
+  static const String tokenExpiresAt = 'token_expires_at';
 }
 
 class LocationConstants {

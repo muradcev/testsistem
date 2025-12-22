@@ -546,3 +546,141 @@ func haversineKm(lat1, lon1, lat2, lon2 float64) float64 {
 
 	return R * c
 }
+
+// RouteGeometryResult - Rota geometrisi sonucu
+type RouteGeometryResult struct {
+	Geometry        [][]float64 `json:"geometry"`         // [[lat, lon], ...]
+	DistanceKm      float64     `json:"distance_km"`
+	DurationMinutes float64     `json:"duration_minutes"`
+}
+
+// OSRMGeometryResponse - OSRM API yanıtı (GeoJSON geometri ile)
+type OSRMGeometryResponse struct {
+	Code   string `json:"code"`
+	Routes []struct {
+		Distance float64 `json:"distance"` // metres
+		Duration float64 `json:"duration"` // seconds
+		Geometry struct {
+			Coordinates [][]float64 `json:"coordinates"` // [[lon, lat], ...]
+			Type        string      `json:"type"`
+		} `json:"geometry"`
+	} `json:"routes"`
+	Message string `json:"message,omitempty"`
+}
+
+// GetRouteGeometry - Verilen noktalar arasındaki rota geometrisini al
+func (s *RoutingService) GetRouteGeometry(ctx context.Context, points [][]float64) (*RouteGeometryResult, error) {
+	if len(points) < 2 {
+		return &RouteGeometryResult{Geometry: [][]float64{}}, nil
+	}
+
+	// OSRM max 100 waypoint destekler, fazlası için chunk'lama yap
+	const maxWaypoints = 100
+	if len(points) > maxWaypoints {
+		return s.getRouteGeometryChunked(ctx, points, maxWaypoints)
+	}
+
+	// Build coordinates string: lon1,lat1;lon2,lat2;...
+	coords := ""
+	for i, point := range points {
+		if i > 0 {
+			coords += ";"
+		}
+		coords += fmt.Sprintf("%.6f,%.6f", point[1], point[0]) // lon,lat (OSRM formatı)
+	}
+
+	// overview=simplified daha az nokta döner (performance için)
+	// geometries=geojson JSON formatında koordinat döner
+	url := fmt.Sprintf("%s/route/v1/driving/%s?overview=simplified&geometries=geojson",
+		s.osrmBaseURL, coords)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("OSRM request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("OSRM returned status %d", resp.StatusCode)
+	}
+
+	var osrmResp OSRMGeometryResponse
+	if err := json.NewDecoder(resp.Body).Decode(&osrmResp); err != nil {
+		return nil, fmt.Errorf("failed to decode OSRM response: %w", err)
+	}
+
+	if osrmResp.Code != "Ok" {
+		return nil, fmt.Errorf("OSRM error: %s - %s", osrmResp.Code, osrmResp.Message)
+	}
+
+	if len(osrmResp.Routes) == 0 {
+		return nil, fmt.Errorf("no route found")
+	}
+
+	route := osrmResp.Routes[0]
+
+	// OSRM [lon, lat] formatından [lat, lon] formatına çevir
+	geometry := make([][]float64, len(route.Geometry.Coordinates))
+	for i, coord := range route.Geometry.Coordinates {
+		geometry[i] = []float64{coord[1], coord[0]} // [lat, lon]
+	}
+
+	return &RouteGeometryResult{
+		Geometry:        geometry,
+		DistanceKm:      route.Distance / 1000,
+		DurationMinutes: route.Duration / 60,
+	}, nil
+}
+
+// getRouteGeometryChunked - Çok sayıda nokta için chunk'lanmış rota geometrisi
+func (s *RoutingService) getRouteGeometryChunked(ctx context.Context, points [][]float64, chunkSize int) (*RouteGeometryResult, error) {
+	var allGeometry [][]float64
+	var totalDistance float64
+	var totalDuration float64
+
+	// Chunk'lara böl (overlap ile - son nokta bir sonraki chunk'ın başı)
+	for i := 0; i < len(points); i += chunkSize - 1 {
+		end := i + chunkSize
+		if end > len(points) {
+			end = len(points)
+		}
+
+		chunk := points[i:end]
+		if len(chunk) < 2 {
+			continue
+		}
+
+		result, err := s.GetRouteGeometry(ctx, chunk)
+		if err != nil {
+			// Chunk başarısız olursa düz çizgi kullan
+			for _, p := range chunk {
+				allGeometry = append(allGeometry, p)
+			}
+			continue
+		}
+
+		// İlk chunk değilse, ilk noktayı atla (overlap)
+		startIdx := 0
+		if i > 0 && len(result.Geometry) > 0 {
+			startIdx = 1
+		}
+
+		for j := startIdx; j < len(result.Geometry); j++ {
+			allGeometry = append(allGeometry, result.Geometry[j])
+		}
+
+		totalDistance += result.DistanceKm
+		totalDuration += result.DurationMinutes
+	}
+
+	return &RouteGeometryResult{
+		Geometry:        allGeometry,
+		DistanceKm:      totalDistance,
+		DurationMinutes: totalDuration,
+	}, nil
+}

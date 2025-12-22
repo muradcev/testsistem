@@ -237,7 +237,7 @@ class NotificationService {
       debugPrint('[FCM] Getting FCM token from Firebase...');
       try {
         _fcmToken = await _firebaseMessaging?.getToken();
-        debugPrint('[FCM] FCM Token received: ${_fcmToken != null ? _fcmToken!.substring(0, 30) + "..." : "NULL"}');
+        debugPrint('[FCM] FCM Token received: ${_fcmToken != null ? "${_fcmToken!.substring(0, 30)}..." : "NULL"}');
       } catch (tokenError) {
         _fcmError = 'Token alma hatası: $tokenError';
         debugPrint('[FCM] ERROR getting token: $tokenError');
@@ -248,9 +248,7 @@ class NotificationService {
         debugPrint('[FCM] Attempting to send token to server...');
         await _sendFcmTokenToServer(_fcmToken!);
       } else {
-        if (_fcmError == null) {
-          _fcmError = 'FCM token alınamadı (null döndü)';
-        }
+        _fcmError ??= 'FCM token alınamadı (null döndü)';
         debugPrint('[FCM] WARNING: Could not get FCM token from Firebase');
       }
 
