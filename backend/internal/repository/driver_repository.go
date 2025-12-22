@@ -503,6 +503,13 @@ func (r *DriverRepository) Delete(ctx context.Context, driverID uuid.UUID) error
 	return err
 }
 
+// UpdateHomeLocation - Sürücü ev konumunu güncelle
+func (r *DriverRepository) UpdateHomeLocation(ctx context.Context, driverID uuid.UUID, homeLat, homeLng *float64) error {
+	query := `UPDATE drivers SET home_latitude = $1, home_longitude = $2, updated_at = $3 WHERE id = $4`
+	_, err := r.db.Pool.Exec(ctx, query, homeLat, homeLng, time.Now(), driverID)
+	return err
+}
+
 // ==================== CALL LOGS ====================
 
 // GetDriverCallLogs - Sürücünün arama geçmişini getir

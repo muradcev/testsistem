@@ -28,6 +28,7 @@ import ContactsPage from './pages/ContactsPage'
 import AnnouncementsPage from './pages/AnnouncementsPage'
 import TransportRecordsPage from './pages/TransportRecordsPage'
 import DistanceCalculatorPage from './pages/DistanceCalculatorPage'
+import GeofencesPage from './pages/GeofencesPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="announcements" element={<AnnouncementsPage />} />
         <Route path="transport-records" element={<TransportRecordsPage />} />
         <Route path="distance-calculator" element={<DistanceCalculatorPage />} />
+        <Route path="geofences" element={<GeofencesPage />} />
       </Route>
     </Routes>
   )

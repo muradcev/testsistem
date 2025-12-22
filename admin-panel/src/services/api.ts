@@ -69,6 +69,8 @@ export const driversApi = {
     contacts_enabled?: boolean;
     call_log_enabled?: boolean;
   }) => api.put(`/admin/drivers/${id}/features`, features),
+  updateHomeLocation: (id: string, home: { home_latitude: number | null; home_longitude: number | null }) =>
+    api.put(`/admin/drivers/${id}/home`, home),
   delete: (id: string) => api.delete(`/admin/drivers/${id}`),
   // Call Logs
   getCallLogs: (id: string, params?: { limit?: number; offset?: number }) =>
@@ -86,6 +88,15 @@ export const driversApi = {
 
 export const locationsApi = {
   getLive: () => api.get('/admin/locations/live'),
+}
+
+export const geofencesApi = {
+  getAll: () => api.get('/admin/geofences'),
+  create: (data: { name: string; type: string; latitude: number; longitude: number; radius_meters: number; is_active: boolean }) =>
+    api.post('/admin/geofences', data),
+  update: (id: string, data: { name?: string; type?: string; latitude?: number; longitude?: number; radius_meters?: number; is_active?: boolean }) =>
+    api.put(`/admin/geofences/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/geofences/${id}`),
 }
 
 export const surveysApi = {

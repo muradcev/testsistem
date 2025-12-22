@@ -150,6 +150,9 @@ func main() {
 		apiGroup.GET("/locations/districts/:province", api.GetDistricts)
 		apiGroup.GET("/locations/neighborhoods/:province/:district", api.GetNeighborhoods)
 
+		// Trip Handler (shared between driver and admin)
+		tripHandler := api.NewTripHandler(db.Pool)
+
 		// Protected driver routes
 		driverGroup := apiGroup.Group("/driver")
 		driverGroup.Use(middleware.AuthMiddleware("driver"))
@@ -201,7 +204,6 @@ func main() {
 			driverGroup.POST("/announcements/:id/dismiss", driverAnnouncementHandler.DismissAnnouncement)
 
 			// Trip Events & Geofencing (Akıllı Sefer Algılama)
-			tripHandler := api.NewTripHandler(db.Pool)
 			driverGroup.POST("/trip-events", tripHandler.SaveTripEvent)
 			driverGroup.GET("/geofences", tripHandler.GetGeofences)
 			driverGroup.POST("/geofence-events", tripHandler.SaveGeofenceEvent)
@@ -226,6 +228,7 @@ func main() {
 			adminGroup.GET("/drivers/:id/stops", adminHandler.GetDriverStops)
 			adminGroup.PUT("/drivers/:id/status", adminHandler.UpdateDriverStatus)
 			adminGroup.PUT("/drivers/:id/features", adminHandler.UpdateDriverFeatures)
+			adminGroup.PUT("/drivers/:id/home", adminHandler.UpdateDriverHomeLocation)
 			adminGroup.DELETE("/drivers/:id", adminHandler.DeleteDriver)
 
 			// Driver Call Logs
@@ -359,6 +362,12 @@ func main() {
 			adminGroup.PUT("/driver-homes/:id", driverHomeHandler.UpdateDriverHome)
 			adminGroup.DELETE("/driver-homes/:id", driverHomeHandler.DeleteDriverHome)
 			adminGroup.POST("/driver-homes/from-stop", driverHomeHandler.SetHomeFromStop)
+
+			// Geofence Zones (Bölge Yönetimi)
+			adminGroup.GET("/geofences", tripHandler.AdminGetGeofences)
+			adminGroup.POST("/geofences", tripHandler.AdminCreateGeofence)
+			adminGroup.PUT("/geofences/:id", tripHandler.AdminUpdateGeofence)
+			adminGroup.DELETE("/geofences/:id", tripHandler.AdminDeleteGeofence)
 
 			// Questions (Akıllı Soru Sistemi)
 			questionsHandler := api.NewQuestionsHandler(questionsRepo, driverRepo, notificationService)

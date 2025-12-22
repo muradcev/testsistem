@@ -281,3 +281,192 @@ func nullableString(s string) *string {
 	}
 	return &s
 }
+
+// ==================== ADMIN GEOFENCE CRUD ====================
+
+// GeofenceZoneWithDates - Geofence bölgesi (tarihlerle)
+type GeofenceZoneWithDates struct {
+	ID           string     `db:"id" json:"id"`
+	Name         string     `db:"name" json:"name"`
+	Type         string     `db:"type" json:"type"`
+	Latitude     float64    `db:"latitude" json:"latitude"`
+	Longitude    float64    `db:"longitude" json:"longitude"`
+	RadiusMeters float64    `db:"radius_meters" json:"radius_meters"`
+	IsActive     bool       `db:"is_active" json:"is_active"`
+	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt    *time.Time `db:"updated_at" json:"updated_at,omitempty"`
+}
+
+// AdminGetGeofences - Tüm geofence bölgelerini listele (admin)
+// GET /admin/geofences
+func (h *TripHandler) AdminGetGeofences(c *gin.Context) {
+	query := `
+		SELECT id, name, type, latitude, longitude, radius_meters, is_active, created_at, updated_at
+		FROM geofence_zones
+		ORDER BY name
+	`
+
+	ctx := context.Background()
+	rows, err := h.db.Query(ctx, query)
+	if err != nil {
+		log.Printf("[AdminGeofence] DB Error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Veritabanı hatası"})
+		return
+	}
+	defer rows.Close()
+
+	var zones []GeofenceZoneWithDates
+	for rows.Next() {
+		var zone GeofenceZoneWithDates
+		if err := rows.Scan(&zone.ID, &zone.Name, &zone.Type, &zone.Latitude, &zone.Longitude, &zone.RadiusMeters, &zone.IsActive, &zone.CreatedAt, &zone.UpdatedAt); err != nil {
+			log.Printf("[AdminGeofence] Scan Error: %v", err)
+			continue
+		}
+		zones = append(zones, zone)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"zones": zones,
+		"count": len(zones),
+	})
+}
+
+// CreateGeofenceRequest - Geofence oluşturma isteği
+type CreateGeofenceRequest struct {
+	Name         string  `json:"name" binding:"required"`
+	Type         string  `json:"type" binding:"required"`
+	Latitude     float64 `json:"latitude" binding:"required"`
+	Longitude    float64 `json:"longitude" binding:"required"`
+	RadiusMeters float64 `json:"radius_meters" binding:"required"`
+	IsActive     bool    `json:"is_active"`
+}
+
+// AdminCreateGeofence - Yeni geofence bölgesi oluştur
+// POST /admin/geofences
+func (h *TripHandler) AdminCreateGeofence(c *gin.Context) {
+	var req CreateGeofenceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Varsayılan aktif
+	if req.RadiusMeters == 0 {
+		req.RadiusMeters = 200
+	}
+
+	query := `
+		INSERT INTO geofence_zones (name, type, latitude, longitude, radius_meters, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, created_at
+	`
+
+	var id string
+	var createdAt time.Time
+
+	ctx := context.Background()
+	err := h.db.QueryRow(ctx, query,
+		req.Name, req.Type, req.Latitude, req.Longitude, req.RadiusMeters, req.IsActive,
+	).Scan(&id, &createdAt)
+
+	if err != nil {
+		log.Printf("[AdminGeofence] Create Error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Oluşturma hatası: " + err.Error()})
+		return
+	}
+
+	log.Printf("[AdminGeofence] Created: ID=%s, Name=%s, Type=%s", id, req.Name, req.Type)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":    "Geofence bölgesi oluşturuldu",
+		"id":         id,
+		"created_at": createdAt,
+	})
+}
+
+// UpdateGeofenceRequest - Geofence güncelleme isteği
+type UpdateGeofenceRequest struct {
+	Name         *string  `json:"name,omitempty"`
+	Type         *string  `json:"type,omitempty"`
+	Latitude     *float64 `json:"latitude,omitempty"`
+	Longitude    *float64 `json:"longitude,omitempty"`
+	RadiusMeters *float64 `json:"radius_meters,omitempty"`
+	IsActive     *bool    `json:"is_active,omitempty"`
+}
+
+// AdminUpdateGeofence - Geofence bölgesini güncelle
+// PUT /admin/geofences/:id
+func (h *TripHandler) AdminUpdateGeofence(c *gin.Context) {
+	zoneID := c.Param("id")
+
+	var req UpdateGeofenceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Dinamik güncelleme
+	query := `
+		UPDATE geofence_zones SET
+			name = COALESCE($1, name),
+			type = COALESCE($2, type),
+			latitude = COALESCE($3, latitude),
+			longitude = COALESCE($4, longitude),
+			radius_meters = COALESCE($5, radius_meters),
+			is_active = COALESCE($6, is_active),
+			updated_at = NOW()
+		WHERE id = $7
+	`
+
+	ctx := context.Background()
+	result, err := h.db.Exec(ctx, query,
+		req.Name, req.Type, req.Latitude, req.Longitude, req.RadiusMeters, req.IsActive, zoneID,
+	)
+
+	if err != nil {
+		log.Printf("[AdminGeofence] Update Error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Güncelleme hatası: " + err.Error()})
+		return
+	}
+
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Geofence bölgesi bulunamadı"})
+		return
+	}
+
+	log.Printf("[AdminGeofence] Updated: ID=%s", zoneID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Geofence bölgesi güncellendi",
+		"id":      zoneID,
+	})
+}
+
+// AdminDeleteGeofence - Geofence bölgesini sil
+// DELETE /admin/geofences/:id
+func (h *TripHandler) AdminDeleteGeofence(c *gin.Context) {
+	zoneID := c.Param("id")
+
+	query := `DELETE FROM geofence_zones WHERE id = $1`
+
+	ctx := context.Background()
+	result, err := h.db.Exec(ctx, query, zoneID)
+
+	if err != nil {
+		log.Printf("[AdminGeofence] Delete Error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Silme hatası: " + err.Error()})
+		return
+	}
+
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Geofence bölgesi bulunamadı"})
+		return
+	}
+
+	log.Printf("[AdminGeofence] Deleted: ID=%s", zoneID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Geofence bölgesi silindi",
+		"id":      zoneID,
+	})
+}

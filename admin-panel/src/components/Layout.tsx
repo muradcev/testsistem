@@ -66,6 +66,7 @@ const navigationGroups: NavGroup[] = [
       { name: 'Isı Haritası', href: '/heat-map', icon: FireIcon },
       { name: 'Durak Yönetimi', href: '/stops', icon: TruckIcon },
       { name: 'Harita Görünümü', href: '/map-view', icon: GlobeAltIcon },
+      { name: 'Geofence Bölgeleri', href: '/geofences', icon: MapPinIcon },
     ],
   },
   {

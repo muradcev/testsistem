@@ -87,6 +87,11 @@ func (s *DriverService) Delete(ctx context.Context, driverID uuid.UUID) error {
 	return s.repo.Delete(ctx, driverID)
 }
 
+// UpdateHomeLocation - Sürücü ev konumunu güncelle
+func (s *DriverService) UpdateHomeLocation(ctx context.Context, driverID uuid.UUID, homeLat, homeLng *float64) error {
+	return s.repo.UpdateHomeLocation(ctx, driverID, homeLat, homeLng)
+}
+
 // ==================== CALL LOGS ====================
 
 // GetDriverCallLogs - Sürücünün arama geçmişini getir

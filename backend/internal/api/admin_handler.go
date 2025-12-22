@@ -416,6 +416,38 @@ func (h *AdminHandler) DeleteDriver(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Sürücü ve ilişkili tüm veriler silindi", "driver_id": driverID})
 }
 
+// UpdateDriverHomeLocation - Sürücü ev adresini güncelle
+func (h *AdminHandler) UpdateDriverHomeLocation(c *gin.Context) {
+	driverID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	var req struct {
+		HomeLatitude  *float64 `json:"home_latitude"`
+		HomeLongitude *float64 `json:"home_longitude"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Ev koordinatlarını güncelle
+	if err := h.driverService.UpdateHomeLocation(ctx, driverID, req.HomeLatitude, req.HomeLongitude); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Güncelleme hatası: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "Şoför ev adresi güncellendi",
+		"home_latitude":  req.HomeLatitude,
+		"home_longitude": req.HomeLongitude,
+	})
+}
+
 // ==================== DRIVER CALL LOGS ====================
 
 // GetDriverCallLogs - Sürücünün arama geçmişini getir

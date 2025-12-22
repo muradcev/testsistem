@@ -9,7 +9,6 @@ import {
   ArrowLeftIcon,
   TruckIcon,
   MapPinIcon,
-  ClockIcon,
   BellIcon,
   ChartBarIcon,
   HomeIcon,
@@ -81,6 +80,8 @@ interface Driver {
   last_location_at?: string
   last_latitude?: number
   last_longitude?: number
+  home_latitude?: number | null
+  home_longitude?: number | null
   last_active_at?: string
   app_version?: string
   device_os?: string
@@ -202,10 +203,19 @@ interface Location {
 
 interface Trip {
   id: string
-  start_time: string
-  end_time: string | null
+  started_at: string
+  ended_at: string | null
   distance_km: number
+  duration_minutes: number
   status: string
+  start_latitude: number
+  start_longitude: number
+  start_address?: string
+  start_province?: string
+  end_latitude?: number
+  end_longitude?: number
+  end_address?: string
+  end_province?: string
 }
 
 interface DriverHome {
@@ -286,6 +296,9 @@ export default function DriverDetailPage() {
   const [notifBody, setNotifBody] = useState('')
   const [sendingNotif, setSendingNotif] = useState(false)
   const [showHomeModal, setShowHomeModal] = useState(false)
+  const [showPrimaryHomeModal, setShowPrimaryHomeModal] = useState(false)
+  const [primaryHomeLat, setPrimaryHomeLat] = useState('')
+  const [primaryHomeLng, setPrimaryHomeLng] = useState('')
   const [editingHome, setEditingHome] = useState<DriverHome | null>(null)
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -377,15 +390,6 @@ export default function DriverDetailPage() {
     onError: () => toast.error('Guncelleme basarisiz'),
   })
 
-  const deleteHomeMutation = useMutation({
-    mutationFn: (homeId: string) => driverHomesApi.delete(homeId),
-    onSuccess: () => {
-      toast.success('Ev adresi silindi')
-      queryClient.invalidateQueries({ queryKey: ['driver-homes', id] })
-    },
-    onError: () => toast.error('Ev adresi silinemedi'),
-  })
-
   const updateStatusMutation = useMutation({
     mutationFn: (isActive: boolean) => driversApi.updateStatus(id!, isActive),
     onSuccess: (_, isActive) => {
@@ -416,6 +420,17 @@ export default function DriverDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['driver', id] })
     },
     onError: () => toast.error('Ozellik guncellenemedi'),
+  })
+
+  const updateHomeLocationMutation = useMutation({
+    mutationFn: (home: { home_latitude: number | null; home_longitude: number | null }) =>
+      driversApi.updateHomeLocation(id!, home),
+    onSuccess: () => {
+      toast.success('Ev konumu guncellendi')
+      queryClient.invalidateQueries({ queryKey: ['driver', id] })
+      setShowPrimaryHomeModal(false)
+    },
+    onError: () => toast.error('Ev konumu guncellenemedi'),
   })
 
   const deleteCallLogsMutation = useMutation({
@@ -766,48 +781,73 @@ export default function DriverDetailPage() {
                   </Card>
                 )}
 
-                {/* Homes */}
+                {/* Primary Home Location */}
                 <Card className="border-green-200 bg-green-50/50">
                   <CardHeader>
                     <CardTitle className="text-green-800 flex items-center gap-2">
                       <HomeIcon className="h-5 w-5" />
-                      Ev Adresleri ({homes.length}/2)
+                      Ev Konumu (Sefer Algılama)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {homes.length > 0 ? (
-                      <ul className="space-y-2">
-                        {homes.map((home) => (
-                          <li key={home.id} className="flex items-center justify-between p-2 bg-white rounded-lg">
-                            <div>
-                              <p className="font-medium text-green-800">🏠 {home.name}</p>
-                              <p className="text-xs text-green-600">
-                                {home.province}, {home.district} | {home.radius}m
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => setEditingHome(home)}
-                                className="p-1 text-green-600 hover:bg-green-100 rounded"
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (confirm('Bu ev adresini silmek istediginize emin misiniz?')) {
-                                    deleteHomeMutation.mutate(home.id)
-                                  }
-                                }}
-                                className="p-1 text-red-500 hover:bg-red-100 rounded"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                    {driver.home_latitude && driver.home_longitude ? (
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
+                        <div>
+                          <p className="font-medium text-green-800">🏠 Ev Konumu Tanimli</p>
+                          <p className="text-xs text-green-600 font-mono">
+                            {driver.home_latitude.toFixed(6)}, {driver.home_longitude.toFixed(6)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Sofor evdeyken sefer 30 dk icinde otomatik biter
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => {
+                              setPrimaryHomeLat(driver.home_latitude?.toString() || '')
+                              setPrimaryHomeLng(driver.home_longitude?.toString() || '')
+                              setShowPrimaryHomeModal(true)
+                            }}
+                            className="p-2 text-green-600 hover:bg-green-100 rounded"
+                            title="Duzenle"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Ev konumunu silmek istediginize emin misiniz?')) {
+                                updateHomeLocationMutation.mutate({ home_latitude: null, home_longitude: null })
+                              }
+                            }}
+                            className="p-2 text-red-500 hover:bg-red-100 rounded"
+                            title="Sil"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
                     ) : (
-                      <p className="text-sm text-gray-500">Henuz ev adresi eklenmemis</p>
+                      <div className="text-center py-4">
+                        <p className="text-sm text-gray-500 mb-3">Ev konumu tanimlanmamis</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Son konumu varsayilan olarak al
+                            if (driver.last_latitude && driver.last_longitude) {
+                              setPrimaryHomeLat(driver.last_latitude.toString())
+                              setPrimaryHomeLng(driver.last_longitude.toString())
+                            } else {
+                              setPrimaryHomeLat('')
+                              setPrimaryHomeLng('')
+                            }
+                            setShowPrimaryHomeModal(true)
+                          }}
+                        >
+                          <HomeIcon className="h-4 w-4 mr-2" />
+                          Ev Konumu Ekle
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -1094,49 +1134,117 @@ export default function DriverDetailPage() {
                 <Card className="lg:col-span-2">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <ClockIcon className="h-5 w-5" />
+                      <TruckIcon className="h-5 w-5" />
                       Son Seferler
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {trips.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Baslangic</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bitis</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mesafe</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Durum</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {trips.map((trip) => (
-                              <tr key={trip.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm">
-                                  {formatTurkeyDate(trip.start_time)}
-                                </td>
-                                <td className="px-4 py-3 text-sm">
-                                  {trip.end_time ? formatTurkeyDate(trip.end_time) : '-'}
-                                </td>
-                                <td className="px-4 py-3 text-sm font-medium">
-                                  {trip.distance_km.toFixed(1)} km
-                                </td>
-                                <td className="px-4 py-3">
-                                  <Badge variant={trip.status === 'completed' ? 'success' : 'warning'}>
-                                    {trip.status === 'completed' ? 'Tamamlandi' : 'Devam Ediyor'}
-                                  </Badge>
-                                </td>
-                              </tr>
+                      <div className="space-y-4">
+                        {/* Trip Map */}
+                        <div className="h-64 rounded-lg overflow-hidden border">
+                          <MapContainer
+                            center={[trips[0]?.start_latitude || 39.925533, trips[0]?.start_longitude || 32.866287]}
+                            zoom={6}
+                            style={{ height: '100%', width: '100%' }}
+                          >
+                            <TileLayer
+                              attribution='&copy; OpenStreetMap'
+                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            {trips.map((trip, idx) => (
+                              <div key={trip.id}>
+                                {/* Start point - green */}
+                                <Circle
+                                  center={[trip.start_latitude, trip.start_longitude]}
+                                  radius={1000}
+                                  pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.6 }}
+                                >
+                                  <Popup>
+                                    <strong>Baslangic #{idx + 1}</strong><br />
+                                    {trip.start_province || 'Bilinmiyor'}<br />
+                                    {formatTurkeyDate(trip.started_at)}
+                                  </Popup>
+                                </Circle>
+                                {/* End point - red */}
+                                {trip.end_latitude && trip.end_longitude && (
+                                  <Circle
+                                    center={[trip.end_latitude, trip.end_longitude]}
+                                    radius={1000}
+                                    pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.6 }}
+                                  >
+                                    <Popup>
+                                      <strong>Bitis #{idx + 1}</strong><br />
+                                      {trip.end_province || 'Bilinmiyor'}<br />
+                                      {trip.ended_at ? formatTurkeyDate(trip.ended_at) : 'Devam Ediyor'}
+                                    </Popup>
+                                  </Circle>
+                                )}
+                                {/* Line connecting start to end */}
+                                {trip.end_latitude && trip.end_longitude && (
+                                  <Polyline
+                                    positions={[
+                                      [trip.start_latitude, trip.start_longitude],
+                                      [trip.end_latitude, trip.end_longitude]
+                                    ]}
+                                    pathOptions={{ color: '#3b82f6', weight: 2, dashArray: '5, 5' }}
+                                  />
+                                )}
+                              </div>
                             ))}
-                          </tbody>
-                        </table>
+                          </MapContainer>
+                        </div>
+                        <p className="text-xs text-gray-500 text-center">
+                          🟢 Baslangic noktalari | 🔴 Bitis noktalari
+                        </p>
+
+                        {/* Trips Table */}
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Guzergah</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mesafe</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sure</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Durum</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {trips.map((trip) => (
+                                <tr key={trip.id} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2 text-sm">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-green-600">{trip.start_province || '?'}</span>
+                                      <span className="text-gray-400">→</span>
+                                      <span className="text-red-600">{trip.end_province || (trip.ended_at ? '?' : '...')}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-600">
+                                    {new Date(trip.started_at).toLocaleDateString('tr-TR')}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm font-medium">
+                                    {trip.distance_km?.toFixed(1) || 0} km
+                                  </td>
+                                  <td className="px-3 py-2 text-sm">
+                                    {trip.duration_minutes ? `${Math.floor(trip.duration_minutes / 60)}s ${trip.duration_minutes % 60}dk` : '-'}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <Badge variant={trip.status === 'completed' ? 'success' : 'warning'} className="text-xs">
+                                      {trip.status === 'completed' ? 'Bitti' : 'Aktif'}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     ) : (
                       <EmptyState
-                        icon={ClockIcon}
+                        icon={TruckIcon}
                         title="Sefer kaydi yok"
-                        description="Henuz sefer baslatilmamis"
+                        description="Henuz sefer baslatilmamis. Sofor hareket ettiginde otomatik olarak sefer baslayacak."
                       />
                     )}
                   </CardContent>
@@ -1643,6 +1751,76 @@ export default function DriverDetailPage() {
               disabled={updateHomeMutation.isPending}
             >
               {updateHomeMutation.isPending ? <LoadingSpinner size="sm" /> : 'Guncelle'}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Primary Home Location Modal */}
+      {showPrimaryHomeModal && (
+        <Modal isOpen onClose={() => setShowPrimaryHomeModal(false)} title="Ev Konumu Ayarla">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+              Sofor evdeyken sefer otomatik olarak 30 dakika icinde sona erer.
+              Evden cikildiginda ise sefer 2 dakika icinde baslar.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Enlem (Latitude)</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={primaryHomeLat}
+                  onChange={(e) => setPrimaryHomeLat(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
+                  placeholder="41.015137"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Boylam (Longitude)</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={primaryHomeLng}
+                  onChange={(e) => setPrimaryHomeLng(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
+                  placeholder="28.979530"
+                />
+              </div>
+            </div>
+
+            {driver?.last_latitude && driver?.last_longitude && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setPrimaryHomeLat(driver.last_latitude!.toString())
+                  setPrimaryHomeLng(driver.last_longitude!.toString())
+                }}
+              >
+                <MapPinIcon className="h-4 w-4 mr-2" />
+                Son Konumu Kullan ({driver.last_latitude?.toFixed(4)}, {driver.last_longitude?.toFixed(4)})
+              </Button>
+            )}
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowPrimaryHomeModal(false)}>Iptal</Button>
+            <Button
+              onClick={() => {
+                const lat = parseFloat(primaryHomeLat)
+                const lng = parseFloat(primaryHomeLng)
+                if (!isNaN(lat) && !isNaN(lng)) {
+                  updateHomeLocationMutation.mutate({ home_latitude: lat, home_longitude: lng })
+                } else {
+                  toast.error('Gecerli koordinatlar girin')
+                }
+              }}
+              disabled={updateHomeLocationMutation.isPending || !primaryHomeLat || !primaryHomeLng}
+            >
+              {updateHomeLocationMutation.isPending ? <LoadingSpinner size="sm" /> : 'Kaydet'}
             </Button>
           </div>
         </Modal>
