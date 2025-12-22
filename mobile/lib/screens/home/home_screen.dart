@@ -169,6 +169,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // Geofence bölgelerini sunucudan senkronize et
       await HybridLocationService.syncGeofences();
 
+      // TripDetectionService callback'ini ayarla - sefer başladığında foreground mode aç
+      TripDetectionService.setStateChangeCallback((state, data) async {
+        debugPrint('[HomeScreen] Trip state changed: ${state.name}');
+        await HybridLocationService.handleTripStateChange(state, data);
+      });
+
+      // Aktif sefer varsa foreground mode'u geri yükle
+      await HybridLocationService.restoreActiveTripMode();
+
       // İlk konumu hemen gönder
       _sendImmediateLocation('app_opened');
     } catch (e) {

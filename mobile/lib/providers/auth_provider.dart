@@ -8,6 +8,8 @@ import '../services/hybrid_location_service.dart';
 import '../config/constants.dart';
 import '../config/router.dart';
 
+// HybridLocationService token güncellemesi için
+
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService;
   Timer? _tokenRefreshTimer;
@@ -126,6 +128,9 @@ class AuthProvider extends ChangeNotifier {
         if (newRefreshToken != null) {
           await prefs.setString(StorageKeys.refreshToken, newRefreshToken);
         }
+
+        // Foreground service'e yeni token'ı bildir (aktif sefer varsa)
+        await HybridLocationService.updateToken(newAccessToken);
 
         debugPrint('[Auth] Token refreshed successfully');
         return true;
