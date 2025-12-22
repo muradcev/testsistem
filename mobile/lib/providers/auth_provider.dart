@@ -30,6 +30,7 @@ class AuthProvider extends ChangeNotifier {
   String? get phone => _phone;
   Map<String, dynamic>? get user => _user;
   String? get error => _error;
+  ApiService get apiService => _apiService;
 
   /// Oturum durumunu kontrol et - token geçerliliği dahil
   Future<void> _checkLoginStatus() async {

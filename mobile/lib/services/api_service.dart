@@ -319,6 +319,11 @@ class ApiService {
     return _dio.post(ApiConstants.dismissAnnouncement(announcementId));
   }
 
+  // Driver Homes (Ev Adresleri)
+  Future<Response> getDriverHomes() async {
+    return _dio.get(ApiConstants.driverHomes);
+  }
+
   // Generic methods
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     return _dio.get(path, queryParameters: queryParameters);

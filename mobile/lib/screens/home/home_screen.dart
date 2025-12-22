@@ -140,19 +140,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await deviceInfoService.sendAllInfo();
   }
 
-  /// Şoför profilinden ev koordinatlarını senkronize et
+  /// Şoför ev adreslerini API'den senkronize et
   /// Bu sayede sefer bitişi ev bölgesinde daha hızlı algılanır
   Future<void> _syncHomeLocation() async {
     if (!mounted) return;
     try {
       final authProvider = context.read<AuthProvider>();
-      final profile = authProvider.user;
-      if (profile != null) {
-        await TripDetectionService.syncHomeFromProfile(profile);
-        debugPrint('[HomeScreen] Home location synced from profile');
+      final apiService = authProvider.apiService;
+      final response = await apiService.getDriverHomes();
+      if (response.statusCode == 200 && response.data != null) {
+        final homes = response.data['homes'] as List<dynamic>?;
+        await TripDetectionService.syncHomesFromApi(homes);
+        debugPrint('[HomeScreen] ${homes?.length ?? 0} home location(s) synced from API');
       }
     } catch (e) {
-      debugPrint('[HomeScreen] Failed to sync home location: $e');
+      debugPrint('[HomeScreen] Failed to sync home locations: $e');
     }
   }
 

@@ -145,12 +145,11 @@ class TripDetectionService {
   static double? _lastLongitude;
   static double? _maxSpeedKmh;
 
-  // Ev bölgesi koordinatları
-  static double? _homeLatitude;
-  static double? _homeLongitude;
+  // Ev bölgeleri (çoklu ev desteği)
+  static List<Map<String, dynamic>> _homeLocations = [];
   static bool _isInHomeZone = false;
-  static const String _homeLatKey = 'trip_home_latitude';
-  static const String _homeLonKey = 'trip_home_longitude';
+  static String? _currentHomeId; // Hangi evde olduğu
+  static const String _homeLocationsKey = 'trip_home_locations';
 
   /// State değişikliği callback'i
   static void setStateChangeCallback(Function(TripState state, Map<String, dynamic>? data) callback) {
@@ -193,75 +192,101 @@ class TripDetectionService {
   /// Ev bölgesinde mi?
   static bool get isInHomeZone => _isInHomeZone;
 
-  /// Ev koordinatları tanımlı mı?
-  static bool get hasHomeLocation =>
-      _homeLatitude != null && _homeLongitude != null;
+  /// Hangi evde olduğu (ID)
+  static String? get currentHomeId => _currentHomeId;
 
-  /// Ev koordinatlarını ayarla
-  static Future<void> setHomeLocation(double latitude, double longitude) async {
-    _homeLatitude = latitude;
-    _homeLongitude = longitude;
+  /// Ev koordinatları tanımlı mı?
+  static bool get hasHomeLocation => _homeLocations.isNotEmpty;
+
+  /// Ev sayısı
+  static int get homeCount => _homeLocations.length;
+
+  /// Ev lokasyonlarını ayarla (çoklu ev)
+  static Future<void> setHomeLocations(List<Map<String, dynamic>> homes) async {
+    _homeLocations = homes.where((h) => h['is_active'] == true).toList();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_homeLatKey, latitude);
-    await prefs.setDouble(_homeLonKey, longitude);
+    await prefs.setString(_homeLocationsKey, json.encode(_homeLocations));
 
-    debugPrint('[TripDetection] Home location set: ($latitude, $longitude)');
+    debugPrint('[TripDetection] ${_homeLocations.length} home location(s) set');
+    for (var home in _homeLocations) {
+      debugPrint('[TripDetection]   - ${home['name']}: (${home['latitude']}, ${home['longitude']}) r=${home['radius']}m');
+    }
   }
 
   /// Ev koordinatlarını yükle (SharedPreferences'tan)
-  static Future<void> loadHomeLocation() async {
+  static Future<void> loadHomeLocations() async {
     final prefs = await SharedPreferences.getInstance();
-    _homeLatitude = prefs.getDouble(_homeLatKey);
-    _homeLongitude = prefs.getDouble(_homeLonKey);
+    final homesJson = prefs.getString(_homeLocationsKey);
 
-    if (hasHomeLocation) {
-      debugPrint('[TripDetection] Home location loaded: ($_homeLatitude, $_homeLongitude)');
-    } else {
-      debugPrint('[TripDetection] No home location set');
-    }
-  }
-
-  /// Şoför profilinden ev koordinatlarını senkronize et
-  /// Driver profile API'sinden home_latitude ve home_longitude alır
-  static Future<void> syncHomeFromProfile(Map<String, dynamic>? profile) async {
-    if (profile == null) return;
-
-    final homeLat = profile['home_latitude'];
-    final homeLon = profile['home_longitude'];
-
-    if (homeLat != null && homeLon != null) {
-      final lat = (homeLat is num) ? homeLat.toDouble() : double.tryParse(homeLat.toString());
-      final lon = (homeLon is num) ? homeLon.toDouble() : double.tryParse(homeLon.toString());
-
-      if (lat != null && lon != null && lat != 0 && lon != 0) {
-        await setHomeLocation(lat, lon);
-        debugPrint('[TripDetection] Home synced from profile: ($lat, $lon)');
+    if (homesJson != null) {
+      try {
+        _homeLocations = List<Map<String, dynamic>>.from(
+          (json.decode(homesJson) as List).map((e) => Map<String, dynamic>.from(e))
+        );
+        debugPrint('[TripDetection] ${_homeLocations.length} home location(s) loaded');
+      } catch (e) {
+        debugPrint('[TripDetection] Error loading home locations: $e');
+        _homeLocations = [];
       }
+    } else {
+      debugPrint('[TripDetection] No home locations saved');
     }
   }
 
-  /// Mevcut konumun ev bölgesinde olup olmadığını kontrol et
+  /// API'den ev lokasyonlarını senkronize et
+  /// /driver/homes endpoint'inden ev listesini alır
+  static Future<void> syncHomesFromApi(List<dynamic>? homes) async {
+    if (homes == null || homes.isEmpty) {
+      debugPrint('[TripDetection] No homes from API');
+      return;
+    }
+
+    final homeList = homes.map((h) => {
+      'id': h['id'],
+      'name': h['name'] ?? 'Ev',
+      'latitude': (h['latitude'] is num) ? h['latitude'].toDouble() : double.tryParse(h['latitude'].toString()) ?? 0.0,
+      'longitude': (h['longitude'] is num) ? h['longitude'].toDouble() : double.tryParse(h['longitude'].toString()) ?? 0.0,
+      'radius': (h['radius'] is num) ? h['radius'].toDouble() : double.tryParse(h['radius'].toString()) ?? TripDetectionConfig.homeZoneRadiusMeters,
+      'is_active': h['is_active'] ?? true,
+    }).where((h) => h['latitude'] != 0 && h['longitude'] != 0).toList();
+
+    await setHomeLocations(homeList);
+    debugPrint('[TripDetection] ${homeList.length} home(s) synced from API');
+  }
+
+  /// Mevcut konumun herhangi bir ev bölgesinde olup olmadığını kontrol et
   static bool checkHomeZone(double latitude, double longitude) {
     if (!hasHomeLocation) {
       _isInHomeZone = false;
+      _currentHomeId = null;
       return false;
     }
 
-    final distanceToHome = Geolocator.distanceBetween(
-      _homeLatitude!,
-      _homeLongitude!,
-      latitude,
-      longitude,
-    );
+    // Tüm evleri kontrol et
+    for (var home in _homeLocations) {
+      final homeLat = home['latitude'] as double;
+      final homeLon = home['longitude'] as double;
+      final homeRadius = (home['radius'] as double?) ?? TripDetectionConfig.homeZoneRadiusMeters;
 
-    _isInHomeZone = distanceToHome <= TripDetectionConfig.homeZoneRadiusMeters;
+      final distanceToHome = Geolocator.distanceBetween(
+        homeLat,
+        homeLon,
+        latitude,
+        longitude,
+      );
 
-    if (_isInHomeZone) {
-      debugPrint('[TripDetection] IN HOME ZONE - distance: ${distanceToHome.toStringAsFixed(0)}m');
+      if (distanceToHome <= homeRadius) {
+        _isInHomeZone = true;
+        _currentHomeId = home['id']?.toString();
+        debugPrint('[TripDetection] IN HOME ZONE "${home['name']}" - distance: ${distanceToHome.toStringAsFixed(0)}m (radius: ${homeRadius.toStringAsFixed(0)}m)');
+        return true;
+      }
     }
 
-    return _isInHomeZone;
+    _isInHomeZone = false;
+    _currentHomeId = null;
+    return false;
   }
 
   /// Dinamik durma eşiğini hesapla (dakika)
@@ -425,10 +450,10 @@ class TripDetectionService {
       await _loadTripStats(prefs);
     }
 
-    // Ev koordinatlarını yükle
-    await loadHomeLocation();
+    // Ev koordinatlarını yükle (çoklu ev)
+    await loadHomeLocations();
 
-    debugPrint('[TripDetection] Initialized - state: $_currentState, distance: ${_totalDistanceKm.toStringAsFixed(1)}km, avgSpeed: ${averageSpeedKmh.toStringAsFixed(1)}km/h, hasHome: $hasHomeLocation');
+    debugPrint('[TripDetection] Initialized - state: $_currentState, distance: ${_totalDistanceKm.toStringAsFixed(1)}km, avgSpeed: ${averageSpeedKmh.toStringAsFixed(1)}km/h, homes: $homeCount');
   }
 
   /// Konum güncellemesi ile sefer durumunu kontrol et

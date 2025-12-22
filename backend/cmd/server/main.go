@@ -207,6 +207,10 @@ func main() {
 			driverGroup.POST("/trip-events", tripHandler.SaveTripEvent)
 			driverGroup.GET("/geofences", tripHandler.GetGeofences)
 			driverGroup.POST("/geofence-events", tripHandler.SaveGeofenceEvent)
+
+			// Driver Homes (Ev Adresleri - Mobil uygulama için)
+			driverHomeHandlerForDriver := api.NewDriverHomeHandler(driverHomeRepo, driverRepo)
+			driverGroup.GET("/homes", driverHomeHandlerForDriver.GetMyHomes)
 		}
 
 		// Protected admin routes

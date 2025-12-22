@@ -32,7 +32,39 @@ func (h *DriverHomeHandler) SetStopRepository(stopRepo *repository.StopRepositor
 	h.stopRepo = stopRepo
 }
 
-// GetDriverHomes returns all home locations for a driver
+// GetMyHomes returns home locations for the authenticated driver
+// This is used by the mobile app to sync home locations for trip detection
+func (h *DriverHomeHandler) GetMyHomes(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Get driver ID from context (set by auth middleware)
+	driverIDValue, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+
+	driverID, ok := driverIDValue.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kullanıcı ID formatı hatalı"})
+		return
+	}
+
+	// Get active homes only
+	homes, err := h.homeRepo.GetActiveByDriver(ctx, driverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ev adresleri alınamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"homes":     homes,
+		"max_homes": 2,
+		"count":     len(homes),
+	})
+}
+
+// GetDriverHomes returns all home locations for a driver (admin use)
 func (h *DriverHomeHandler) GetDriverHomes(c *gin.Context) {
 	ctx := c.Request.Context()
 	driverID := c.Param("id")

@@ -27,6 +27,7 @@ class ApiConstants {
   static const String location = '/driver/location';
   static const String locationBatch = '/driver/location/batch';
   static const String surveys = '/driver/surveys/pending';
+  static const String driverHomes = '/driver/homes';
 
   // Questions (Akıllı Soru Sistemi)
   static const String questionsPending = '/driver/questions/pending';

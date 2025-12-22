@@ -1,7 +1,7 @@
 name: nakliyeo_mobil
 description: Nakliyeo Mobil - Şoför Takip Uygulaması
 publish_to: 'none'
-version: 1.0.47+47
+version: 1.0.48+48
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -25,7 +25,7 @@ dependencies:
 
   # Network
   dio: ^5.8.0
-  http: ^1.2.0
+  http: ^1.2.2
   web_socket_channel: ^3.0.3
 
   # Storage
@@ -36,7 +36,7 @@ dependencies:
   hive_flutter: ^1.1.0
 
   # Location & Maps
-  geolocator: ^13.0.2
+  geolocator: ^13.0.4
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
 
@@ -45,15 +45,15 @@ dependencies:
   flutter_background_service: ^5.0.12
 
   # Sensors
-  sensors_plus: ^6.1.1
+  sensors_plus: ^6.1.2
 
   # Notifications
-  firebase_core: ^3.13.0
-  firebase_messaging: ^15.2.4
+  firebase_core: ^3.15.2
+  firebase_messaging: ^15.2.10
   flutter_local_notifications: ^19.2.0
 
   # Crash Reporting & Analytics
-  firebase_crashlytics: ^4.3.4
+  firebase_crashlytics: ^4.3.10
   sentry_flutter: ^8.14.2
 
   # Forms & Validation
@@ -62,11 +62,11 @@ dependencies:
 
   # Utils
   uuid: ^4.5.1
-  connectivity_plus: ^6.1.4
-  battery_plus: ^6.2.2
+  connectivity_plus: ^6.1.5
+  battery_plus: ^6.2.3
   permission_handler: ^11.4.0
   package_info_plus: ^8.3.1
-  device_info_plus: ^11.2.1
+  device_info_plus: ^11.5.0
 
   # Contacts & Call Log
   flutter_contacts: ^1.1.9
@@ -74,7 +74,7 @@ dependencies:
   url_launcher: ^6.3.1
 
   # Android Intent (for manufacturer settings)
-  android_intent_plus: ^5.1.0
+  android_intent_plus: ^5.3.1
 
 dev_dependencies:
   flutter_test:
