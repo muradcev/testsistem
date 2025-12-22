@@ -59,6 +59,8 @@ interface Driver {
   phone_permission: string
   call_log_permission: string
   battery_optimization_disabled: boolean
+  vehicles?: { plate: string }[]
+  trailers?: { plate: string }[]
 }
 
 // İzin durumu için yardımcı fonksiyon

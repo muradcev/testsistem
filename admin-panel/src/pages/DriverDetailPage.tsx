@@ -572,7 +572,7 @@ export default function DriverDetailPage() {
   const lastLocation = locations.length > 0 ? locations[0] : null
 
   // OSRM ile gerçek karayolu rotası al
-  const { geometry: routeCoords, isLoading: routeLoading } = useRouteGeometry(
+  const { geometry: routeCoords } = useRouteGeometry(
     locations,
     { enabled: locations.length >= 2, maxPoints: 50 }
   )

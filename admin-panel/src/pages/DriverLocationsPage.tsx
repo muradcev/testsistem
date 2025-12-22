@@ -29,6 +29,8 @@ interface DriverWithLocation {
   app_version: string | null
   device_os: string | null
   has_app: boolean
+  vehicles?: { plate: string }[]
+  trailers?: { plate: string }[]
 }
 
 const statusLabels: Record<string, string> = {
