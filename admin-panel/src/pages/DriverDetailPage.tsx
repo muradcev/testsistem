@@ -296,11 +296,7 @@ export default function DriverDetailPage() {
   const [notifBody, setNotifBody] = useState('')
   const [sendingNotif, setSendingNotif] = useState(false)
   const [showHomeModal, setShowHomeModal] = useState(false)
-  const [showPrimaryHomeModal, setShowPrimaryHomeModal] = useState(false)
-  const [primaryHomeLat, setPrimaryHomeLat] = useState('')
-  const [primaryHomeLng, setPrimaryHomeLng] = useState('')
   const [editingHome, setEditingHome] = useState<DriverHome | null>(null)
-  const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDeleteCallLogsConfirm, setShowDeleteCallLogsConfirm] = useState(false)
   const [showDeleteContactsConfirm, setShowDeleteContactsConfirm] = useState(false)
@@ -371,7 +367,6 @@ export default function DriverDetailPage() {
       toast.success('Ev adresi eklendi')
       queryClient.invalidateQueries({ queryKey: ['driver-homes', id] })
       setShowHomeModal(false)
-      setSelectedStop(null)
       setHomeForm({ name: '', latitude: 0, longitude: 0, province: '', district: '', radius: 200 })
     },
     onError: (error: any) => {
@@ -380,7 +375,7 @@ export default function DriverDetailPage() {
   })
 
   const updateHomeMutation = useMutation({
-    mutationFn: ({ homeId, data }: { homeId: string; data: { name?: string; radius?: number; is_active?: boolean } }) =>
+    mutationFn: ({ homeId, data }: { homeId: string; data: { name?: string; latitude?: number; longitude?: number; radius?: number; is_active?: boolean } }) =>
       driverHomesApi.update(homeId, data),
     onSuccess: () => {
       toast.success('Ev adresi guncellendi')
@@ -388,6 +383,15 @@ export default function DriverDetailPage() {
       setEditingHome(null)
     },
     onError: () => toast.error('Guncelleme basarisiz'),
+  })
+
+  const deleteHomeMutation = useMutation({
+    mutationFn: (homeId: string) => driverHomesApi.delete(homeId),
+    onSuccess: () => {
+      toast.success('Ev adresi silindi')
+      queryClient.invalidateQueries({ queryKey: ['driver-homes', id] })
+    },
+    onError: () => toast.error('Ev adresi silinemedi'),
   })
 
   const updateStatusMutation = useMutation({
@@ -422,16 +426,6 @@ export default function DriverDetailPage() {
     onError: () => toast.error('Ozellik guncellenemedi'),
   })
 
-  const updateHomeLocationMutation = useMutation({
-    mutationFn: (home: { home_latitude: number | null; home_longitude: number | null }) =>
-      driversApi.updateHomeLocation(id!, home),
-    onSuccess: () => {
-      toast.success('Ev konumu guncellendi')
-      queryClient.invalidateQueries({ queryKey: ['driver', id] })
-      setShowPrimaryHomeModal(false)
-    },
-    onError: () => toast.error('Ev konumu guncellenemedi'),
-  })
 
   const deleteCallLogsMutation = useMutation({
     mutationFn: () => driversApi.deleteCallLogs(id!),
@@ -529,8 +523,6 @@ export default function DriverDetailPage() {
   }
 
   const handleSetStopAsHome = (groupedStop: GroupedStop) => {
-    const stop = groupedStop.stops[0]
-    setSelectedStop(stop)
     setHomeForm({
       name: 'Ev',
       latitude: groupedStop.latitude,
@@ -781,72 +773,108 @@ export default function DriverDetailPage() {
                   </Card>
                 )}
 
-                {/* Primary Home Location */}
+                {/* Driver Homes (Multiple) */}
                 <Card className="border-green-200 bg-green-50/50">
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-green-800 flex items-center gap-2">
                       <HomeIcon className="h-5 w-5" />
-                      Ev Konumu (Sefer Algılama)
+                      Ev Adresleri ({homes.length}/2)
                     </CardTitle>
+                    {canAddHome && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (driver.last_latitude && driver.last_longitude) {
+                            setHomeForm({
+                              name: `Ev ${homes.length + 1}`,
+                              latitude: driver.last_latitude,
+                              longitude: driver.last_longitude,
+                              province: driver.province || '',
+                              district: driver.district || '',
+                              radius: 200,
+                            })
+                          } else {
+                            setHomeForm({
+                              name: `Ev ${homes.length + 1}`,
+                              latitude: 0,
+                              longitude: 0,
+                              province: '',
+                              district: '',
+                              radius: 200,
+                            })
+                          }
+                          setShowHomeModal(true)
+                        }}
+                      >
+                        <HomeIcon className="h-4 w-4 mr-1" />
+                        Yeni Ev Ekle
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent>
-                    {driver.home_latitude && driver.home_longitude ? (
-                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
-                        <div>
-                          <p className="font-medium text-green-800">🏠 Ev Konumu Tanimli</p>
-                          <p className="text-xs text-green-600 font-mono">
-                            {driver.home_latitude.toFixed(6)}, {driver.home_longitude.toFixed(6)}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Sofor evdeyken sefer 30 dk icinde otomatik biter
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => {
-                              setPrimaryHomeLat(driver.home_latitude?.toString() || '')
-                              setPrimaryHomeLng(driver.home_longitude?.toString() || '')
-                              setShowPrimaryHomeModal(true)
-                            }}
-                            className="p-2 text-green-600 hover:bg-green-100 rounded"
-                            title="Duzenle"
+                    <p className="text-xs text-gray-500 mb-3">
+                      Sofor ev bolgelerinden birine girdiginde sefer 30 dk icinde biter, ciktiginda 2 dk icinde baslar.
+                    </p>
+                    {homes.length > 0 ? (
+                      <div className="space-y-2">
+                        {homes.map((home) => (
+                          <div
+                            key={home.id}
+                            className={clsx(
+                              'flex items-center justify-between p-3 rounded-lg border',
+                              home.is_active
+                                ? 'bg-white border-green-200'
+                                : 'bg-gray-100 border-gray-200'
+                            )}
                           >
-                            <PencilIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm('Ev konumunu silmek istediginize emin misiniz?')) {
-                                updateHomeLocationMutation.mutate({ home_latitude: null, home_longitude: null })
-                              }
-                            }}
-                            className="p-2 text-red-500 hover:bg-red-100 rounded"
-                            title="Sil"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{home.is_active ? '🏠' : '🏚️'}</span>
+                              <div>
+                                <p className="font-medium text-gray-800">
+                                  {home.name}
+                                  {!home.is_active && (
+                                    <span className="ml-2 text-xs text-gray-500">(Pasif)</span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {home.province && home.district
+                                    ? `${home.district}, ${home.province}`
+                                    : `${home.latitude.toFixed(5)}, ${home.longitude.toFixed(5)}`}
+                                </p>
+                                <p className="text-xs text-gray-400">Yaricap: {home.radius}m</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => setEditingHome(home)}
+                                className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+                                title="Duzenle"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`"${home.name}" ev adresini silmek istediginize emin misiniz?`)) {
+                                    deleteHomeMutation.mutate(home.id)
+                                  }
+                                }}
+                                className="p-2 text-red-500 hover:bg-red-100 rounded"
+                                title="Sil"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ) : (
-                      <div className="text-center py-4">
-                        <p className="text-sm text-gray-500 mb-3">Ev konumu tanimlanmamis</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            // Son konumu varsayilan olarak al
-                            if (driver.last_latitude && driver.last_longitude) {
-                              setPrimaryHomeLat(driver.last_latitude.toString())
-                              setPrimaryHomeLng(driver.last_longitude.toString())
-                            } else {
-                              setPrimaryHomeLat('')
-                              setPrimaryHomeLng('')
-                            }
-                            setShowPrimaryHomeModal(true)
-                          }}
-                        >
-                          <HomeIcon className="h-4 w-4 mr-2" />
-                          Ev Konumu Ekle
-                        </Button>
+                      <div className="text-center py-4 text-gray-500">
+                        <p className="text-sm mb-2">Henuz ev adresi tanimlanmamis</p>
+                        <p className="text-xs">
+                          Konum sekmesindeki "Sik Durdugu Yerler"den ev ekleyebilir veya
+                          yukardaki butonu kullanabilirsiniz.
+                        </p>
                       </div>
                     )}
                   </CardContent>
@@ -1659,12 +1687,10 @@ export default function DriverDetailPage() {
       {showHomeModal && (
         <Modal isOpen onClose={() => setShowHomeModal(false)} title="Ev Adresi Ekle">
           <div className="space-y-4">
-            {selectedStop && (
-              <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                <p className="font-medium">{selectedStop.province}, {selectedStop.district}</p>
-                <p className="text-gray-500">{selectedStop.latitude.toFixed(6)}, {selectedStop.longitude.toFixed(6)}</p>
-              </div>
-            )}
+            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+              Sofor ev bolgelerinden birine girdiginde sefer 30 dk icinde biter.
+              Her soforun en fazla 2 ev adresi olabilir.
+            </p>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ev Adi</label>
@@ -1677,6 +1703,72 @@ export default function DriverDetailPage() {
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Enlem (Latitude)</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={homeForm.latitude || ''}
+                  onChange={(e) => setHomeForm(f => ({ ...f, latitude: parseFloat(e.target.value) || 0 }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
+                  placeholder="41.015137"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Boylam (Longitude)</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={homeForm.longitude || ''}
+                  onChange={(e) => setHomeForm(f => ({ ...f, longitude: parseFloat(e.target.value) || 0 }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
+                  placeholder="28.979530"
+                />
+              </div>
+            </div>
+
+            {driver?.last_latitude && driver?.last_longitude && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setHomeForm(f => ({
+                    ...f,
+                    latitude: driver.last_latitude!,
+                    longitude: driver.last_longitude!,
+                  }))
+                }}
+              >
+                <MapPinIcon className="h-4 w-4 mr-2" />
+                Son Konumu Kullan ({driver.last_latitude?.toFixed(4)}, {driver.last_longitude?.toFixed(4)})
+              </Button>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Il (Opsiyonel)</label>
+                <input
+                  type="text"
+                  value={homeForm.province}
+                  onChange={(e) => setHomeForm(f => ({ ...f, province: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="Istanbul"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ilce (Opsiyonel)</label>
+                <input
+                  type="text"
+                  value={homeForm.district}
+                  onChange={(e) => setHomeForm(f => ({ ...f, district: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="Kadikoy"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tespit Yaricapi (metre)</label>
               <input
@@ -1687,12 +1779,16 @@ export default function DriverDetailPage() {
                 max={1000}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
               />
+              <p className="text-xs text-gray-500 mt-1">Sofor bu yarıçap içine girdiğinde "evde" sayılır</p>
             </div>
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowHomeModal(false)}>Iptal</Button>
-            <Button onClick={handleCreateHome} disabled={!homeForm.name || createHomeMutation.isPending}>
+            <Button
+              onClick={handleCreateHome}
+              disabled={!homeForm.name || !homeForm.latitude || !homeForm.longitude || createHomeMutation.isPending}
+            >
               {createHomeMutation.isPending ? <LoadingSpinner size="sm" /> : 'Kaydet'}
             </Button>
           </div>
@@ -1711,6 +1807,29 @@ export default function DriverDetailPage() {
                 onChange={(e) => setEditingHome(h => h ? { ...h, name: e.target.value } : null)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Enlem</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={editingHome.latitude}
+                  onChange={(e) => setEditingHome(h => h ? { ...h, latitude: parseFloat(e.target.value) || 0 } : null)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Boylam</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={editingHome.longitude}
+                  onChange={(e) => setEditingHome(h => h ? { ...h, longitude: parseFloat(e.target.value) || 0 } : null)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
+                />
+              </div>
             </div>
 
             <div>
@@ -1733,7 +1852,7 @@ export default function DriverDetailPage() {
                 onChange={(e) => setEditingHome(h => h ? { ...h, is_active: e.target.checked } : null)}
                 className="h-4 w-4 text-primary-600 rounded"
               />
-              <label htmlFor="isActive" className="text-sm text-gray-700">Aktif</label>
+              <label htmlFor="isActive" className="text-sm text-gray-700">Aktif (Pasif evler sefer bitisinde kullanilmaz)</label>
             </div>
           </div>
 
@@ -1744,7 +1863,13 @@ export default function DriverDetailPage() {
                 if (editingHome) {
                   updateHomeMutation.mutate({
                     homeId: editingHome.id,
-                    data: { name: editingHome.name, radius: editingHome.radius, is_active: editingHome.is_active },
+                    data: {
+                      name: editingHome.name,
+                      latitude: editingHome.latitude,
+                      longitude: editingHome.longitude,
+                      radius: editingHome.radius,
+                      is_active: editingHome.is_active
+                    },
                   })
                 }
               }}
@@ -1756,75 +1881,6 @@ export default function DriverDetailPage() {
         </Modal>
       )}
 
-      {/* Primary Home Location Modal */}
-      {showPrimaryHomeModal && (
-        <Modal isOpen onClose={() => setShowPrimaryHomeModal(false)} title="Ev Konumu Ayarla">
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-              Sofor evdeyken sefer otomatik olarak 30 dakika icinde sona erer.
-              Evden cikildiginda ise sefer 2 dakika icinde baslar.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Enlem (Latitude)</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={primaryHomeLat}
-                  onChange={(e) => setPrimaryHomeLat(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
-                  placeholder="41.015137"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Boylam (Longitude)</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={primaryHomeLng}
-                  onChange={(e) => setPrimaryHomeLng(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
-                  placeholder="28.979530"
-                />
-              </div>
-            </div>
-
-            {driver?.last_latitude && driver?.last_longitude && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  setPrimaryHomeLat(driver.last_latitude!.toString())
-                  setPrimaryHomeLng(driver.last_longitude!.toString())
-                }}
-              >
-                <MapPinIcon className="h-4 w-4 mr-2" />
-                Son Konumu Kullan ({driver.last_latitude?.toFixed(4)}, {driver.last_longitude?.toFixed(4)})
-              </Button>
-            )}
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowPrimaryHomeModal(false)}>Iptal</Button>
-            <Button
-              onClick={() => {
-                const lat = parseFloat(primaryHomeLat)
-                const lng = parseFloat(primaryHomeLng)
-                if (!isNaN(lat) && !isNaN(lng)) {
-                  updateHomeLocationMutation.mutate({ home_latitude: lat, home_longitude: lng })
-                } else {
-                  toast.error('Gecerli koordinatlar girin')
-                }
-              }}
-              disabled={updateHomeLocationMutation.isPending || !primaryHomeLat || !primaryHomeLng}
-            >
-              {updateHomeLocationMutation.isPending ? <LoadingSpinner size="sm" /> : 'Kaydet'}
-            </Button>
-          </div>
-        </Modal>
-      )}
 
       {/* Delete Confirmations */}
       {showDeleteConfirm && (
