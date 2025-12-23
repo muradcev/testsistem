@@ -330,6 +330,14 @@ void onStart(ServiceInstance service) async {
       lastLon = position.longitude;
       lastLocationTime = DateTime.now();
 
+      // Accuracy filtresi - 150m'den kötü accuracy'li konumları atla
+      // (HybridLocationService ile uyumlu - düşük pil modunda 150m)
+      const maxAccuracyMeters = 150.0;
+      if (position.accuracy > maxAccuracyMeters) {
+        debugPrint('Background: Skipping low accuracy location: ${position.accuracy.toStringAsFixed(0)}m > ${maxAccuracyMeters.toStringAsFixed(0)}m');
+        return;
+      }
+
       // Create location data with telemetry
       final locationData = {
         // Konum verileri
