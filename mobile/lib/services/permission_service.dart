@@ -208,7 +208,7 @@ class PermissionService {
   }
 
   /// Kalıcı olarak reddedilen izinler için ayarlara yönlendir
-  static Future<bool> openAppSettings() async {
+  static Future<bool> openSettings() async {
     return await openAppSettings();
   }
 }

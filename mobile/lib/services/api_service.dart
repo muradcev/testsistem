@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
-import '../config/router.dart';
 
 class ApiService {
   late final Dio _dio;
@@ -48,8 +47,9 @@ class ApiService {
 
           // Refresh endpoint'ine giden isteklerde tekrar deneme yapma
           if (error.requestOptions.path.contains('/auth/refresh')) {
-            debugPrint('[API] Refresh token also expired - logging out');
-            await _handleLogout();
+            debugPrint('[API] Refresh token also expired - will propagate error');
+            // Otomatik logout yapmıyoruz - hatayı yukarı ilet
+            // Kullanıcı kendisi logout yapmadıkça oturumu koruyoruz
             return handler.next(error);
           }
 
@@ -78,8 +78,9 @@ class ApiService {
               return handler.next(error);
             }
           } else {
-            // Token yenilenemedi, logout yap
-            await _handleLogout();
+            // Token yenilenemedi - ama otomatik logout YAPMA!
+            // Kullanıcıyı login'de tutuyoruz, sonraki istekte tekrar deneyecek
+            debugPrint('[API] Token refresh failed - keeping session, error will propagate');
           }
         }
         return handler.next(error);
@@ -128,44 +129,10 @@ class ApiService {
     return false;
   }
 
-  Future<void> _handleLogout() async {
-    debugPrint('[API] Handling logout - clearing tokens and redirecting');
-
-    // Önce refresh token ile son bir deneme yap
-    final prefs = await SharedPreferences.getInstance();
-    final refreshToken = prefs.getString(StorageKeys.refreshToken);
-
-    if (refreshToken != null && !_isRefreshing) {
-      debugPrint('[API] Attempting final token refresh before logout...');
-      final refreshed = await _tryRefreshToken();
-      if (refreshed) {
-        debugPrint('[API] Token refreshed successfully, cancelling logout');
-        return; // Logout iptal - token yenilendi
-      }
-    }
-
-    await clearToken();
-    await _clearRefreshToken();
-
-    // SharedPreferences'dan login durumunu temizle
-    await prefs.remove(StorageKeys.isLoggedIn);
-    await prefs.remove(StorageKeys.userId);
-    await prefs.remove(StorageKeys.userPhone);
-
-    // Router'ı bilgilendir ve login'e yönlendir
-    authNotifier.setLoggedIn(false);
-  }
-
   Future<void> _setRefreshToken(String token) async {
     _refreshToken = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(StorageKeys.refreshToken, token);
-  }
-
-  Future<void> _clearRefreshToken() async {
-    _refreshToken = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(StorageKeys.refreshToken);
   }
 
   void _updateBackgroundServiceToken(String token) {

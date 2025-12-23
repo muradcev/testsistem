@@ -65,12 +65,6 @@ class _LocationHealthWidgetState extends State<LocationHealthWidget> {
     return '${diff.inDays} gün önce';
   }
 
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-
   Color _getStatusColor() {
     if (!_isGpsEnabled) return Colors.red;
     if (!_isOnline) return Colors.orange;
@@ -282,25 +276,6 @@ class _LocationHealthWidgetState extends State<LocationHealthWidget> {
                     ],
                   ),
                 ),
-                // Tasarruf
-                if (_stats != null && _stats!.bytesSaved > 0)
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.compress,
-                        size: 14,
-                        color: Colors.blue.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${_formatBytes(_stats!.bytesSaved)} tasarruf',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.blue.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
               ],
             ),
 

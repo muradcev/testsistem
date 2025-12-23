@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -40,8 +39,6 @@ const double _maxPossibleSpeedKmh = 200.0; // Maksimum olası hız (km/h)
 const double _minAnomalyDistanceMeters = 5000.0; // 5km altında anomali kontrolü yapma
 const int _minAnomalyTimeSeconds = 60; // Minimum zaman farkı (saniye)
 
-// Sıkıştırma sabitleri
-const int _compressionThreshold = 5; // 5+ konumda sıkıştırma kullan
 const String _healthStatsKey = 'location_health_stats';
 
 /// Config değerlerini SharedPreferences'tan oku
@@ -309,25 +306,10 @@ class HybridLocationService {
   }
 }
 
-/// GZIP sıkıştırma - büyük batch'ler için veri tasarrufu
-List<int> _compressData(String jsonData) {
-  final bytes = utf8.encode(jsonData);
-  return gzip.encode(bytes);
-}
-
-/// Sıkıştırılmış veri boyutu hesapla
-String _formatBytes(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-}
-
 /// Sağlık istatistiklerini kaydet
 class LocationHealthStats {
   int totalSent = 0;
   int totalFailed = 0;
-  int totalCompressed = 0;
-  int bytesSaved = 0;
   DateTime? lastSuccessAt;
   DateTime? lastFailAt;
   String? lastError;
@@ -338,8 +320,6 @@ class LocationHealthStats {
     final stats = LocationHealthStats();
     stats.totalSent = json['total_sent'] ?? 0;
     stats.totalFailed = json['total_failed'] ?? 0;
-    stats.totalCompressed = json['total_compressed'] ?? 0;
-    stats.bytesSaved = json['bytes_saved'] ?? 0;
     stats.lastSuccessAt = json['last_success_at'] != null
         ? DateTime.tryParse(json['last_success_at'])
         : null;
@@ -353,8 +333,6 @@ class LocationHealthStats {
   Map<String, dynamic> toJson() => {
     'total_sent': totalSent,
     'total_failed': totalFailed,
-    'total_compressed': totalCompressed,
-    'bytes_saved': bytesSaved,
     'last_success_at': lastSuccessAt?.toIso8601String(),
     'last_fail_at': lastFailAt?.toIso8601String(),
     'last_error': lastError,
@@ -388,11 +366,6 @@ class LocationHealthStats {
     totalFailed++;
     lastFailAt = DateTime.now();
     lastError = error;
-  }
-
-  void recordCompression(int originalSize, int compressedSize) {
-    totalCompressed++;
-    bytesSaved += (originalSize - compressedSize);
   }
 }
 
@@ -776,17 +749,13 @@ Future<void> _sendBatchLocations(
       return;
     }
 
-    // Sıkıştırma kullanılacak mı?
-    final useCompression = locations.length >= _compressionThreshold;
-
     final dio = Dio(BaseOptions(
       baseUrl: ApiConstants.baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
-        'Content-Type': useCompression ? 'application/gzip' : 'application/json',
+        'Content-Type': 'application/json',
         'Authorization': 'Bearer $accessToken',
-        if (useCompression) 'Content-Encoding': 'gzip',
       },
     ));
 
@@ -796,15 +765,7 @@ Future<void> _sendBatchLocations(
     if (pending.isNotEmpty) {
       try {
         final data = {'locations': pending};
-        if (useCompression && pending.length >= _compressionThreshold) {
-          final jsonStr = json.encode(data);
-          final compressed = _compressData(jsonStr);
-          debugPrint('[Location] Compressed ${_formatBytes(jsonStr.length)} -> ${_formatBytes(compressed.length)}');
-          healthStats.recordCompression(jsonStr.length, compressed.length);
-          await dio.post(ApiConstants.locationBatch, data: Stream.fromIterable([compressed]));
-        } else {
-          await dio.post(ApiConstants.locationBatch, data: data);
-        }
+        await dio.post(ApiConstants.locationBatch, data: data);
         await prefs.setString(StorageKeys.pendingLocations, '[]');
         healthStats.recordSuccess();
         debugPrint('[Location] Sent ${pending.length} pending locations');
@@ -825,18 +786,10 @@ Future<void> _sendBatchLocations(
       }
     }
 
-    // Yeni konumları gönder (sıkıştırma ile)
+    // Yeni konumları gönder
     try {
       final data = {'locations': locations};
-      if (useCompression) {
-        final jsonStr = json.encode(data);
-        final compressed = _compressData(jsonStr);
-        debugPrint('[Location] Compressed ${_formatBytes(jsonStr.length)} -> ${_formatBytes(compressed.length)}');
-        healthStats.recordCompression(jsonStr.length, compressed.length);
-        await dio.post(ApiConstants.locationBatch, data: Stream.fromIterable([compressed]));
-      } else {
-        await dio.post(ApiConstants.locationBatch, data: data);
-      }
+      await dio.post(ApiConstants.locationBatch, data: data);
       healthStats.recordSuccess();
       debugPrint('[Location] Sent ${locations.length} new locations');
     } catch (e) {

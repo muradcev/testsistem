@@ -8,8 +8,6 @@ import '../services/hybrid_location_service.dart';
 import '../config/constants.dart';
 import '../config/router.dart';
 
-// HybridLocationService token güncellemesi için
-
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService;
   Timer? _tokenRefreshTimer;
@@ -47,59 +45,93 @@ class AuthProvider extends ChangeNotifier {
       final accessToken = prefs.getString(StorageKeys.accessToken);
       final refreshToken = prefs.getString(StorageKeys.refreshToken);
 
-      debugPrint('[Auth] Checking login status: wasLoggedIn=$wasLoggedIn, hasToken=${accessToken != null}');
+      debugPrint('[Auth] Checking login status: wasLoggedIn=$wasLoggedIn, hasToken=${accessToken != null}, hasRefresh=${refreshToken != null}');
 
+      // Hiç giriş yapılmamış veya token yok
       if (!wasLoggedIn || accessToken == null) {
+        debugPrint('[Auth] No previous login or token found');
         _isLoggedIn = false;
         _isRestoringSession = false;
         notifyListeners();
         return;
       }
 
-      // Token ile profile isteği yaparak geçerliliği kontrol et
+      // Token var, ApiService'e yükle
+      await _apiService.setToken(accessToken);
+
+      // Profile yüklemeyi dene
       try {
-        await loadProfile();
+        await _loadProfileSilent();
         _isLoggedIn = true;
+        authNotifier.setLoggedIn(true);
         debugPrint('[Auth] Session restored successfully');
-
-        // Token yenileme timer'ını başlat
         _startTokenRefreshTimer();
-      } catch (e) {
-        debugPrint('[Auth] Profile load failed, trying to refresh token: $e');
+      } on DioException catch (e) {
+        debugPrint('[Auth] Profile load failed with DioException: ${e.type} - ${e.message}');
 
-        // Token geçersiz olabilir, refresh dene
-        if (refreshToken != null && refreshToken.isNotEmpty) {
-          final refreshed = await _tryRefreshToken(prefs, refreshToken);
-          if (refreshed) {
-            // Refresh başarılı, profile yükle
-            try {
-              await loadProfile();
+        // Sadece 401 hatası için token yenileme dene
+        if (e.response?.statusCode == 401) {
+          debugPrint('[Auth] Got 401, trying to refresh token...');
+          if (refreshToken != null && refreshToken.isNotEmpty) {
+            final refreshed = await _tryRefreshToken(prefs, refreshToken);
+            if (refreshed) {
+              try {
+                await _loadProfileSilent();
+                _isLoggedIn = true;
+                authNotifier.setLoggedIn(true);
+                debugPrint('[Auth] Session restored after token refresh');
+                _startTokenRefreshTimer();
+              } catch (e2) {
+                debugPrint('[Auth] Profile load failed after refresh: $e2');
+                // Refresh başarılı oldu ama profile yüklenemedi - yine de giriş yapmış say
+                // Çünkü token yenilendi, network sorunu olabilir
+                _isLoggedIn = true;
+                authNotifier.setLoggedIn(true);
+                _startTokenRefreshTimer();
+              }
+            } else {
+              debugPrint('[Auth] Token refresh failed - keeping session for retry');
+              // Refresh token da başarısız - ama session'ı silme!
+              // Kullanıcı tekrar deneyebilir
               _isLoggedIn = true;
-              debugPrint('[Auth] Session restored after token refresh');
+              authNotifier.setLoggedIn(true);
               _startTokenRefreshTimer();
-            } catch (e2) {
-              debugPrint('[Auth] Profile load failed after refresh: $e2');
-              _isLoggedIn = false;
-              await _clearSession(prefs);
             }
           } else {
-            debugPrint('[Auth] Token refresh failed');
-            _isLoggedIn = false;
-            await _clearSession(prefs);
+            debugPrint('[Auth] No refresh token - keeping session anyway');
+            // Refresh token yok ama access token var
+            // Kullanıcıyı login'de tut, sonraki isteklerde 401 alırsa ApiService handle eder
+            _isLoggedIn = true;
+            authNotifier.setLoggedIn(true);
+            _startTokenRefreshTimer();
           }
         } else {
-          debugPrint('[Auth] No refresh token available');
-          _isLoggedIn = false;
-          await _clearSession(prefs);
+          // Network hatası veya başka bir sorun - kullanıcıyı login'de tut
+          debugPrint('[Auth] Non-401 error (${e.response?.statusCode}) - keeping session, might be network issue');
+          _isLoggedIn = true;
+          authNotifier.setLoggedIn(true);
+          _startTokenRefreshTimer();
         }
+      } catch (e) {
+        // Beklenmeyen hata - yine de session'ı koru
+        debugPrint('[Auth] Unexpected error: $e - keeping session');
+        _isLoggedIn = true;
+        authNotifier.setLoggedIn(true);
+        _startTokenRefreshTimer();
       }
     } catch (e) {
-      debugPrint('[Auth] Error checking login status: $e');
+      debugPrint('[Auth] Critical error checking login status: $e');
       _isLoggedIn = false;
     } finally {
       _isRestoringSession = false;
       notifyListeners();
     }
+  }
+
+  /// Profile'ı sessizce yükle (hata fırlatır)
+  Future<void> _loadProfileSilent() async {
+    final response = await _apiService.getProfile();
+    _user = response.data;
   }
 
   /// Refresh token ile access token yenile
@@ -109,8 +141,8 @@ class AuthProvider extends ChangeNotifier {
 
       final dio = Dio(BaseOptions(
         baseUrl: ApiConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {'Content-Type': 'application/json'},
       ));
 
@@ -125,53 +157,60 @@ class AuthProvider extends ChangeNotifier {
         final newAccessToken = authData['access_token'];
         final newRefreshToken = authData['refresh_token'];
 
+        if (newAccessToken == null) {
+          debugPrint('[Auth] No access token in refresh response');
+          return false;
+        }
+
         await _apiService.setToken(newAccessToken);
         await prefs.setString(StorageKeys.accessToken, newAccessToken);
         if (newRefreshToken != null) {
           await prefs.setString(StorageKeys.refreshToken, newRefreshToken);
         }
 
-        // Foreground service'e yeni token'ı bildir (aktif sefer varsa)
+        // Foreground service'e yeni token'ı bildir
         await HybridLocationService.updateToken(newAccessToken);
 
         debugPrint('[Auth] Token refreshed successfully');
         return true;
       }
+    } on DioException catch (e) {
+      debugPrint('[Auth] Token refresh DioException: ${e.type} - ${e.message}');
+      // Network hatası için false dön ama session'ı silme
     } catch (e) {
       debugPrint('[Auth] Token refresh failed: $e');
     }
     return false;
   }
 
-  /// Oturum verilerini temizle
-  Future<void> _clearSession(SharedPreferences prefs) async {
-    await prefs.remove(StorageKeys.isLoggedIn);
-    await prefs.remove(StorageKeys.accessToken);
-    // refreshToken'ı silme - tekrar giriş için kullanılabilir
-    _userId = null;
-    _phone = null;
-    _user = null;
-    authNotifier.setLoggedIn(false);
-  }
-
-  /// Token yenileme timer'ını başlat (her 50 dakikada bir)
+  /// Token yenileme timer'ını başlat
+  /// Token 24 saat geçerli, her 12 saatte bir yenile (güvenli margin)
   void _startTokenRefreshTimer() {
     _tokenRefreshTimer?.cancel();
-    // Token genellikle 1 saat geçerli, 50 dakikada bir yenile
-    _tokenRefreshTimer = Timer.periodic(const Duration(minutes: 50), (_) async {
-      debugPrint('[Auth] Periodic token refresh triggered');
+    // Token 24 saat geçerli, 12 saatte bir yenile (50% margin)
+    _tokenRefreshTimer = Timer.periodic(const Duration(hours: 12), (_) async {
+      debugPrint('[Auth] Periodic token refresh triggered (12 hour interval)');
       final prefs = await SharedPreferences.getInstance();
       final refreshToken = prefs.getString(StorageKeys.refreshToken);
       if (refreshToken != null && _isLoggedIn) {
         await _tryRefreshToken(prefs, refreshToken);
       }
     });
+    debugPrint('[Auth] Token refresh timer started (12 hour interval)');
   }
 
   /// Timer'ı durdur
   void _stopTokenRefreshTimer() {
     _tokenRefreshTimer?.cancel();
     _tokenRefreshTimer = null;
+    debugPrint('[Auth] Token refresh timer stopped');
+  }
+
+  /// Dispose - Memory leak önleme
+  @override
+  void dispose() {
+    _stopTokenRefreshTimer();
+    super.dispose();
   }
 
   Future<bool> login(String phone, String password) async {
@@ -207,12 +246,15 @@ class AuthProvider extends ChangeNotifier {
       _startTokenRefreshTimer();
 
       // DeviceInfoService'e ApiService'i bagla ve bilgileri gonder
-      // FCM token NotificationService tarafindan DeviceInfoService'e iletilecek
       final deviceInfoService = DeviceInfoService.instance;
       deviceInfoService.setApiService(_apiService);
-      await deviceInfoService.sendAllInfo(force: true);
-      debugPrint('[Auth] Device info sent via DeviceInfoService');
-      // WorkManager home_screen.dart'da başlatılıyor
+
+      // Device info'yu arka planda gönder, login'i bloklama
+      deviceInfoService.sendAllInfo(force: true).then((_) {
+        debugPrint('[Auth] Device info sent via DeviceInfoService');
+      }).catchError((e) {
+        debugPrint('[Auth] Device info send failed (non-critical): $e');
+      });
 
       _isLoading = false;
       notifyListeners();
@@ -283,6 +325,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Profile'ı yükle - UI için (hata gösterilmez)
   Future<void> loadProfile() async {
     try {
       final response = await _apiService.getProfile();
@@ -290,7 +333,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('[Auth] Failed to load profile: $e');
-      rethrow; // Hatayı yeniden fırlat ki _checkLoginStatus yakalasın
+      // UI çağrısı için hata fırlatma, sadece logla
     }
   }
 
@@ -313,8 +356,9 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Manuel logout - sadece kullanıcı istediğinde çağrılır
   Future<void> logout() async {
-    debugPrint('[Auth] Logging out...');
+    debugPrint('[Auth] User requested logout...');
 
     // Token yenileme timer'ını durdur
     _stopTokenRefreshTimer();
@@ -359,8 +403,22 @@ class AuthProvider extends ChangeNotifier {
   }
 
   String _parseError(dynamic e) {
-    if (e.response?.data != null && e.response.data['error'] != null) {
-      return e.response.data['error'];
+    if (e is DioException) {
+      if (e.response?.data != null && e.response!.data is Map) {
+        final error = e.response!.data['error'];
+        if (error != null) return error.toString();
+      }
+      // Network hataları için daha açıklayıcı mesajlar
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return 'Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.';
+        case DioExceptionType.connectionError:
+          return 'İnternet bağlantınızı kontrol edin.';
+        default:
+          break;
+      }
     }
     return 'Bir hata oluştu. Lütfen tekrar deneyin.';
   }
