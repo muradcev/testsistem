@@ -384,7 +384,7 @@ class ManufacturerConfig {
   });
 }
 
-/// Ayarlar dialog widget'ı
+/// Ayarlar dialog widget'ı - Basitleştirilmiş versiyon
 class _ManufacturerSettingsDialog extends StatelessWidget {
   final ManufacturerConfig config;
   final String manufacturer;
@@ -399,161 +399,110 @@ class _ManufacturerSettingsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Row(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange.shade100,
+              color: Colors.blue.shade50,
               shape: BoxShape.circle,
             ),
-            child: Icon(config.icon, color: Colors.orange.shade700, size: 24),
+            child: Icon(Icons.location_on, color: Colors.blue.shade600, size: 32),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 12),
+          const Text(
+            'Konum Takibi İçin Ayar Gerekli',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Arka planda konum takibinin düzgün çalışması için telefonunuzun pil ayarlarını açmanız gerekiyor.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
               children: [
-                Text(
-                  config.title,
-                  style: const TextStyle(fontSize: 18),
-                ),
-                Text(
-                  model,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.normal,
+                Icon(Icons.phone_android, color: Colors.grey.shade600),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        config.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        model,
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          Text(
+            'Ayarlarda "Pil optimizasyonu" veya "Arka plan kısıtlaması" seçeneğini bulup Nakliyeo için devre dışı bırakın.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+      actionsAlignment: MainAxisAlignment.center,
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actions: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              config.description,
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (int i = 0; i < config.steps.length; i++) ...[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade700,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${i + 1}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            config.steps[i],
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (i < config.steps.length - 1) const SizedBox(height: 8),
-                  ],
-                ],
-              ),
-            ),
-            if (config.alternativeSteps != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Alternatif yol:',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                ManufacturerSettingsService.openAppSettings();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                config.alternativeSteps!.join('\n'),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
+              child: const Text('Ayarları Aç', style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Sonra', style: TextStyle(color: Colors.grey.shade600)),
                 ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.amber.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Bu ayarlar yapılmazsa konum bilgisi gecikmeli gelebilir veya gelmeyebilir.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.amber.shade900,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    ManufacturerSettingsService.neverShowAgain();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Gösterme', style: TextStyle(color: Colors.grey.shade600)),
+                ),
+              ],
             ),
           ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            ManufacturerSettingsService.neverShowAgain();
-            Navigator.of(context).pop();
-          },
-          child: Text(
-            'Bir daha gösterme',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Daha sonra'),
-        ),
-        ElevatedButton.icon(
-          onPressed: () {
-            Navigator.of(context).pop();
-            ManufacturerSettingsService.openAppSettings();
-          },
-          icon: const Icon(Icons.settings, size: 18),
-          label: const Text('Ayarlara Git'),
         ),
       ],
     );

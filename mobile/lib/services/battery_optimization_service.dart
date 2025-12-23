@@ -77,51 +77,71 @@ class BatteryOptimizationService {
     }
   }
 
-  /// Pil optimizasyonu dialog'u
+  /// Pil optimizasyonu dialog'u - Basitleştirilmiş
   static Future<void> _showOptimizationDialog(BuildContext context) async {
     final result = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (context) => AlertDialog(
-        title: Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Column(
           children: [
-            Icon(Icons.battery_alert, color: Colors.orange[700], size: 28),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Pil Optimizasyonu',
-                style: TextStyle(fontSize: 18),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                shape: BoxShape.circle,
               ),
+              child: Icon(Icons.battery_charging_full, color: Colors.orange.shade600, size: 32),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Pil Ayarı Gerekli',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Konum takibinin düzgün çalışması için pil optimizasyonunu devre dışı bırakmanız gerekiyor.',
-              style: TextStyle(fontSize: 15),
+              'Konum takibinin kesintisiz çalışması için pil tasarrufunu kapatmanız gerekiyor.',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+              textAlign: TextAlign.center,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 8),
             Text(
-              'Bu ayar olmadan Android uygulamayı arka planda kapatabilir ve konum bilgileri gönderilemez.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+              'Bu izni verdiğinizde uygulama arka planda çalışmaya devam edebilir.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Daha Sonra'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange[700],
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Devre Dışı Bırak'),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade600,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('İzin Ver', style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Daha Sonra', style: TextStyle(color: Colors.grey.shade600)),
+              ),
+            ],
           ),
         ],
       ),

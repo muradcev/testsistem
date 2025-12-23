@@ -153,6 +153,22 @@ const locationTypeIcons: Record<string, string> = {
   unknown: '❓',
 }
 
+const locationTypeLabels: Record<string, string> = {
+  home: 'Ev',
+  loading: 'Yükleme',
+  unloading: 'Boşaltma',
+  rest_area: 'Dinlenme',
+  sleep: 'Uyku',
+  gas_station: 'Akaryakıt',
+  truck_garage: 'TIR Garajı',
+  parking: 'Otopark',
+  industrial: 'Sanayi',
+  port: 'Liman',
+  customs: 'Gümrük',
+  mall: 'AVM',
+  unknown: 'Belirlenmedi',
+}
+
 // Mesafe seçenekleri (derece cinsinden, yaklaşık metre karşılıkları)
 const CLUSTER_DISTANCES = [
   { value: 0.001, label: '100m', meters: 100 },
@@ -875,40 +891,64 @@ export default function StopsPage() {
                   <p>Durak bulunamadı</p>
                 </div>
               ) : (
-                filteredClusters.map((cluster, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleClusterSelect(cluster)}
-                    className={`w-full text-left p-4 border-b hover:bg-gray-50 ${
-                      selectedCluster === cluster ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium flex items-center gap-2">
-                        <MapPinIcon className="h-4 w-4 text-blue-500" />
-                        {cluster.province || 'Bilinmeyen'}, {cluster.district || ''}
-                      </span>
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                        {cluster.stops.length} durak
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <UserGroupIcon className="h-4 w-4" />
-                        {cluster.uniqueDrivers.length} sürücü
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ClockIcon className="h-4 w-4" />
-                        {formatDuration(cluster.totalDuration)}
-                      </span>
-                    </div>
-                    {cluster.uniqueDrivers.length > 1 && (
-                      <div className="mt-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded inline-block">
-                        🔥 Ortak Nokta - {cluster.uniqueDrivers.length} farklı sürücü
+                filteredClusters.map((cluster, index) => {
+                  // En çok görülen location type'ı bul
+                  const typeCounts: Record<string, number> = {}
+                  cluster.stops.forEach(s => {
+                    const type = s.location_type || 'unknown'
+                    typeCounts[type] = (typeCounts[type] || 0) + 1
+                  })
+                  const dominantType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'unknown'
+                  const dominantIcon = locationTypeIcons[dominantType] || '📍'
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleClusterSelect(cluster)}
+                      className={`w-full text-left p-3 sm:p-4 border-b hover:bg-gray-50 transition-colors ${
+                        selectedCluster === cluster ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-lg flex-shrink-0">{dominantIcon}</span>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {cluster.province || 'Konum Belirlenmedi'}
+                            </p>
+                            {cluster.district && (
+                              <p className="text-xs text-gray-500 truncate">{cluster.district}</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0">
+                          {cluster.stops.length}
+                        </span>
                       </div>
-                    )}
-                  </button>
-                ))
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <UserGroupIcon className="h-3.5 w-3.5" />
+                          {cluster.uniqueDrivers.length}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ClockIcon className="h-3.5 w-3.5" />
+                          {formatDuration(cluster.totalDuration)}
+                        </span>
+                        {dominantType !== 'unknown' && (
+                          <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">
+                            {locationTypeLabels[dominantType] || dominantType}
+                          </span>
+                        )}
+                      </div>
+                      {cluster.uniqueDrivers.length > 1 && (
+                        <div className="mt-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded inline-flex items-center gap-1">
+                          <span>🔥</span>
+                          <span>{cluster.uniqueDrivers.length} farklı sürücü</span>
+                        </div>
+                      )}
+                    </button>
+                  )
+                })
               )
             ) : stops.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
@@ -1117,7 +1157,7 @@ export default function StopsPage() {
 
       {/* Cluster Detail Panel */}
       {selectedCluster && (
-        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 relative z-10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
             <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
               <MapPinIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
@@ -1212,7 +1252,13 @@ export default function StopsPage() {
 
       {/* Categorization Panel - Right side drawer instead of modal */}
       {selectedStop && !showHomeModal && filter !== 'clusters' && (
-        <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ease-out">
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+            onClick={() => { setSelectedStop(null); setStopName(''); }}
+          />
+          <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ease-out">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
@@ -1356,6 +1402,7 @@ export default function StopsPage() {
             </button>
           </div>
         </div>
+        </>
       )}
 
       {/* Home Creation Modal */}
