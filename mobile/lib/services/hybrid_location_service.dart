@@ -568,8 +568,10 @@ Future<String?> _tryRefreshToken(SharedPreferences prefs) async {
     );
 
     if (response.statusCode == 200) {
-      final newAccessToken = response.data['access_token'];
-      final newRefreshToken = response.data['refresh_token'];
+      // Backend "auth" objesi içinde dönüyor
+      final authData = response.data['auth'] ?? response.data;
+      final newAccessToken = authData['access_token'];
+      final newRefreshToken = authData['refresh_token'];
 
       await prefs.setString(StorageKeys.accessToken, newAccessToken);
       if (newRefreshToken != null) {

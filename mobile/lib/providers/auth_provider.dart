@@ -120,8 +120,10 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final newAccessToken = response.data['access_token'];
-        final newRefreshToken = response.data['refresh_token'];
+        // Backend "auth" objesi içinde dönüyor
+        final authData = response.data['auth'] ?? response.data;
+        final newAccessToken = authData['access_token'];
+        final newRefreshToken = authData['refresh_token'];
 
         await _apiService.setToken(newAccessToken);
         await prefs.setString(StorageKeys.accessToken, newAccessToken);
@@ -287,7 +289,8 @@ class AuthProvider extends ChangeNotifier {
       _user = response.data;
       notifyListeners();
     } catch (e) {
-      debugPrint('Failed to load profile: $e');
+      debugPrint('[Auth] Failed to load profile: $e');
+      rethrow; // Hatayı yeniden fırlat ki _checkLoginStatus yakalasın
     }
   }
 
