@@ -7,6 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
 import '../models/cargo.dart';
+import 'app_log_service.dart';
 
 enum ActivityType { driving, still, walking, unknown }
 enum DriverStatus { home, driving, stopped, unknown }
@@ -266,8 +267,14 @@ class LocationService {
           (_) => _fetchLocation(),
         );
       }
-    } catch (e) {
-      // Handle location fetch error
+    } catch (e, stackTrace) {
+      appLog.error(
+        LogCategory.location,
+        'Location fetch failed',
+        error: e,
+        stackTrace: stackTrace,
+        metadata: {'battery': _currentBatteryLevel, 'is_online': _isOnline},
+      );
     }
   }
 
@@ -404,7 +411,13 @@ class LocationService {
             .map((j) => LocationData.fromJson(j as Map<String, dynamic>))
             .toList();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      appLog.error(
+        LogCategory.location,
+        'Failed to load pending locations',
+        error: e,
+        stackTrace: stackTrace,
+      );
       _pendingLocations = [];
     }
   }
@@ -414,8 +427,14 @@ class LocationService {
       final prefs = await SharedPreferences.getInstance();
       final jsonString = json.encode(_pendingLocations.map((l) => l.toJson()).toList());
       await prefs.setString(StorageKeys.pendingLocations, jsonString);
-    } catch (e) {
-      // Handle save error
+    } catch (e, stackTrace) {
+      appLog.error(
+        LogCategory.location,
+        'Failed to save pending locations',
+        error: e,
+        stackTrace: stackTrace,
+        metadata: {'pending_count': _pendingLocations.length},
+      );
     }
   }
 

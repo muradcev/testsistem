@@ -40,9 +40,32 @@ void main() async {
     try {
       await Firebase.initializeApp();
 
-      // Initialize Crashlytics
+      // Initialize Crashlytics and global Flutter error handler
+      FlutterError.onError = (FlutterErrorDetails details) {
+        // Report to Crashlytics in production
+        if (!kDebugMode) {
+          FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+        }
+
+        // Log to our app log service
+        appLog.critical(
+          LogCategory.system,
+          'Flutter error: ${details.exception.runtimeType}',
+          error: details.exception,
+          stackTrace: details.stack,
+          metadata: {
+            'library': details.library ?? 'unknown',
+            'context': details.context?.toString() ?? 'unknown',
+          },
+        );
+
+        // Print to console in debug mode
+        if (kDebugMode) {
+          FlutterError.dumpErrorToConsole(details);
+        }
+      };
+
       if (!kDebugMode) {
-        FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
         await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
       }
     } catch (e) {
@@ -135,6 +158,14 @@ void main() async {
   }, (error, stack) {
     // Catch all uncaught errors
     ErrorReportingService.reportError(error, stack);
+
+    // Also log to our app log service
+    appLog.critical(
+      LogCategory.system,
+      'Uncaught error: ${error.runtimeType}',
+      error: error,
+      stackTrace: stack,
+    );
   });
 }
 
@@ -183,6 +214,16 @@ class _NakliyeoAppState extends State<NakliyeoApp> {
             // Wrap with error widget handler
             ErrorWidget.builder = (FlutterErrorDetails details) {
               ErrorReportingService.reportFlutterError(details);
+
+              // Also log to our app log service
+              appLog.critical(
+                LogCategory.ui,
+                'Widget error: ${details.exception.runtimeType}',
+                error: details.exception,
+                stackTrace: details.stack,
+                metadata: {'library': details.library ?? 'unknown'},
+              );
+
               return _ErrorDisplayWidget(details: details);
             };
 

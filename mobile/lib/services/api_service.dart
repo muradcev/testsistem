@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
+import 'app_log_service.dart';
 
 class ApiService {
   late final Dio _dio;
@@ -44,6 +45,15 @@ class ApiService {
       onError: (error, handler) async {
         debugPrint('[API] Error ${error.response?.statusCode}: ${error.requestOptions.path}');
         debugPrint('[API] Error message: ${error.message}');
+
+        // Log API errors
+        appLog.networkRequest(
+          error.requestOptions.method,
+          error.requestOptions.path,
+          statusCode: error.response?.statusCode,
+          durationMs: 0,
+          errorMessage: '${error.type.name}: ${error.message}',
+        );
 
         if (error.response?.statusCode == 401) {
           // Token geçersiz veya süresi dolmuş
@@ -144,8 +154,14 @@ class ApiService {
           debugPrint('[API] Token refresh response missing access_token');
         }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[API] Token refresh failed: $e');
+      appLog.error(
+        LogCategory.auth,
+        'Token refresh failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
     } finally {
       // Her durumda completer'ı temizle
       completer.complete(success);

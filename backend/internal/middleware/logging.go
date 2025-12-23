@@ -43,7 +43,35 @@ func LoggingMiddleware() gin.HandlerFunc {
 			fullPath = path + "?" + query
 		}
 
-		// Log request
+		// Get user IDs if available
+		var driverID, adminID *uuid.UUID
+		if id, exists := c.Get("user_id"); exists {
+			if uid, ok := id.(uuid.UUID); ok && uid != uuid.Nil {
+				driverID = &uid
+			}
+		}
+		if id, exists := c.Get("admin_id"); exists {
+			if uid, ok := id.(uuid.UUID); ok && uid != uuid.Nil {
+				adminID = &uid
+			}
+		}
+
+		// Log to database (only for non-health endpoints)
+		if path != "/health" && path != "/metrics" {
+			logger.LogAPIRequest(
+				c.Request.Method,
+				fullPath,
+				clientIP,
+				userAgent,
+				c.Writer.Status(),
+				duration,
+				driverID,
+				adminID,
+				requestID,
+			)
+		}
+
+		// Console log
 		logger.Log.Info().
 			Str("request_id", requestID).
 			Str("method", c.Request.Method).
