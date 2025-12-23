@@ -151,6 +151,7 @@ const locationTypeIcons: Record<string, string> = {
   customs: '🛃',
   mall: '🛒',
   unknown: '❓',
+  ignored: '🚫',
 }
 
 const locationTypeLabels: Record<string, string> = {
@@ -167,6 +168,7 @@ const locationTypeLabels: Record<string, string> = {
   customs: 'Gümrük',
   mall: 'AVM',
   unknown: 'Belirlenmedi',
+  ignored: 'Önemsiz',
 }
 
 // Mesafe seçenekleri (derece cinsinden, yaklaşık metre karşılıkları)
@@ -253,6 +255,11 @@ export default function StopsPage() {
   const [selectedDriverId, setSelectedDriverId] = useState<string>('')
   const [showDetectModal, setShowDetectModal] = useState(false)
   const [clusterDistance, setClusterDistance] = useState(0.0045) // Default 500m
+  const [showIgnored, setShowIgnored] = useState(false) // Önemsiz durakları göster/gizle
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map') // Görünüm modu
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()) // Çoklu seçim
+  const [sortBy, setSortBy] = useState<'duration' | 'date' | 'driver' | 'type'>('duration') // Sıralama
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc') // Sıralama yönü
 
   // Get location types
   const { data: typesData, error: typesError } = useQuery({
@@ -432,8 +439,14 @@ export default function StopsPage() {
   const homes: DriverHome[] = homesData?.data?.homes || []
   const homesTotal = homesData?.data?.total || 0
 
+  // Önemsiz olmayan durakları filtrele
+  const filteredStops = useMemo(() => {
+    if (showIgnored) return stops
+    return stops.filter(s => s.location_type !== 'ignored')
+  }, [stops, showIgnored])
+
   // Kümelenmiş duraklar
-  const clusteredStops = useMemo(() => clusterStops(stops, clusterDistance), [stops, clusterDistance])
+  const clusteredStops = useMemo(() => clusterStops(filteredStops, clusterDistance), [filteredStops, clusterDistance])
 
   // Filtrelenmiş kümeler (arama)
   const filteredClusters = useMemo(() => {
@@ -451,6 +464,7 @@ export default function StopsPage() {
     const uniqueDrivers = new Set(stops.map(s => s.driver_id))
     const totalDuration = stops.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
     const hotSpots = clusteredStops.filter(c => c.uniqueDrivers.length > 1).length
+    const ignoredCount = stops.filter(s => s.location_type === 'ignored').length
 
     return {
       totalStops: stops.length,
@@ -458,8 +472,75 @@ export default function StopsPage() {
       clusters: clusteredStops.length,
       hotSpots,
       avgDuration: stops.length > 0 ? Math.round(totalDuration / stops.length) : 0,
+      ignoredCount,
     }
   }, [stops, clusteredStops])
+
+  // Liste görünümü için sıralanmış duraklar
+  const sortedStops = useMemo(() => {
+    const sorted = [...filteredStops]
+    sorted.sort((a, b) => {
+      let comparison = 0
+      switch (sortBy) {
+        case 'duration':
+          comparison = (a.duration_minutes || 0) - (b.duration_minutes || 0)
+          break
+        case 'date':
+          comparison = new Date(a.started_at || 0).getTime() - new Date(b.started_at || 0).getTime()
+          break
+        case 'driver':
+          comparison = (a.driver_name || '').localeCompare(b.driver_name || '')
+          break
+        case 'type':
+          comparison = (a.location_type || '').localeCompare(b.location_type || '')
+          break
+      }
+      return sortOrder === 'asc' ? comparison : -comparison
+    })
+    return sorted
+  }, [filteredStops, sortBy, sortOrder])
+
+  // Seçim işlemleri
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    if (selectedIds.size === sortedStops.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(sortedStops.map(s => s.id)))
+    }
+  }
+
+  const handleBulkAction = (action: 'delete' | 'ignore' | string) => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+
+    if (action === 'delete') {
+      if (confirm(`${ids.length} durağı silmek istediğinize emin misiniz?`)) {
+        bulkDeleteMutation.mutate(ids, {
+          onSuccess: () => setSelectedIds(new Set())
+        })
+      }
+    } else if (action === 'ignore') {
+      bulkUpdateMutation.mutate({ ids, locationType: 'ignored' }, {
+        onSuccess: () => setSelectedIds(new Set())
+      })
+    } else {
+      bulkUpdateMutation.mutate({ ids, locationType: action }, {
+        onSuccess: () => setSelectedIds(new Set())
+      })
+    }
+  }
 
   const formatDuration = (minutes: number | undefined | null) => {
     if (minutes == null || isNaN(minutes)) return '-'
@@ -733,9 +814,300 @@ export default function StopsPage() {
               ))}
             </select>
           )}
+
+          {/* Önemsiz durakları göster/gizle */}
+          {stats.ignoredCount > 0 && (
+            <button
+              onClick={() => setShowIgnored(!showIgnored)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                showIgnored
+                  ? 'bg-gray-200 text-gray-700'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              <span>🚫</span>
+              <span className="hidden sm:inline">{showIgnored ? 'Önemsizleri Gizle' : 'Önemsizleri Göster'}</span>
+              <span className="sm:hidden">{showIgnored ? 'Gizle' : 'Göster'}</span>
+              <span className="bg-gray-300 text-gray-700 px-1.5 rounded-full">{stats.ignoredCount}</span>
+            </button>
+          )}
+
+          {/* Görünüm modu */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('map')}
+              className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                viewMode === 'map' ? 'bg-white shadow text-primary-600' : 'text-gray-500'
+              }`}
+            >
+              🗺️
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                viewMode === 'list' ? 'bg-white shadow text-primary-600' : 'text-gray-500'
+              }`}
+            >
+              📋
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Liste Görünümü */}
+      {viewMode === 'list' && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Toplu İşlem Çubuğu */}
+          {selectedIds.size > 0 && (
+            <div className="bg-primary-50 border-b border-primary-100 px-4 py-3 flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-primary-700">
+                {selectedIds.size} durak seçili
+              </span>
+              <div className="flex items-center gap-2">
+                <select
+                  onChange={(e) => e.target.value && handleBulkAction(e.target.value)}
+                  className="text-sm border border-primary-200 rounded-lg px-2 py-1.5 bg-white"
+                  defaultValue=""
+                >
+                  <option value="">Tip Değiştir</option>
+                  {locationTypes.map(type => (
+                    <option key={type.value} value={type.value}>
+                      {locationTypeIcons[type.value]} {type.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => handleBulkAction('ignore')}
+                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1"
+                >
+                  🚫 Önemsiz
+                </button>
+                <button
+                  onClick={() => handleBulkAction('delete')}
+                  className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-1"
+                >
+                  <TrashIcon className="h-4 w-4" /> Sil
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Seçimi Temizle
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tablo */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === sortedStops.length && sortedStops.length > 0}
+                      onChange={selectAll}
+                      className="h-4 w-4 text-primary-600 rounded border-gray-300"
+                    />
+                  </th>
+                  <th
+                    onClick={() => {
+                      if (sortBy === 'driver') setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+                      else { setSortBy('driver'); setSortOrder('asc') }
+                    }}
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-1">
+                      Şoför
+                      {sortBy === 'driver' && (
+                        <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => {
+                      if (sortBy === 'type') setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+                      else { setSortBy('type'); setSortOrder('asc') }
+                    }}
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-1">
+                      Tip
+                      {sortBy === 'type' && (
+                        <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Konum
+                  </th>
+                  <th
+                    onClick={() => {
+                      if (sortBy === 'duration') setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+                      else { setSortBy('duration'); setSortOrder('desc') }
+                    }}
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-1">
+                      Bekleme
+                      {sortBy === 'duration' && (
+                        <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => {
+                      if (sortBy === 'date') setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+                      else { setSortBy('date'); setSortOrder('desc') }
+                    }}
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-1">
+                      Tarih
+                      {sortBy === 'date' && (
+                        <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                    İşlem
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : sortedStops.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-gray-500">
+                      <CheckCircleIcon className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                      <p>Durak bulunamadı</p>
+                    </td>
+                  </tr>
+                ) : (
+                  sortedStops.map((stop) => (
+                    <tr
+                      key={stop.id}
+                      className={`hover:bg-gray-50 ${selectedIds.has(stop.id) ? 'bg-primary-50' : ''}`}
+                    >
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(stop.id)}
+                          onChange={() => toggleSelect(stop.id)}
+                          className="h-4 w-4 text-primary-600 rounded border-gray-300"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2">
+                          <TruckIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
+                            {stop.driver_name || 'Bilinmeyen'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-lg">{locationTypeIcons[stop.location_type] || '❓'}</span>
+                          <span className="text-sm text-gray-600">
+                            {locationTypeLabels[stop.location_type] || 'Belirlenmedi'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="text-sm">
+                          <p className="text-gray-900 truncate max-w-[200px]">
+                            {stop.province || 'Bilinmeyen'}{stop.district ? `, ${stop.district}` : ''}
+                          </p>
+                          {stop.name && (
+                            <p className="text-xs text-primary-600 truncate max-w-[200px]">
+                              📍 {stop.name}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4 text-gray-400" />
+                          <span className={`text-sm font-medium ${
+                            (stop.duration_minutes || 0) > 60 ? 'text-orange-600' :
+                            (stop.duration_minutes || 0) > 30 ? 'text-yellow-600' :
+                            'text-gray-600'
+                          }`}>
+                            {formatDuration(stop.duration_minutes)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-500">
+                        {stop.started_at ? new Date(stop.started_at).toLocaleString('tr-TR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) : '-'}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleStopSelect(stop)}
+                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded"
+                            title="Düzenle"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Bu durağı silmek istediğinize emin misiniz?')) {
+                                deleteStopMutation.mutate(stop.id)
+                              }
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                            title="Sil"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Sayfa Bilgisi */}
+          {sortedStops.length > 0 && (
+            <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-500 flex items-center justify-between">
+              <span>
+                Toplam {sortedStops.length} durak
+                {selectedIds.size > 0 && ` (${selectedIds.size} seçili)`}
+              </span>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-gray-400">Sıralama:</span>
+                <span className="font-medium">
+                  {sortBy === 'duration' ? 'Bekleme' :
+                   sortBy === 'date' ? 'Tarih' :
+                   sortBy === 'driver' ? 'Şoför' : 'Tip'}
+                </span>
+                <span className="text-gray-400">
+                  ({sortOrder === 'asc' ? 'Artan' : 'Azalan'})
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Harita Görünümü */}
+      {viewMode === 'map' && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Map - Mobile (shown after list on mobile) */}
         <div className="lg:hidden bg-white rounded-lg shadow overflow-hidden order-2">
@@ -1154,6 +1526,7 @@ export default function StopsPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Cluster Detail Panel */}
       {selectedCluster && (
@@ -1352,6 +1725,23 @@ export default function StopsPage() {
               <div className="text-left min-w-0">
                 <span className="font-medium text-sm block">Ev Olarak Kaydet</span>
                 <span className="text-xs text-green-600">Max 2 ev adresi</span>
+              </div>
+            </button>
+
+            {/* Mark as Ignored option */}
+            <button
+              onClick={() => updateMutation.mutate({
+                stopId: selectedStop.id,
+                locationType: 'ignored',
+                name: stopName || undefined,
+              })}
+              disabled={updateMutation.isPending}
+              className="w-full flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 text-gray-600 transition-colors"
+            >
+              <span className="text-xl">🚫</span>
+              <div className="text-left min-w-0">
+                <span className="font-medium text-sm block">Önemsiz İşaretle</span>
+                <span className="text-xs text-gray-500">Listeden gizle, tekrar sorma</span>
               </div>
             </button>
 

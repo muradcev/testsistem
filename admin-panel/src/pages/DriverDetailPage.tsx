@@ -508,6 +508,12 @@ export default function DriverDetailPage() {
   const surveyResponses: SurveyResponse[] = responsesData?.data?.survey_responses || []
   const questionResponses: QuestionResponse[] = responsesData?.data?.question_responses || []
 
+  // OSRM ile gerçek karayolu rotası al - Hook'lar early return'den önce olmalı!
+  const { geometry: routeCoords } = useRouteGeometry(
+    locations,
+    { enabled: locations.length >= 2, maxPoints: 50 }
+  )
+
   const frequentStops = useMemo(() => {
     const unknownStops = stops.filter(s => s.location_type === 'unknown')
     return groupStopsByProximity(unknownStops, 200).slice(0, 10)
@@ -591,12 +597,6 @@ export default function DriverDetailPage() {
   }
 
   const lastLocation = locations.length > 0 ? locations[0] : null
-
-  // OSRM ile gerçek karayolu rotası al
-  const { geometry: routeCoords } = useRouteGeometry(
-    locations,
-    { enabled: locations.length >= 2, maxPoints: 50 }
-  )
 
   return (
     <div className="space-y-6">

@@ -22,6 +22,7 @@ const (
 	LocationTypeCustoms     LocationType = "customs"
 	LocationTypeMall        LocationType = "mall"
 	LocationTypeUnknown     LocationType = "unknown"
+	LocationTypeIgnored     LocationType = "ignored"
 )
 
 var LocationTypeLabels = map[LocationType]string{
@@ -38,6 +39,7 @@ var LocationTypeLabels = map[LocationType]string{
 	LocationTypeCustoms:     "Gümrük",
 	LocationTypeMall:        "AVM/Market",
 	LocationTypeUnknown:     "Belirlenmedi",
+	LocationTypeIgnored:     "Önemsiz",
 }
 
 type Stop struct {
