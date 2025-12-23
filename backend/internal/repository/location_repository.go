@@ -312,6 +312,7 @@ type AdminLocationEntry struct {
 // GetLocationsForAdmin - Admin paneli için konum listesi (filtreli, sayfalanmış)
 func (r *LocationRepository) GetLocationsForAdmin(ctx context.Context, driverID *uuid.UUID, startDate, endDate *time.Time, onlyStationary bool, limit, offset int) ([]AdminLocationEntry, int, error) {
 	// Ana sorgu - durağan noktaları grupla
+	// Hotspot matching: 250m ≈ 0.00225 derece
 	query := `
 		WITH stationary_groups AS (
 			SELECT
@@ -323,10 +324,10 @@ func (r *LocationRepository) GetLocationsForAdmin(ctx context.Context, driverID 
 				l.is_moving,
 				l.activity_type,
 				l.recorded_at,
-				s.id as stop_id,
-				s.location_type,
-				s.province,
-				s.district,
+				COALESCE(s.id, NULL) as stop_id,
+				COALESCE(s.location_type, h.location_type) as location_type,
+				COALESCE(s.province, h.province) as province,
+				COALESCE(s.district, h.district) as district,
 				CASE
 					WHEN LAG(l.is_moving) OVER (PARTITION BY l.driver_id ORDER BY l.recorded_at) = false
 					AND l.is_moving = false
@@ -340,6 +341,9 @@ func (r *LocationRepository) GetLocationsForAdmin(ctx context.Context, driverID 
 			LEFT JOIN stops s ON l.driver_id = s.driver_id
 				AND ABS(l.latitude - s.latitude) < 0.002
 				AND ABS(l.longitude - s.longitude) < 0.002
+			LEFT JOIN general_hotspots h ON s.id IS NULL
+				AND ABS(l.latitude - h.latitude) < 0.00225
+				AND ABS(l.longitude - h.longitude) < 0.00225
 			WHERE 1=1
 	`
 

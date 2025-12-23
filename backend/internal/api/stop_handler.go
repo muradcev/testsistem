@@ -17,6 +17,7 @@ type StopHandler struct {
 	stopDetection *service.StopDetectionService
 	stopRepo      *repository.StopRepository
 	driverRepo    *repository.DriverRepository
+	hotspotRepo   *repository.HotspotRepository
 }
 
 func NewStopHandler(
@@ -29,6 +30,11 @@ func NewStopHandler(
 		stopRepo:      stopRepo,
 		driverRepo:    driverRepo,
 	}
+}
+
+// SetHotspotRepository sets the hotspot repository (optional dependency)
+func (h *StopHandler) SetHotspotRepository(repo *repository.HotspotRepository) {
+	h.hotspotRepo = repo
 }
 
 // GetStops returns all stops with pagination and optional filters
@@ -228,6 +234,17 @@ func (h *StopHandler) CreateStop(c *gin.Context) {
 		return
 	}
 
+	// Find or create hotspot for this location (250m radius)
+	var hotspotID *uuid.UUID
+	var hotspotCreated bool
+	if h.hotspotRepo != nil {
+		hotspot, created, err := h.hotspotRepo.FindOrCreate(ctx, req.Latitude, req.Longitude, locationType, 250)
+		if err == nil && hotspot != nil {
+			hotspotID = &hotspot.ID
+			hotspotCreated = created
+		}
+	}
+
 	// Create stop
 	stop := &models.Stop{
 		ID:              uuid.New(),
@@ -235,6 +252,7 @@ func (h *StopHandler) CreateStop(c *gin.Context) {
 		Latitude:        req.Latitude,
 		Longitude:       req.Longitude,
 		LocationType:    locationType,
+		HotspotID:       hotspotID,
 		DurationMinutes: 0,
 		StartedAt:       time.Now(),
 		CreatedAt:       time.Now(),
@@ -250,12 +268,19 @@ func (h *StopHandler) CreateStop(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response := gin.H{
 		"message":        "Durak oluşturuldu",
 		"stop_id":        stop.ID,
 		"location_type":  locationType,
 		"location_label": models.LocationTypeLabels[locationType],
-	})
+	}
+
+	if hotspotID != nil {
+		response["hotspot_id"] = hotspotID
+		response["hotspot_created"] = hotspotCreated
+	}
+
+	c.JSON(http.StatusCreated, response)
 }
 
 // DetectStopsForDriver runs stop detection for a specific driver

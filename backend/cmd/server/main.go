@@ -68,6 +68,11 @@ func main() {
 	locationRepo := repository.NewLocationRepository(db)
 	tripRepo := repository.NewTripRepository(db)
 	stopRepo := repository.NewStopRepository(db)
+	hotspotRepo := repository.NewHotspotRepository(db)
+	// Ensure hotspot table exists
+	if err := hotspotRepo.EnsureTableExists(context.Background()); err != nil {
+		logger.Log.Warn().Err(err).Msg("Could not ensure hotspot table exists")
+	}
 	surveyRepo := repository.NewSurveyRepository(db)
 	adminRepo := repository.NewAdminRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
@@ -362,6 +367,7 @@ func main() {
 			// Stops (Durak Yönetimi)
 			stopDetectionService := service.NewStopDetectionService(locationRepo, stopRepo, driverRepo)
 			stopHandler := api.NewStopHandler(stopDetectionService, stopRepo, driverRepo)
+			stopHandler.SetHotspotRepository(hotspotRepo)
 			adminGroup.GET("/stops", stopHandler.GetStops)
 			adminGroup.GET("/stops/uncategorized", stopHandler.GetUncategorizedStops)
 			adminGroup.GET("/stops/location-types", stopHandler.GetLocationTypes)
