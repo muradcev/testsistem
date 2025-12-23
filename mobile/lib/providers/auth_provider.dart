@@ -20,6 +20,11 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   bool _isRestoringSession = false;
 
+  // Session durumu takibi - ardışık auth hataları için
+  int _consecutiveAuthFailures = 0;
+  bool _sessionNeedsReauth = false;
+  static const int _maxAuthFailures = 3;
+
   AuthProvider(this._apiService) {
     _checkLoginStatus();
   }
@@ -31,6 +36,24 @@ class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? get user => _user;
   String? get error => _error;
   ApiService get apiService => _apiService;
+
+  /// Session yeniden login gerektiriyor mu? (UI'da uyarı göstermek için)
+  bool get sessionNeedsReauth => _sessionNeedsReauth;
+
+  /// Auth hatası sayacını sıfırla (başarılı işlem sonrası)
+  void _resetAuthFailures() {
+    _consecutiveAuthFailures = 0;
+    _sessionNeedsReauth = false;
+  }
+
+  /// Auth hatası say ve gerekirse session durumunu güncelle
+  void _trackAuthFailure() {
+    _consecutiveAuthFailures++;
+    if (_consecutiveAuthFailures >= _maxAuthFailures) {
+      _sessionNeedsReauth = true;
+      debugPrint('[Auth] Session needs re-authentication after $_consecutiveAuthFailures consecutive failures');
+    }
+  }
 
   /// Oturum durumunu kontrol et - token geçerliliği dahil
   Future<void> _checkLoginStatus() async {
@@ -64,6 +87,7 @@ class AuthProvider extends ChangeNotifier {
         await _loadProfileSilent();
         _isLoggedIn = true;
         authNotifier.setLoggedIn(true);
+        _resetAuthFailures(); // Başarılı - sayacı sıfırla
         debugPrint('[Auth] Session restored successfully');
         _startTokenRefreshTimer();
       } on DioException catch (e) {
@@ -79,34 +103,36 @@ class AuthProvider extends ChangeNotifier {
                 await _loadProfileSilent();
                 _isLoggedIn = true;
                 authNotifier.setLoggedIn(true);
+                _resetAuthFailures(); // Başarılı - sayacı sıfırla
                 debugPrint('[Auth] Session restored after token refresh');
                 _startTokenRefreshTimer();
               } catch (e2) {
                 debugPrint('[Auth] Profile load failed after refresh: $e2');
-                // Refresh başarılı oldu ama profile yüklenemedi - yine de giriş yapmış say
-                // Çünkü token yenilendi, network sorunu olabilir
+                // Refresh başarılı oldu ama profile yüklenemedi - network sorunu olabilir
                 _isLoggedIn = true;
                 authNotifier.setLoggedIn(true);
                 _startTokenRefreshTimer();
               }
             } else {
               debugPrint('[Auth] Token refresh failed - keeping session for retry');
+              _trackAuthFailure(); // Auth hatası - sayacı artır
               // Refresh token da başarısız - ama session'ı silme!
-              // Kullanıcı tekrar deneyebilir
+              // Kullanıcı tekrar deneyebilir, UI uyarı gösterebilir
               _isLoggedIn = true;
               authNotifier.setLoggedIn(true);
               _startTokenRefreshTimer();
             }
           } else {
             debugPrint('[Auth] No refresh token - keeping session anyway');
+            _trackAuthFailure(); // Auth hatası - sayacı artır
             // Refresh token yok ama access token var
-            // Kullanıcıyı login'de tut, sonraki isteklerde 401 alırsa ApiService handle eder
             _isLoggedIn = true;
             authNotifier.setLoggedIn(true);
             _startTokenRefreshTimer();
           }
         } else {
           // Network hatası veya başka bir sorun - kullanıcıyı login'de tut
+          // Bu auth hatası değil, sayacı artırma
           debugPrint('[Auth] Non-401 error (${e.response?.statusCode}) - keeping session, might be network issue');
           _isLoggedIn = true;
           authNotifier.setLoggedIn(true);

@@ -110,8 +110,11 @@ class ApiService {
     }
 
     // Yeni Completer oluştur - diğer istekler bunu bekleyecek
-    _refreshCompleter = Completer<bool>();
+    // Hemen set et ki race condition olmasın
+    final completer = Completer<bool>();
+    _refreshCompleter = completer;
 
+    bool success = false;
     try {
       debugPrint('[API] Refreshing token...');
       final response = await _dio.post(
@@ -126,33 +129,30 @@ class ApiService {
         final newAccessToken = authData['access_token'];
         final newRefreshToken = authData['refresh_token'];
 
-        if (newAccessToken == null || newAccessToken.isEmpty) {
+        if (newAccessToken != null && newAccessToken.isNotEmpty) {
+          await setToken(newAccessToken);
+          if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+            await _setRefreshToken(newRefreshToken);
+          }
+
+          // Notify background service about new token
+          await _updateBackgroundServiceToken(newAccessToken);
+
+          debugPrint('[API] Token refreshed successfully');
+          success = true;
+        } else {
           debugPrint('[API] Token refresh response missing access_token');
-          _refreshCompleter!.complete(false);
-          _refreshCompleter = null;
-          return false;
         }
-
-        await setToken(newAccessToken);
-        if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
-          await _setRefreshToken(newRefreshToken);
-        }
-
-        // Notify background service about new token
-        _updateBackgroundServiceToken(newAccessToken);
-
-        debugPrint('[API] Token refreshed successfully');
-        _refreshCompleter!.complete(true);
-        _refreshCompleter = null;
-        return true;
       }
     } catch (e) {
       debugPrint('[API] Token refresh failed: $e');
+    } finally {
+      // Her durumda completer'ı temizle
+      completer.complete(success);
+      _refreshCompleter = null;
     }
 
-    _refreshCompleter!.complete(false);
-    _refreshCompleter = null;
-    return false;
+    return success;
   }
 
   Future<void> _setRefreshToken(String token) async {
@@ -161,11 +161,16 @@ class ApiService {
     await prefs.setString(StorageKeys.refreshToken, token);
   }
 
-  void _updateBackgroundServiceToken(String token) {
+  Future<void> _updateBackgroundServiceToken(String token) async {
     try {
       final service = FlutterBackgroundService();
-      service.invoke('updateToken', {'token': token});
-      debugPrint('[API] Background service token updated');
+      final isRunning = await service.isRunning();
+      if (isRunning) {
+        service.invoke('updateToken', {'token': token});
+        debugPrint('[API] Background service token updated');
+      } else {
+        debugPrint('[API] Background service not running, skipping token update');
+      }
     } catch (e) {
       debugPrint('[API] Failed to update background service token: $e');
     }

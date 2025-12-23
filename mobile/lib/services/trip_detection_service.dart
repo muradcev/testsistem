@@ -367,9 +367,10 @@ class TripDetectionService {
   /// TIR/Kamyon için maksimum hız: 150 km/h (yasal sınır + tolerans)
   static bool _isGpsAnomaly(Position position) {
     // Accuracy kontrolü - çok düşük doğrulukta konum verilerini reddet
-    // Kamyon/TIR için 150m tolerans kabul edilebilir
-    if (position.accuracy > 200) {
-      debugPrint('[TripDetection] GPS anomaly: Poor accuracy ${position.accuracy.toStringAsFixed(0)}m');
+    // Diğer servislerle tutarlı: 150m eşik (background_location_service ile aynı)
+    const maxAccuracyMeters = 150.0;
+    if (position.accuracy > maxAccuracyMeters) {
+      debugPrint('[TripDetection] GPS anomaly: Poor accuracy ${position.accuracy.toStringAsFixed(0)}m > ${maxAccuracyMeters.toStringAsFixed(0)}m');
       return true;
     }
 
@@ -407,7 +408,9 @@ class TripDetectionService {
     }
 
     // Ani GPS atlama kontrolü - düşük doğrulukla birlikte yüksek mesafe
-    if (distanceMeters > 1000 && position.accuracy > 100) {
+    // maxAccuracyMeters'dan daha sıkı kontrol (100m) - büyük atlamalarda daha şüpheci ol
+    const largeJumpAccuracyMeters = 100.0;
+    if (distanceMeters > 1000 && position.accuracy > largeJumpAccuracyMeters) {
       debugPrint('[TripDetection] GPS anomaly: Large jump ${distanceMeters.toStringAsFixed(0)}m with accuracy ${position.accuracy.toStringAsFixed(0)}m');
       return true;
     }
