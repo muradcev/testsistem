@@ -253,10 +253,10 @@ class NotificationService {
       }
 
       // Listen for token refresh
-      _firebaseMessaging?.onTokenRefresh.listen((newToken) {
+      _firebaseMessaging?.onTokenRefresh.listen((newToken) async {
         _fcmToken = newToken;
         debugPrint('FCM Token refreshed: $newToken');
-        _sendFcmTokenToServer(newToken);
+        await _sendFcmTokenToServer(newToken);
       });
 
       // Handle foreground messages
@@ -372,7 +372,7 @@ class NotificationService {
     return '/home';
   }
 
-  void _handleNotificationTap(RemoteMessage message) async {
+  Future<void> _handleNotificationTap(RemoteMessage message) async {
     debugPrint('[FCM] Notification tapped: ${message.data}');
 
     // HER bildirime tıklandığında konum gönder (soru, duyuru, vs.)
@@ -414,7 +414,7 @@ class NotificationService {
     });
   }
 
-  void _onNotificationTap(NotificationResponse response) async {
+  Future<void> _onNotificationTap(NotificationResponse response) async {
     final payload = response.payload;
     if (payload != null) {
       debugPrint('Local notification tapped: $payload');

@@ -136,7 +136,7 @@ class LocationProvider extends ChangeNotifier {
     _lastSentLocation = _currentLocation;
   }
 
-  void stopTracking() {
+  Future<void> stopTracking() async {
     _locationSubscription?.cancel();
     _statusSubscription?.cancel();
     _batterySubscription?.cancel();
@@ -144,11 +144,11 @@ class LocationProvider extends ChangeNotifier {
     _singleLocationTimer?.cancel();
     _locationService.stopTracking();
 
-    // Sync remaining locations
-    _syncPendingLocations();
-
     _isTracking = false;
     notifyListeners();
+
+    // Sync remaining locations - await to ensure data is not lost
+    await _syncPendingLocations();
   }
 
   Future<void> _syncPendingLocations() async {
@@ -183,6 +183,7 @@ class LocationProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Failed to sync locations: $e');
       // Locations remain in pending queue for next sync
+      notifyListeners();
     }
   }
 
@@ -217,7 +218,20 @@ class LocationProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    stopTracking();
+    // Cancel subscriptions synchronously
+    _locationSubscription?.cancel();
+    _statusSubscription?.cancel();
+    _batterySubscription?.cancel();
+    _syncTimer?.cancel();
+    _singleLocationTimer?.cancel();
+    _locationService.stopTracking();
+
+    // Fire-and-forget sync - dispose can't await
+    // Pending locations will be saved to SharedPreferences by LocationService
+    _syncPendingLocations().catchError((e) {
+      debugPrint('[LocationProvider] Final sync error (non-critical): $e');
+    });
+
     _locationService.dispose();
     super.dispose();
   }

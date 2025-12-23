@@ -195,8 +195,11 @@ class ApiService {
 
   Future<void> clearToken() async {
     _accessToken = null;
+    _refreshToken = null;
+    _tokenLoaded = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(StorageKeys.accessToken);
+    await prefs.remove(StorageKeys.refreshToken);
   }
 
   /// Public method for token refresh - AuthProvider ve diğer servisler tarafından kullanılabilir

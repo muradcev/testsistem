@@ -164,6 +164,8 @@ class VehicleProvider extends ChangeNotifier {
     try {
       await _apiService.deleteTrailer(id);
       await loadTrailers();
+      _isLoading = false;
+      notifyListeners();
       return true;
     } catch (e) {
       _error = _parseError(e);
