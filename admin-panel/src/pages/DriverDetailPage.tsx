@@ -190,13 +190,27 @@ interface Location {
   latitude: number
   longitude: number
   speed: number
+  speed_kmh?: number
   accuracy: number
   altitude: number
   heading: number
   is_moving: boolean
   activity_type: string
   battery_level?: number
+  is_charging?: boolean
+  power_save_mode?: boolean
   phone_in_use: boolean
+  // Ağ bilgileri
+  connection_type?: string
+  wifi_ssid?: string
+  ip_address?: string
+  // Sensör verileri
+  accelerometer?: { x: number; y: number; z: number }
+  gyroscope?: { x: number; y: number; z: number }
+  max_acceleration_g?: number
+  // Meta veriler
+  trigger?: string
+  interval_seconds?: number
   recorded_at: string
   created_at: string
 }
@@ -999,32 +1013,87 @@ export default function DriverDetailPage() {
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Koordinat</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hiz</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harita</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Koordinat</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hiz</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pil</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ag</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kaynak</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harita</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
                             {locations.slice(0, 20).map((loc, index) => {
                               const date = new Date(loc.recorded_at)
+                              const speedKmh = loc.speed_kmh ?? (loc.speed * 3.6)
                               return (
                                 <tr key={index} className="hover:bg-gray-50">
-                                  <td className="px-4 py-3 text-sm">
+                                  <td className="px-3 py-3 text-sm">
                                     {formatTurkeyDate(date)}
                                   </td>
-                                  <td className="px-4 py-3 text-sm font-mono">
-                                    {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
+                                  <td className="px-3 py-3 text-sm font-mono text-xs">
+                                    {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)}
+                                    {loc.accuracy && (
+                                      <span className="text-gray-400 ml-1">(±{loc.accuracy.toFixed(0)}m)</span>
+                                    )}
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-3 py-3">
                                     <Badge
-                                      variant={loc.speed > 50 ? 'error' : loc.speed > 20 ? 'warning' : 'success'}
+                                      variant={speedKmh > 100 ? 'error' : speedKmh > 50 ? 'warning' : 'success'}
                                       size="sm"
                                     >
-                                      {loc.speed.toFixed(0)} km/s
+                                      {speedKmh.toFixed(0)} km/h
                                     </Badge>
+                                    {loc.is_moving && <span className="ml-1 text-xs">🚗</span>}
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-3 py-3 text-sm">
+                                    {loc.battery_level !== undefined && (
+                                      <div className="flex items-center gap-1">
+                                        <span className={clsx(
+                                          'font-medium',
+                                          loc.battery_level <= 20 ? 'text-red-600' :
+                                          loc.battery_level <= 50 ? 'text-yellow-600' : 'text-green-600'
+                                        )}>
+                                          {loc.battery_level}%
+                                        </span>
+                                        {loc.is_charging && <span title="Sarj oluyor">⚡</span>}
+                                        {loc.power_save_mode && <span title="Guc tasarrufu" className="text-xs">🔋</span>}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-3 text-xs">
+                                    {loc.connection_type && (
+                                      <div>
+                                        <Badge
+                                          variant={loc.connection_type === 'wifi' ? 'info' : loc.connection_type === 'mobile' ? 'warning' : 'default'}
+                                          size="sm"
+                                        >
+                                          {loc.connection_type === 'wifi' ? '📶 WiFi' :
+                                           loc.connection_type === 'mobile' ? '📱 Mobil' : loc.connection_type}
+                                        </Badge>
+                                        {loc.wifi_ssid && (
+                                          <p className="text-gray-400 text-xs mt-1" title={loc.wifi_ssid}>
+                                            {loc.wifi_ssid.length > 12 ? loc.wifi_ssid.slice(0, 12) + '...' : loc.wifi_ssid}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-3 text-xs text-gray-500">
+                                    {loc.trigger && (
+                                      <span title={`Interval: ${loc.interval_seconds || '-'}s`}>
+                                        {loc.trigger === 'foreground_service' ? '🟢 FG' :
+                                         loc.trigger === 'workmanager' ? '🔵 WM' :
+                                         loc.trigger === 'immediate' ? '⚡ IMM' : loc.trigger}
+                                      </span>
+                                    )}
+                                    {loc.max_acceleration_g !== undefined && loc.max_acceleration_g > 0.5 && (
+                                      <span className="ml-1" title={`Max ivme: ${loc.max_acceleration_g.toFixed(2)}G`}>
+                                        💨
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-3">
                                     <a
                                       href={`https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`}
                                       target="_blank"

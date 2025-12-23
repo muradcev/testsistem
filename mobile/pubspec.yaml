@@ -1,7 +1,7 @@
 name: nakliyeo_mobil
 description: Nakliyeo Mobil - Şoför Takip Uygulaması
 publish_to: 'none'
-version: 1.0.50+50
+version: 1.0.51+51
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -44,8 +44,9 @@ dependencies:
   workmanager: ^0.6.0
   flutter_background_service: ^5.0.12
 
-  # Sensors
+  # Sensors & Network
   sensors_plus: ^6.1.2
+  network_info_plus: ^6.0.1
 
   # Notifications
   firebase_core: ^3.15.2

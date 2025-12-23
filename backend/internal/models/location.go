@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -67,15 +68,33 @@ type Location struct {
 	Latitude     float64      `json:"latitude" db:"latitude"`
 	Longitude    float64      `json:"longitude" db:"longitude"`
 	Speed        *float64     `json:"speed,omitempty" db:"speed"`
+	SpeedKmh     *float64     `json:"speed_kmh,omitempty" db:"speed_kmh"`
 	Accuracy     *float64     `json:"accuracy,omitempty" db:"accuracy"`
 	Altitude     *float64     `json:"altitude,omitempty" db:"altitude"`
 	Heading      *float64     `json:"heading,omitempty" db:"heading"`
 	IsMoving     bool         `json:"is_moving" db:"is_moving"`
 	ActivityType ActivityType `json:"activity_type" db:"activity_type"`
 	BatteryLevel *int         `json:"battery_level,omitempty" db:"battery_level"`
+	IsCharging   bool         `json:"is_charging" db:"is_charging"`
+	PowerSaveMode bool        `json:"power_save_mode" db:"power_save_mode"`
 	PhoneInUse   bool         `json:"phone_in_use" db:"phone_in_use"`
-	RecordedAt   time.Time    `json:"recorded_at" db:"recorded_at"`
-	CreatedAt    time.Time    `json:"created_at" db:"created_at"`
+
+	// Ağ bilgileri
+	ConnectionType *string `json:"connection_type,omitempty" db:"connection_type"`
+	WifiSsid       *string `json:"wifi_ssid,omitempty" db:"wifi_ssid"`
+	IpAddress      *string `json:"ip_address,omitempty" db:"ip_address"`
+
+	// Sensör verileri
+	Accelerometer    json.RawMessage `json:"accelerometer,omitempty" db:"accelerometer"`
+	Gyroscope        json.RawMessage `json:"gyroscope,omitempty" db:"gyroscope"`
+	MaxAccelerationG *float64        `json:"max_acceleration_g,omitempty" db:"max_acceleration_g"`
+
+	// Meta veriler
+	Trigger         *string `json:"trigger,omitempty" db:"trigger"`
+	IntervalSeconds *int    `json:"interval_seconds,omitempty" db:"interval_seconds"`
+
+	RecordedAt time.Time `json:"recorded_at" db:"recorded_at"`
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
 
 type LocationCreateRequest struct {
@@ -83,14 +102,32 @@ type LocationCreateRequest struct {
 	Latitude     float64      `json:"latitude" binding:"required"`
 	Longitude    float64      `json:"longitude" binding:"required"`
 	Speed        *float64     `json:"speed,omitempty"`
+	SpeedKmh     *float64     `json:"speed_kmh,omitempty"`
 	Accuracy     *float64     `json:"accuracy,omitempty"`
 	Altitude     *float64     `json:"altitude,omitempty"`
 	Heading      *float64     `json:"heading,omitempty"`
 	IsMoving     bool         `json:"is_moving"`
 	ActivityType ActivityType `json:"activity_type"`
 	BatteryLevel *int         `json:"battery_level,omitempty"`
+	IsCharging   bool         `json:"is_charging"`
+	PowerSaveMode bool        `json:"power_save_mode"`
 	PhoneInUse   bool         `json:"phone_in_use"`
-	RecordedAt   FlexibleTime `json:"recorded_at"`
+
+	// Ağ bilgileri
+	ConnectionType *string `json:"connection_type,omitempty"`
+	WifiSsid       *string `json:"wifi_ssid,omitempty"`
+	IpAddress      *string `json:"ip_address,omitempty"`
+
+	// Sensör verileri
+	Accelerometer    json.RawMessage `json:"accelerometer,omitempty"`
+	Gyroscope        json.RawMessage `json:"gyroscope,omitempty"`
+	MaxAccelerationG *float64        `json:"max_acceleration_g,omitempty"`
+
+	// Meta veriler
+	Trigger         *string `json:"trigger,omitempty"`
+	IntervalSeconds *int    `json:"interval_seconds,omitempty"`
+
+	RecordedAt FlexibleTime `json:"recorded_at"`
 }
 
 // GetRecordedAt - FlexibleTime'dan time.Time döndürür

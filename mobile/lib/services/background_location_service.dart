@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:network_info_plus/network_info_plus.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import '../config/constants.dart';
 
 // Bu dosya arka planda konum takibi için gerekli servisi sağlar
@@ -89,6 +91,17 @@ void onStart(ServiceInstance service) async {
   DateTime? lastLocationTime;
   int currentInterval = 900; // Default 15 minutes (stationary)
 
+  // Telemetri verileri
+  String connectionType = 'unknown';
+  String? wifiSsid;
+  String? ipAddress;
+  double maxAccelerationG = 0;
+  AccelerometerEvent? lastAccelerometer;
+  GyroscopeEvent? lastGyroscope;
+  bool powerSaveMode = false;
+  StreamSubscription? accelerometerSub;
+  StreamSubscription? gyroscopeSub;
+
   // Load saved data
   final prefs = await SharedPreferences.getInstance();
   accessToken = prefs.getString(StorageKeys.accessToken);
@@ -141,12 +154,71 @@ void onStart(ServiceInstance service) async {
     isOnline = true;
   }
 
-  connectivitySubscription = connectivity.onConnectivityChanged.listen((result) {
+  connectivitySubscription = connectivity.onConnectivityChanged.listen((result) async {
     isOnline = result.isNotEmpty && !result.contains(ConnectivityResult.none);
+
+    // Bağlantı tipi güncelle
+    if (result.contains(ConnectivityResult.wifi)) {
+      connectionType = 'wifi';
+      // WiFi SSID al
+      try {
+        final networkInfo = NetworkInfo();
+        wifiSsid = await networkInfo.getWifiName();
+        ipAddress = await networkInfo.getWifiIP();
+      } catch (e) {
+        debugPrint('Background: WiFi info error: $e');
+      }
+    } else if (result.contains(ConnectivityResult.mobile)) {
+      connectionType = 'mobile';
+      wifiSsid = null;
+    } else {
+      connectionType = 'none';
+      wifiSsid = null;
+    }
+
     if (isOnline && pendingLocations.isNotEmpty && dio != null) {
       _syncLocations(dio!, pendingLocations, prefs);
     }
   });
+
+  // İlk bağlantı tipini al
+  try {
+    final initialResult = await connectivity.checkConnectivity();
+    if (initialResult.contains(ConnectivityResult.wifi)) {
+      connectionType = 'wifi';
+      final networkInfo = NetworkInfo();
+      wifiSsid = await networkInfo.getWifiName();
+      ipAddress = await networkInfo.getWifiIP();
+    } else if (initialResult.contains(ConnectivityResult.mobile)) {
+      connectionType = 'mobile';
+    }
+  } catch (e) {
+    debugPrint('Background: Initial network info error: $e');
+  }
+
+  // Sensör dinleme (ivmeölçer ve jiroskop)
+  try {
+    accelerometerSub = accelerometerEventStream(
+      samplingPeriod: const Duration(milliseconds: 500),
+    ).listen((event) {
+      lastAccelerometer = event;
+      // Toplam ivme hesapla (G cinsinden)
+      final totalG = ((event.x * event.x + event.y * event.y + event.z * event.z) / 9.8).abs();
+      if (totalG > maxAccelerationG) {
+        maxAccelerationG = totalG;
+      }
+    });
+
+    gyroscopeSub = gyroscopeEventStream(
+      samplingPeriod: const Duration(milliseconds: 500),
+    ).listen((event) {
+      lastGyroscope = event;
+    });
+
+    debugPrint('Background: Sensor listening started');
+  } catch (e) {
+    debugPrint('Background: Sensor init error: $e');
+  }
 
   // Save pending locations helper
   Future<void> savePendingLocations() async {
@@ -258,8 +330,9 @@ void onStart(ServiceInstance service) async {
       lastLon = position.longitude;
       lastLocationTime = DateTime.now();
 
-      // Create location data
+      // Create location data with telemetry
       final locationData = {
+        // Konum verileri
         'latitude': position.latitude,
         'longitude': position.longitude,
         'speed': position.speed,
@@ -269,12 +342,38 @@ void onStart(ServiceInstance service) async {
         'heading': position.heading,
         'is_moving': isMoving,
         'activity_type': position.speed * 3.6 > 30 ? 'driving' : (isMoving ? 'moving' : 'still'),
+
+        // Pil verileri
         'battery_level': batteryLevel,
         'is_charging': isCharging,
+        'power_save_mode': powerSaveMode,
+
+        // Ağ verileri
+        'connection_type': connectionType,
+        'wifi_ssid': wifiSsid,
+        'ip_address': ipAddress,
+
+        // Sensör verileri
+        'accelerometer': lastAccelerometer != null ? {
+          'x': lastAccelerometer!.x,
+          'y': lastAccelerometer!.y,
+          'z': lastAccelerometer!.z,
+        } : null,
+        'gyroscope': lastGyroscope != null ? {
+          'x': lastGyroscope!.x,
+          'y': lastGyroscope!.y,
+          'z': lastGyroscope!.z,
+        } : null,
+        'max_acceleration_g': maxAccelerationG,
+
+        // Meta veriler
         'trigger': 'foreground_service',
         'interval_seconds': currentInterval,
         'recorded_at': DateTime.now().toUtc().toIso8601String(),
       };
+
+      // Maksimum ivmeyi sıfırla (her konum gönderiminde)
+      maxAccelerationG = 0;
 
       // Add to pending queue
       pendingLocations.add(locationData);
@@ -306,6 +405,8 @@ void onStart(ServiceInstance service) async {
       notificationTimer?.cancel();
       intervalCheckTimer?.cancel();
       connectivitySubscription?.cancel();
+      accelerometerSub?.cancel();
+      gyroscopeSub?.cancel();
       savePendingLocations();
       service.stopSelf();
     });

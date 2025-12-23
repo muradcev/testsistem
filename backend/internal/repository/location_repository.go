@@ -32,21 +32,30 @@ func (r *LocationRepository) Create(ctx context.Context, location *models.Locati
 	// Duplikat önleme: Aynı driver_id ve recorded_at ile kayıt varsa kaydetme
 	// 1 saniye içindeki kayıtları duplikat say
 	query := `
-		INSERT INTO locations (driver_id, vehicle_id, latitude, longitude, speed, accuracy,
-			altitude, heading, is_moving, activity_type, battery_level, phone_in_use, recorded_at, created_at)
-		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+		INSERT INTO locations (
+			driver_id, vehicle_id, latitude, longitude, speed, speed_kmh, accuracy,
+			altitude, heading, is_moving, activity_type, battery_level, is_charging, power_save_mode, phone_in_use,
+			connection_type, wifi_ssid, ip_address,
+			accelerometer, gyroscope, max_acceleration_g,
+			trigger, interval_seconds,
+			recorded_at, created_at
+		)
+		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
 		WHERE NOT EXISTS (
 			SELECT 1 FROM locations
 			WHERE driver_id = $1
-			AND recorded_at BETWEEN ($13::timestamptz - INTERVAL '1 second') AND ($13::timestamptz + INTERVAL '1 second')
+			AND recorded_at BETWEEN ($24::timestamptz - INTERVAL '1 second') AND ($24::timestamptz + INTERVAL '1 second')
 		)
 		RETURNING id
 	`
 
 	err := r.db.Pool.QueryRow(ctx, query,
 		location.DriverID, location.VehicleID, location.Latitude, location.Longitude,
-		location.Speed, location.Accuracy, location.Altitude, location.Heading,
-		location.IsMoving, location.ActivityType, location.BatteryLevel, location.PhoneInUse,
+		location.Speed, location.SpeedKmh, location.Accuracy, location.Altitude, location.Heading,
+		location.IsMoving, location.ActivityType, location.BatteryLevel, location.IsCharging, location.PowerSaveMode, location.PhoneInUse,
+		location.ConnectionType, location.WifiSsid, location.IpAddress,
+		location.Accelerometer, location.Gyroscope, location.MaxAccelerationG,
+		location.Trigger, location.IntervalSeconds,
 		location.RecordedAt, location.CreatedAt,
 	).Scan(&location.ID)
 
@@ -66,13 +75,19 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 	batch := &pgx.Batch{}
 	// Duplikat önleme: Aynı driver_id ve recorded_at ile kayıt varsa kaydetme
 	query := `
-		INSERT INTO locations (driver_id, vehicle_id, latitude, longitude, speed, accuracy,
-			altitude, heading, is_moving, activity_type, battery_level, phone_in_use, recorded_at, created_at)
-		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+		INSERT INTO locations (
+			driver_id, vehicle_id, latitude, longitude, speed, speed_kmh, accuracy,
+			altitude, heading, is_moving, activity_type, battery_level, is_charging, power_save_mode, phone_in_use,
+			connection_type, wifi_ssid, ip_address,
+			accelerometer, gyroscope, max_acceleration_g,
+			trigger, interval_seconds,
+			recorded_at, created_at
+		)
+		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
 		WHERE NOT EXISTS (
 			SELECT 1 FROM locations
 			WHERE driver_id = $1
-			AND recorded_at BETWEEN ($13::timestamptz - INTERVAL '1 second') AND ($13::timestamptz + INTERVAL '1 second')
+			AND recorded_at BETWEEN ($24::timestamptz - INTERVAL '1 second') AND ($24::timestamptz + INTERVAL '1 second')
 		)
 	`
 
@@ -80,8 +95,11 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 	for _, loc := range locations {
 		batch.Queue(query,
 			loc.DriverID, loc.VehicleID, loc.Latitude, loc.Longitude,
-			loc.Speed, loc.Accuracy, loc.Altitude, loc.Heading,
-			loc.IsMoving, loc.ActivityType, loc.BatteryLevel, loc.PhoneInUse,
+			loc.Speed, loc.SpeedKmh, loc.Accuracy, loc.Altitude, loc.Heading,
+			loc.IsMoving, loc.ActivityType, loc.BatteryLevel, loc.IsCharging, loc.PowerSaveMode, loc.PhoneInUse,
+			loc.ConnectionType, loc.WifiSsid, loc.IpAddress,
+			loc.Accelerometer, loc.Gyroscope, loc.MaxAccelerationG,
+			loc.Trigger, loc.IntervalSeconds,
 			loc.RecordedAt, now,
 		)
 	}
@@ -101,8 +119,12 @@ func (r *LocationRepository) CreateBatch(ctx context.Context, locations []models
 
 func (r *LocationRepository) GetByDriver(ctx context.Context, filter models.LocationFilter) ([]models.Location, error) {
 	query := `
-		SELECT id, driver_id, vehicle_id, latitude, longitude, speed, accuracy,
-			altitude, heading, is_moving, activity_type, battery_level, COALESCE(phone_in_use, false), recorded_at, created_at
+		SELECT id, driver_id, vehicle_id, latitude, longitude, speed, speed_kmh, accuracy,
+			altitude, heading, is_moving, activity_type, battery_level, is_charging, power_save_mode, COALESCE(phone_in_use, false),
+			connection_type, wifi_ssid, ip_address,
+			accelerometer, gyroscope, max_acceleration_g,
+			trigger, interval_seconds,
+			recorded_at, created_at
 		FROM locations
 		WHERE driver_id = $1
 	`
@@ -146,8 +168,11 @@ func (r *LocationRepository) GetByDriver(ctx context.Context, filter models.Loca
 		var loc models.Location
 		err := rows.Scan(
 			&loc.ID, &loc.DriverID, &loc.VehicleID, &loc.Latitude, &loc.Longitude,
-			&loc.Speed, &loc.Accuracy, &loc.Altitude, &loc.Heading,
-			&loc.IsMoving, &loc.ActivityType, &loc.BatteryLevel, &loc.PhoneInUse,
+			&loc.Speed, &loc.SpeedKmh, &loc.Accuracy, &loc.Altitude, &loc.Heading,
+			&loc.IsMoving, &loc.ActivityType, &loc.BatteryLevel, &loc.IsCharging, &loc.PowerSaveMode, &loc.PhoneInUse,
+			&loc.ConnectionType, &loc.WifiSsid, &loc.IpAddress,
+			&loc.Accelerometer, &loc.Gyroscope, &loc.MaxAccelerationG,
+			&loc.Trigger, &loc.IntervalSeconds,
 			&loc.RecordedAt, &loc.CreatedAt,
 		)
 		if err != nil {
@@ -161,8 +186,12 @@ func (r *LocationRepository) GetByDriver(ctx context.Context, filter models.Loca
 
 func (r *LocationRepository) GetLastLocation(ctx context.Context, driverID uuid.UUID) (*models.Location, error) {
 	query := `
-		SELECT id, driver_id, vehicle_id, latitude, longitude, speed, accuracy,
-			altitude, heading, is_moving, activity_type, battery_level, COALESCE(phone_in_use, false), recorded_at, created_at
+		SELECT id, driver_id, vehicle_id, latitude, longitude, speed, speed_kmh, accuracy,
+			altitude, heading, is_moving, activity_type, battery_level, is_charging, power_save_mode, COALESCE(phone_in_use, false),
+			connection_type, wifi_ssid, ip_address,
+			accelerometer, gyroscope, max_acceleration_g,
+			trigger, interval_seconds,
+			recorded_at, created_at
 		FROM locations
 		WHERE driver_id = $1
 		ORDER BY recorded_at DESC
@@ -172,8 +201,11 @@ func (r *LocationRepository) GetLastLocation(ctx context.Context, driverID uuid.
 	var loc models.Location
 	err := r.db.Pool.QueryRow(ctx, query, driverID).Scan(
 		&loc.ID, &loc.DriverID, &loc.VehicleID, &loc.Latitude, &loc.Longitude,
-		&loc.Speed, &loc.Accuracy, &loc.Altitude, &loc.Heading,
-		&loc.IsMoving, &loc.ActivityType, &loc.BatteryLevel, &loc.PhoneInUse,
+		&loc.Speed, &loc.SpeedKmh, &loc.Accuracy, &loc.Altitude, &loc.Heading,
+		&loc.IsMoving, &loc.ActivityType, &loc.BatteryLevel, &loc.IsCharging, &loc.PowerSaveMode, &loc.PhoneInUse,
+		&loc.ConnectionType, &loc.WifiSsid, &loc.IpAddress,
+		&loc.Accelerometer, &loc.Gyroscope, &loc.MaxAccelerationG,
+		&loc.Trigger, &loc.IntervalSeconds,
 		&loc.RecordedAt, &loc.CreatedAt,
 	)
 

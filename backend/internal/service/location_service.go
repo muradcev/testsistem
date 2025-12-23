@@ -29,14 +29,28 @@ func (s *LocationService) SaveLocation(ctx context.Context, driverID uuid.UUID, 
 		Latitude:     req.Latitude,
 		Longitude:    req.Longitude,
 		Speed:        req.Speed,
+		SpeedKmh:     req.SpeedKmh,
 		Accuracy:     req.Accuracy,
 		Altitude:     req.Altitude,
 		Heading:      req.Heading,
 		IsMoving:     req.IsMoving,
 		ActivityType: req.ActivityType,
 		BatteryLevel: req.BatteryLevel,
+		IsCharging:   req.IsCharging,
+		PowerSaveMode: req.PowerSaveMode,
 		PhoneInUse:   req.PhoneInUse,
-		RecordedAt:   req.RecordedAt.Time, // FlexibleTime'dan time.Time'a
+		// Ağ bilgileri
+		ConnectionType: req.ConnectionType,
+		WifiSsid:       req.WifiSsid,
+		IpAddress:      req.IpAddress,
+		// Sensör verileri
+		Accelerometer:    req.Accelerometer,
+		Gyroscope:        req.Gyroscope,
+		MaxAccelerationG: req.MaxAccelerationG,
+		// Meta veriler
+		Trigger:         req.Trigger,
+		IntervalSeconds: req.IntervalSeconds,
+		RecordedAt:      req.RecordedAt.Time,
 	}
 
 	return s.repo.Create(ctx, location)
@@ -55,14 +69,28 @@ func (s *LocationService) SaveBatchLocations(ctx context.Context, driverID uuid.
 			Latitude:     req.Latitude,
 			Longitude:    req.Longitude,
 			Speed:        req.Speed,
+			SpeedKmh:     req.SpeedKmh,
 			Accuracy:     req.Accuracy,
 			Altitude:     req.Altitude,
 			Heading:      req.Heading,
 			IsMoving:     req.IsMoving,
 			ActivityType: req.ActivityType,
 			BatteryLevel: req.BatteryLevel,
+			IsCharging:   req.IsCharging,
+			PowerSaveMode: req.PowerSaveMode,
 			PhoneInUse:   req.PhoneInUse,
-			RecordedAt:   req.RecordedAt.Time, // FlexibleTime'dan time.Time'a
+			// Ağ bilgileri
+			ConnectionType: req.ConnectionType,
+			WifiSsid:       req.WifiSsid,
+			IpAddress:      req.IpAddress,
+			// Sensör verileri
+			Accelerometer:    req.Accelerometer,
+			Gyroscope:        req.Gyroscope,
+			MaxAccelerationG: req.MaxAccelerationG,
+			// Meta veriler
+			Trigger:         req.Trigger,
+			IntervalSeconds: req.IntervalSeconds,
+			RecordedAt:      req.RecordedAt.Time,
 		}
 	}
 
