@@ -88,7 +88,7 @@ class _LocationHealthWidgetState extends State<LocationHealthWidget> {
   String _getTripStateText() {
     switch (_tripState) {
       case TripState.idle:
-        return 'Sefer yok';
+        return 'Hazır';
       case TripState.starting:
         return 'Sefer başlıyor...';
       case TripState.active:
@@ -97,6 +97,9 @@ class _LocationHealthWidgetState extends State<LocationHealthWidget> {
         return 'Sefer bitiyor...';
     }
   }
+
+  /// Hiç veri var mı?
+  bool get _hasData => (_stats?.totalSent ?? 0) > 0;
 
   Color _getTripStateColor() {
     switch (_tripState) {
@@ -151,100 +154,129 @@ class _LocationHealthWidgetState extends State<LocationHealthWidget> {
                     ],
                   ),
                 ),
-                // Sefer durumu
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getTripStateColor().withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _getTripStateColor().withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _tripState == TripState.active
-                            ? Icons.local_shipping
-                            : Icons.local_shipping_outlined,
-                        size: 14,
-                        color: _getTripStateColor(),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _getTripStateText(),
-                        style: TextStyle(
-                          fontSize: 11,
+                // Sefer durumu - sadece aktif veya başlıyor/bitiyor ise göster
+                if (_tripState != TripState.idle)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getTripStateColor().withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _getTripStateColor().withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _tripState == TripState.active
+                              ? Icons.local_shipping
+                              : Icons.local_shipping_outlined,
+                          size: 14,
                           color: _getTripStateColor(),
-                          fontWeight: FontWeight.w500,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _getTripStateText(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _getTripStateColor(),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+
+            // Veri yoksa basit mesaj göster
+            if (!_hasData && _pendingCount == 0) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 18,
+                      color: Colors.blue.shade700,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Konum takibi başladı. Veriler sunucuya gönderilecek.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade700,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ] else ...[
+              // Veri varsa istatistikleri göster
+              const Divider(height: 24),
 
-            const Divider(height: 24),
-
-            // İstatistikler
-            Row(
-              children: [
-                Expanded(
-                  child: _StatItem(
-                    icon: Icons.send,
-                    label: 'Gönderilen',
-                    value: '${_stats?.totalSent ?? 0}',
-                    color: Colors.green,
+              // İstatistikler
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatItem(
+                      icon: Icons.send,
+                      label: 'Gönderilen',
+                      value: '${_stats?.totalSent ?? 0}',
+                      color: Colors.green,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _StatItem(
-                    icon: Icons.pending,
-                    label: 'Bekleyen',
-                    value: '$_pendingCount',
-                    color: _pendingCount > 0 ? Colors.orange : Colors.grey,
-                  ),
-                ),
-                Expanded(
-                  child: _StatItem(
-                    icon: Icons.percent,
-                    label: 'Başarı',
-                    value: '${_stats?.successRate.toStringAsFixed(0) ?? 100}%',
-                    color: (_stats?.successRate ?? 100) >= 90
-                        ? Colors.green
-                        : Colors.orange,
-                  ),
-                ),
-              ],
-            ),
+                  if (_pendingCount > 0)
+                    Expanded(
+                      child: _StatItem(
+                        icon: Icons.pending,
+                        label: 'Bekleyen',
+                        value: '$_pendingCount',
+                        color: Colors.orange,
+                      ),
+                    ),
+                  if (_hasData)
+                    Expanded(
+                      child: _StatItem(
+                        icon: Icons.check_circle,
+                        label: 'Başarı',
+                        value: '${_stats?.successRate.toStringAsFixed(0) ?? 100}%',
+                        color: (_stats?.successRate ?? 100) >= 90
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                    ),
+                ],
+              ),
 
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            // Alt bilgiler
-            Row(
-              children: [
-                // Son gönderim
-                Expanded(
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.schedule,
-                        size: 14,
+              // Alt bilgiler - sadece son gönderim varsa
+              if (_lastSuccess != null)
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      size: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Son: ${_formatTimeAgo(_lastSuccess)}',
+                      style: TextStyle(
+                        fontSize: 11,
                         color: Colors.grey.shade600,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Son: ${_formatTimeAgo(_lastSuccess)}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+            ],
 
             // Hata mesajı
             if (_stats?.lastError != null) ...[
