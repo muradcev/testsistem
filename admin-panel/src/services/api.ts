@@ -240,6 +240,26 @@ export const auditApi = {
   cleanup: (days?: number) => api.delete('/admin/audit-logs/cleanup', { params: { days } }),
 }
 
+// App Logs (Uygulama Logları)
+export const appLogsApi = {
+  getAll: (params?: {
+    limit?: number;
+    offset?: number;
+    level?: string;
+    category?: string;
+    driver_id?: string;
+    search?: string;
+    start_time?: string;
+    end_time?: string;
+  }) => api.get('/admin/app-logs', { params }),
+  getStats: (driverId?: string) => api.get('/admin/app-logs/stats', { params: { driver_id: driverId } }),
+  getErrors: (params?: { limit?: number; offset?: number }) => api.get('/admin/app-logs/errors', { params }),
+  getCritical: (params?: { limit?: number; offset?: number }) => api.get('/admin/app-logs/critical', { params }),
+  getDriverLogs: (driverId: string, params?: { limit?: number; offset?: number }) =>
+    api.get(`/admin/drivers/${driverId}/app-logs`, { params }),
+  cleanup: (days?: number) => api.delete('/admin/app-logs/cleanup', { params: { days } }),
+}
+
 // Question Rules
 export const questionRulesApi = {
   getAll: () => api.get('/admin/question-rules'),

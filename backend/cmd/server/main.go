@@ -54,6 +54,13 @@ func main() {
 	}
 	defer redis.Close()
 
+	// DB Logger başlat (backend loglarını veritabanına yazar)
+	logger.InitDBLogger(db.Pool)
+	defer logger.StopDBLogger()
+	logger.LogSystemEvent("Backend started", "info", map[string]interface{}{
+		"version": "1.0.55",
+	})
+
 	// Repository'ler
 	driverRepo := repository.NewDriverRepository(db)
 	vehicleRepo := repository.NewVehicleRepository(db)

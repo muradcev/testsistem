@@ -30,6 +30,7 @@ import {
   CurrencyDollarIcon,
   GlobeAltIcon,
   CalculatorIcon,
+  CommandLineIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 
@@ -100,6 +101,7 @@ const navigationGroups: NavGroup[] = [
       { name: 'Uygulama Ayarları', href: '/app-config', icon: AdjustmentsHorizontalIcon },
       { name: 'Sistem Ayarları', href: '/settings', icon: Cog6ToothIcon },
       { name: 'Audit Logları', href: '/audit-logs', icon: DocumentTextIcon },
+      { name: 'Uygulama Logları', href: '/app-logs', icon: CommandLineIcon },
     ],
   },
 ]
