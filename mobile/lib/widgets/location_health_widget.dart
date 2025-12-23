@@ -21,7 +21,6 @@ class _LocationHealthWidgetState extends State<LocationHealthWidget> {
   TripState _tripState = TripState.idle;
   bool _isGpsEnabled = true;
   bool _isOnline = true;
-  bool _isInHomeZone = false;
   Timer? _refreshTimer;
 
   @override
@@ -51,7 +50,6 @@ class _LocationHealthWidgetState extends State<LocationHealthWidget> {
         _tripState = TripDetectionService.currentState;
         _isGpsEnabled = LocationStatusService.isGpsEnabled;
         _isOnline = LocationStatusService.isOnline;
-        _isInHomeZone = TripDetectionService.isInHomeZone;
       });
     }
   }
@@ -153,37 +151,6 @@ class _LocationHealthWidgetState extends State<LocationHealthWidget> {
                     ],
                   ),
                 ),
-                // Ev bölgesi göstergesi
-                if (_isInHomeZone) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.home,
-                          size: 14,
-                          color: Colors.blue.shade700,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Evde',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
                 // Sefer durumu
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
