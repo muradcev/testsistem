@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"nakliyeo-mobil/internal/middleware"
@@ -31,33 +30,22 @@ func NewLocationHandler(locationService *service.LocationService, tripService *s
 }
 
 func (h *LocationHandler) SaveLocation(c *gin.Context) {
-	fmt.Printf("[LocationHandler] SaveLocation called\n")
-
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		fmt.Printf("[LocationHandler] SaveLocation - Unauthorized\n")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
 		return
 	}
 
-	fmt.Printf("[LocationHandler] SaveLocation - User ID: %s\n", userID)
-
 	var req models.LocationCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("[LocationHandler] SaveLocation - Bad request: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	fmt.Printf("[LocationHandler] SaveLocation - Lat: %f, Lng: %f, IsMoving: %v\n", req.Latitude, req.Longitude, req.IsMoving)
-
 	if err := h.locationService.SaveLocation(c.Request.Context(), userID, &req); err != nil {
-		fmt.Printf("[LocationHandler] SaveLocation - Error saving: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	fmt.Printf("[LocationHandler] SaveLocation - Saved successfully\n")
 
 	// Sürücünün son konum bilgisini güncelle
 	status := "stationary"
@@ -72,14 +60,10 @@ func (h *LocationHandler) SaveLocation(c *gin.Context) {
 		if geoResult != nil {
 			province = geoResult.Province
 			district = geoResult.District
-			fmt.Printf("[LocationHandler] Geocoding result: %s, %s\n", province, district)
 		}
 	}
 
-	if err := h.driverService.UpdateLocation(c.Request.Context(), userID, req.Latitude, req.Longitude, status, province, district); err != nil {
-		fmt.Printf("[LocationHandler] SaveLocation - Error updating driver location: %v\n", err)
-		// Hata olsa bile devam et, konum zaten kaydedildi
-	}
+	_ = h.driverService.UpdateLocation(c.Request.Context(), userID, req.Latitude, req.Longitude, status, province, district)
 
 	// WebSocket üzerinden konum güncellemesi yayınla
 	if h.wsHub != nil {
@@ -143,14 +127,10 @@ func (h *LocationHandler) SaveBatchLocations(c *gin.Context) {
 			if geoResult != nil {
 				province = geoResult.Province
 				district = geoResult.District
-				fmt.Printf("[LocationHandler] SaveBatchLocations - Geocoding result: %s, %s\n", province, district)
 			}
 		}
 
-		if err := h.driverService.UpdateLocation(c.Request.Context(), userID, lastLoc.Latitude, lastLoc.Longitude, status, province, district); err != nil {
-			// Hata olsa bile devam et
-			fmt.Printf("[LocationHandler] SaveBatchLocations - Error updating driver location: %v\n", err)
-		}
+		_ = h.driverService.UpdateLocation(c.Request.Context(), userID, lastLoc.Latitude, lastLoc.Longitude, status, province, district)
 	}
 
 	// Toplu konumlardan en son olanı WebSocket üzerinden yayınla

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"nakliyeo-mobil/internal/middleware"
@@ -21,25 +20,18 @@ func NewVehicleHandler(vehicleService *service.VehicleService) *VehicleHandler {
 }
 
 func (h *VehicleHandler) GetAll(c *gin.Context) {
-	fmt.Printf("[VehicleHandler] GetAll called\n")
-
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		fmt.Printf("[VehicleHandler] GetAll - Unauthorized access attempt\n")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
 		return
 	}
 
-	fmt.Printf("[VehicleHandler] GetAll - User ID: %s\n", userID)
-
 	vehicles, err := h.vehicleService.GetByDriverID(c.Request.Context(), userID)
 	if err != nil {
-		fmt.Printf("[VehicleHandler] GetAll - Error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	fmt.Printf("[VehicleHandler] GetAll - Found %d vehicles\n", len(vehicles))
 	c.JSON(http.StatusOK, gin.H{"vehicles": vehicles})
 }
 
