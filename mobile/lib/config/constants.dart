@@ -52,6 +52,10 @@ class ApiConstants {
   // Geofences
   static const String geofences = '/driver/geofences';
 
+  // App Logs
+  static const String appLogs = '/driver/logs';
+  static const String appLogsBatch = '/driver/logs/batch';
+
   static const String provinces = '/locations/provinces';
   static String districts(String province) => '/locations/districts/$province';
   static String neighborhoods(String province, String district) =>
@@ -74,6 +78,9 @@ class StorageKeys {
   static const String bufferedLocations = 'buffered_locations';
   static const String lastSendTime = 'last_send_time';
   static const String tokenExpiresAt = 'token_expires_at';
+  // Log buffer
+  static const String bufferedLogs = 'buffered_logs';
+  static const String lastLogSendTime = 'last_log_send_time';
 }
 
 class LocationConstants {

@@ -72,6 +72,7 @@ func main() {
 	announcementRepo := repository.NewAnnouncementRepository(db)
 	questionFlowTemplateRepo := repository.NewQuestionFlowTemplateRepository(db)
 	transportRepo := repository.NewTransportRepository(db)
+	appLogRepo := repository.NewAppLogRepository(db)
 
 	// Service'ler
 	authService := service.NewAuthService(driverRepo, adminRepo, settingsRepo)
@@ -211,6 +212,10 @@ func main() {
 			// Driver Homes (Ev Adresleri - Mobil uygulama için)
 			driverHomeHandlerForDriver := api.NewDriverHomeHandler(driverHomeRepo, driverRepo)
 			driverGroup.GET("/homes", driverHomeHandlerForDriver.GetMyHomes)
+
+			// App Logs (Uygulama Logları - Şoför tarafı)
+			appLogHandler := api.NewAppLogHandler(appLogRepo)
+			driverGroup.POST("/logs/batch", appLogHandler.SaveBatchLogs)
 		}
 
 		// Protected admin routes
@@ -425,6 +430,15 @@ func main() {
 			adminGroup.GET("/audit-logs", auditHandler.GetAuditLogs)
 			adminGroup.GET("/audit-logs/stats", auditHandler.GetAuditStats)
 			adminGroup.DELETE("/audit-logs/cleanup", auditHandler.CleanupOldLogs)
+
+			// App Logs (Uygulama Logları - Admin tarafı)
+			adminAppLogHandler := api.NewAppLogHandler(appLogRepo)
+			adminGroup.GET("/app-logs", adminAppLogHandler.GetLogs)
+			adminGroup.GET("/app-logs/stats", adminAppLogHandler.GetLogStats)
+			adminGroup.GET("/app-logs/errors", adminAppLogHandler.GetErrors)
+			adminGroup.GET("/app-logs/critical", adminAppLogHandler.GetCritical)
+			adminGroup.GET("/drivers/:id/app-logs", adminAppLogHandler.GetDriverLogs)
+			adminGroup.DELETE("/app-logs/cleanup", adminAppLogHandler.DeleteOldLogs)
 
 			// Announcements (Duyurular - Admin tarafı)
 			announcementHandler := api.NewAnnouncementHandler(announcementRepo, driverRepo, auditRepo)

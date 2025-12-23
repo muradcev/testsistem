@@ -7,6 +7,7 @@ import '../services/device_info_service.dart';
 import '../services/hybrid_location_service.dart';
 import '../config/constants.dart';
 import '../config/router.dart';
+import '../services/app_log_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService;
@@ -246,6 +247,10 @@ class AuthProvider extends ChangeNotifier {
       _phone = data['driver']['phone'];
       _user = data['driver'];
 
+      // Log service'e driver ID'yi bildir
+      AppLogService.instance.setDriverId(_userId);
+      appLog.info(LogCategory.auth, 'User logged in', metadata: {'driver_id': _userId});
+
       // Router'ı bilgilendir
       authNotifier.setLoggedIn(true);
 
@@ -366,6 +371,9 @@ class AuthProvider extends ChangeNotifier {
   /// Manuel logout - sadece kullanıcı istediğinde çağrılır
   Future<void> logout() async {
     debugPrint('[Auth] User requested logout...');
+    appLog.info(LogCategory.auth, 'User logged out', metadata: {'driver_id': _userId});
+    await AppLogService.instance.flush(); // Bekleyen logları gönder
+    AppLogService.instance.setDriverId(null);
 
     // Token yenileme timer'ını durdur
     _stopTokenRefreshTimer();

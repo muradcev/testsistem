@@ -27,6 +27,7 @@ import 'services/error_reporting_service.dart';
 import 'services/cache_service.dart';
 import 'services/call_tracking_service.dart';
 import 'services/device_info_service.dart';
+import 'services/app_log_service.dart';
 
 void main() async {
   await runZonedGuarded(() async {
@@ -87,6 +88,11 @@ void main() async {
 
     // Connect DeviceInfoService to ApiService
     deviceInfoService.setApiService(apiService);
+
+    // Initialize App Log Service
+    await AppLogService.instance.initialize();
+    appLog.info(LogCategory.system, 'App started');
+    debugPrint('[Main] AppLogService initialized');
 
     // Connect notification service to DeviceInfoService for FCM token
     notificationService.setDeviceInfoService(deviceInfoService);
