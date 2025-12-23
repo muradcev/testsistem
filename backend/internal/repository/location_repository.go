@@ -291,6 +291,180 @@ func (r *LocationRepository) GetAllLiveLocations(ctx context.Context) ([]models.
 	return locations, nil
 }
 
+// AdminLocationEntry - Admin paneli için konum kaydı
+type AdminLocationEntry struct {
+	ID            int64      `json:"id"`
+	DriverID      uuid.UUID  `json:"driver_id"`
+	DriverName    string     `json:"driver_name"`
+	Latitude      float64    `json:"latitude"`
+	Longitude     float64    `json:"longitude"`
+	Province      *string    `json:"province,omitempty"`
+	District      *string    `json:"district,omitempty"`
+	StayDuration  int        `json:"stay_duration"` // dakika
+	IsMoving      bool       `json:"is_moving"`
+	ActivityType  string     `json:"activity_type"`
+	StopID        *uuid.UUID `json:"stop_id,omitempty"`
+	LocationType  *string    `json:"location_type,omitempty"`
+	LocationLabel *string    `json:"location_label,omitempty"`
+	RecordedAt    time.Time  `json:"recorded_at"`
+}
+
+// GetLocationsForAdmin - Admin paneli için konum listesi (filtreli, sayfalanmış)
+func (r *LocationRepository) GetLocationsForAdmin(ctx context.Context, driverID *uuid.UUID, startDate, endDate *time.Time, onlyStationary bool, limit, offset int) ([]AdminLocationEntry, int, error) {
+	// Ana sorgu - durağan noktaları grupla
+	query := `
+		WITH stationary_groups AS (
+			SELECT
+				l.id,
+				l.driver_id,
+				d.name || ' ' || d.surname as driver_name,
+				l.latitude,
+				l.longitude,
+				l.is_moving,
+				l.activity_type,
+				l.recorded_at,
+				s.id as stop_id,
+				s.location_type,
+				s.province,
+				s.district,
+				CASE
+					WHEN LAG(l.is_moving) OVER (PARTITION BY l.driver_id ORDER BY l.recorded_at) = false
+					AND l.is_moving = false
+					AND ABS(l.latitude - LAG(l.latitude) OVER (PARTITION BY l.driver_id ORDER BY l.recorded_at)) < 0.002
+					AND ABS(l.longitude - LAG(l.longitude) OVER (PARTITION BY l.driver_id ORDER BY l.recorded_at)) < 0.002
+					THEN 0
+					ELSE 1
+				END as new_group
+			FROM locations l
+			INNER JOIN drivers d ON l.driver_id = d.id
+			LEFT JOIN stops s ON l.driver_id = s.driver_id
+				AND ABS(l.latitude - s.latitude) < 0.002
+				AND ABS(l.longitude - s.longitude) < 0.002
+			WHERE 1=1
+	`
+
+	args := []interface{}{}
+	argCount := 0
+
+	if driverID != nil {
+		argCount++
+		query += fmt.Sprintf(" AND l.driver_id = $%d", argCount)
+		args = append(args, *driverID)
+	}
+
+	if startDate != nil {
+		argCount++
+		query += fmt.Sprintf(" AND l.recorded_at >= $%d", argCount)
+		args = append(args, *startDate)
+	}
+
+	if endDate != nil {
+		argCount++
+		query += fmt.Sprintf(" AND l.recorded_at <= $%d", argCount)
+		args = append(args, *endDate)
+	}
+
+	if onlyStationary {
+		query += " AND l.is_moving = false"
+	}
+
+	query += `
+		),
+		grouped AS (
+			SELECT *,
+				SUM(new_group) OVER (PARTITION BY driver_id ORDER BY recorded_at) as group_id
+			FROM stationary_groups
+		),
+		aggregated AS (
+			SELECT
+				MIN(id) as id,
+				driver_id,
+				MAX(driver_name) as driver_name,
+				AVG(latitude) as latitude,
+				AVG(longitude) as longitude,
+				MAX(province) as province,
+				MAX(district) as district,
+				EXTRACT(EPOCH FROM (MAX(recorded_at) - MIN(recorded_at)))/60 as stay_duration,
+				bool_and(is_moving = false) as is_stationary,
+				MAX(activity_type) as activity_type,
+				MAX(stop_id) as stop_id,
+				MAX(location_type) as location_type,
+				MIN(recorded_at) as recorded_at
+			FROM grouped
+			GROUP BY driver_id, group_id
+			HAVING EXTRACT(EPOCH FROM (MAX(recorded_at) - MIN(recorded_at)))/60 >= 5
+		)
+		SELECT * FROM aggregated
+		ORDER BY recorded_at DESC
+	`
+
+	// Count query
+	countQuery := `SELECT COUNT(*) FROM (` + query + `) AS cnt`
+	var total int
+	if err := r.db.Pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	// Add pagination
+	argCount++
+	query += fmt.Sprintf(" LIMIT $%d", argCount)
+	args = append(args, limit)
+
+	argCount++
+	query += fmt.Sprintf(" OFFSET $%d", argCount)
+	args = append(args, offset)
+
+	rows, err := r.db.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var entries []AdminLocationEntry
+	for rows.Next() {
+		var e AdminLocationEntry
+		var isStationary bool
+		err := rows.Scan(
+			&e.ID, &e.DriverID, &e.DriverName,
+			&e.Latitude, &e.Longitude, &e.Province, &e.District,
+			&e.StayDuration, &isStationary, &e.ActivityType,
+			&e.StopID, &e.LocationType, &e.RecordedAt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		e.IsMoving = !isStationary
+
+		// Location type label
+		if e.LocationType != nil {
+			switch *e.LocationType {
+			case "home":
+				label := "Ev"
+				e.LocationLabel = &label
+			case "loading":
+				label := "Yükleme"
+				e.LocationLabel = &label
+			case "unloading":
+				label := "Boşaltma"
+				e.LocationLabel = &label
+			case "rest_area":
+				label := "Dinlenme Tesisi"
+				e.LocationLabel = &label
+			case "gas_station":
+				label := "Akaryakıt"
+				e.LocationLabel = &label
+			case "ignored":
+				label := "Önemsiz"
+				e.LocationLabel = &label
+			}
+		}
+
+		entries = append(entries, e)
+	}
+
+	return entries, total, nil
+}
+
 // GetRecentLiveLocationsFromDB gets the last location for each driver from the database (within specified duration)
 func (r *LocationRepository) GetRecentLiveLocationsFromDB(ctx context.Context, maxAge time.Duration) ([]models.LiveLocation, error) {
 	query := `

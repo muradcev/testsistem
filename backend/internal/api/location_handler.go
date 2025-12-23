@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"nakliyeo-mobil/internal/middleware"
@@ -92,6 +93,60 @@ func (h *LocationHandler) SaveLocation(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Konum kaydedildi"})
+}
+
+// GetLocationsForAdmin - Admin paneli için konum listesi
+func (h *LocationHandler) GetLocationsForAdmin(c *gin.Context) {
+	// Query params
+	driverIDStr := c.Query("driver_id")
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+	onlyStationaryStr := c.Query("only_stationary")
+	limitStr := c.DefaultQuery("limit", "50")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	var driverID *string
+	if driverIDStr != "" {
+		driverID = &driverIDStr
+	}
+
+	var startDate, endDate *string
+	if startDateStr != "" {
+		startDate = &startDateStr
+	}
+	if endDateStr != "" {
+		endDate = &endDateStr
+	}
+
+	onlyStationary := onlyStationaryStr == "true"
+
+	limit := 50
+	offset := 0
+	if l, err := parseInt(limitStr); err == nil && l > 0 && l <= 200 {
+		limit = l
+	}
+	if o, err := parseInt(offsetStr); err == nil && o >= 0 {
+		offset = o
+	}
+
+	entries, total, err := h.locationService.GetLocationsForAdmin(c.Request.Context(), driverID, startDate, endDate, onlyStationary, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"locations": entries,
+		"total":     total,
+		"limit":     limit,
+		"offset":    offset,
+	})
+}
+
+func parseInt(s string) (int, error) {
+	var n int
+	_, err := fmt.Sscanf(s, "%d", &n)
+	return n, err
 }
 
 func (h *LocationHandler) SaveBatchLocations(c *gin.Context) {

@@ -216,3 +216,44 @@ func (s *LocationService) GetTodayLocationCount(ctx context.Context, driverID uu
 
 	return len(locations), nil
 }
+
+// GetLocationsForAdmin - Admin paneli için konum listesi
+func (s *LocationService) GetLocationsForAdmin(ctx context.Context, driverIDStr, startDateStr, endDateStr *string, onlyStationary bool, limit, offset int) ([]repository.AdminLocationEntry, int, error) {
+	var driverID *uuid.UUID
+	if driverIDStr != nil && *driverIDStr != "" {
+		id, err := uuid.Parse(*driverIDStr)
+		if err != nil {
+			return nil, 0, err
+		}
+		driverID = &id
+	}
+
+	var startDate, endDate *time.Time
+	if startDateStr != nil && *startDateStr != "" {
+		t, err := time.Parse("2006-01-02", *startDateStr)
+		if err != nil {
+			// Try with time
+			t, err = time.Parse(time.RFC3339, *startDateStr)
+			if err != nil {
+				return nil, 0, err
+			}
+		}
+		startDate = &t
+	}
+
+	if endDateStr != nil && *endDateStr != "" {
+		t, err := time.Parse("2006-01-02", *endDateStr)
+		if err != nil {
+			// Try with time
+			t, err = time.Parse(time.RFC3339, *endDateStr)
+			if err != nil {
+				return nil, 0, err
+			}
+		}
+		// Add 1 day to include the end date
+		t = t.Add(24 * time.Hour)
+		endDate = &t
+	}
+
+	return s.repo.GetLocationsForAdmin(ctx, driverID, startDate, endDate, onlyStationary, limit, offset)
+}

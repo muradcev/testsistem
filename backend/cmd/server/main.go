@@ -269,6 +269,10 @@ func main() {
 			// Real-time locations
 			adminGroup.GET("/locations/live", adminHandler.GetLiveLocations)
 
+			// Location Admin (Konum Takibi sayfası için)
+			adminLocationHandler := api.NewLocationHandler(locationService, tripService, driverService, geocodingService, wsHub)
+			adminGroup.GET("/locations/admin", adminLocationHandler.GetLocationsForAdmin)
+
 			// Surveys
 			adminSurveyHandler := api.NewAdminSurveyHandler(surveyService)
 			adminGroup.GET("/surveys", adminSurveyHandler.GetAll)
@@ -362,6 +366,7 @@ func main() {
 			adminGroup.GET("/stops/uncategorized", stopHandler.GetUncategorizedStops)
 			adminGroup.GET("/stops/location-types", stopHandler.GetLocationTypes)
 			adminGroup.GET("/stops/:id", stopHandler.GetStopByID)
+			adminGroup.POST("/stops", stopHandler.CreateStop)
 			adminGroup.PUT("/stops/:id", stopHandler.UpdateStopType)
 			adminGroup.DELETE("/stops/:id", stopHandler.DeleteStop)
 			adminGroup.POST("/stops/bulk-delete", stopHandler.BulkDeleteStops)

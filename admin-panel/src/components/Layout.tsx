@@ -64,6 +64,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Canlı Harita', href: '/live-map', icon: MapIcon },
       { name: 'Canlı Takip', href: '/live-tracking', icon: SignalIcon },
+      { name: 'Konum Takibi', href: '/location-tracking', icon: MapPinIcon },
       { name: 'Isı Haritası', href: '/heat-map', icon: FireIcon },
       { name: 'Durak Yönetimi', href: '/stops', icon: TruckIcon },
       { name: 'Harita Görünümü', href: '/map-view', icon: GlobeAltIcon },

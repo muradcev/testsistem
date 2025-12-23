@@ -198,6 +198,66 @@ func (h *StopHandler) UpdateStopType(c *gin.Context) {
 	}
 }
 
+// CreateStop manually creates a stop
+func (h *StopHandler) CreateStop(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var req struct {
+		DriverID     string  `json:"driver_id" binding:"required"`
+		Latitude     float64 `json:"latitude" binding:"required"`
+		Longitude    float64 `json:"longitude" binding:"required"`
+		LocationType string  `json:"location_type" binding:"required"`
+		Label        *string `json:"label"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri: " + err.Error()})
+		return
+	}
+
+	driverID, err := uuid.Parse(req.DriverID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz şoför ID"})
+		return
+	}
+
+	// Validate location type
+	locationType := models.LocationType(req.LocationType)
+	if _, exists := models.LocationTypeLabels[locationType]; !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz durak tipi"})
+		return
+	}
+
+	// Create stop
+	stop := &models.Stop{
+		ID:              uuid.New(),
+		DriverID:        driverID,
+		Latitude:        req.Latitude,
+		Longitude:       req.Longitude,
+		LocationType:    locationType,
+		DurationMinutes: 0,
+		StartedAt:       time.Now(),
+		CreatedAt:       time.Now(),
+	}
+
+	if req.Label != nil && *req.Label != "" {
+		stop.Name = req.Label
+	}
+
+	err = h.stopRepo.Create(ctx, stop)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Durak oluşturulamadı"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":        "Durak oluşturuldu",
+		"stop_id":        stop.ID,
+		"location_type":  locationType,
+		"location_label": models.LocationTypeLabels[locationType],
+	})
+}
+
 // DetectStopsForDriver runs stop detection for a specific driver
 func (h *StopHandler) DetectStopsForDriver(c *gin.Context) {
 	ctx := c.Request.Context()

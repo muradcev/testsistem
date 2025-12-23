@@ -30,6 +30,7 @@ import TransportRecordsPage from './pages/TransportRecordsPage'
 import DistanceCalculatorPage from './pages/DistanceCalculatorPage'
 import GeofencesPage from './pages/GeofencesPage'
 import AppLogsPage from './pages/AppLogsPage'
+import LocationTrackingPage from './pages/LocationTrackingPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="distance-calculator" element={<DistanceCalculatorPage />} />
         <Route path="geofences" element={<GeofencesPage />} />
         <Route path="app-logs" element={<AppLogsPage />} />
+        <Route path="location-tracking" element={<LocationTrackingPage />} />
       </Route>
     </Routes>
   )

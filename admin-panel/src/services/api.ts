@@ -88,6 +88,14 @@ export const driversApi = {
 
 export const locationsApi = {
   getLive: () => api.get('/admin/locations/live'),
+  getAdminLocations: (params?: {
+    driver_id?: string;
+    start_date?: string;
+    end_date?: string;
+    only_stationary?: boolean;
+    limit?: number;
+    offset?: number;
+  }) => api.get('/admin/locations/admin', { params }),
 }
 
 export const geofencesApi = {
@@ -392,6 +400,8 @@ export const stopsApi = {
   getById: (stopId: string) => api.get(`/admin/stops/${stopId}`),
   getUncategorized: (params?: { limit?: number; offset?: number }) =>
     api.get('/admin/stops/uncategorized', { params }),
+  create: (data: { driver_id: string; latitude: number; longitude: number; location_type: string; label?: string }) =>
+    api.post('/admin/stops', data),
   updateType: (stopId: string, locationType: string) =>
     api.put(`/admin/stops/${stopId}`, { location_type: locationType }),
   delete: (stopId: string) => api.delete(`/admin/stops/${stopId}`),
