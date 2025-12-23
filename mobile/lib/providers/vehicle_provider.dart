@@ -157,12 +157,17 @@ class VehicleProvider extends ChangeNotifier {
   }
 
   Future<bool> deleteTrailer(String id) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
       await _apiService.deleteTrailer(id);
       await loadTrailers();
       return true;
     } catch (e) {
       _error = _parseError(e);
+      _isLoading = false;
       notifyListeners();
       return false;
     }

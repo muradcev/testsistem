@@ -435,9 +435,9 @@ class TripDetectionService {
     // GPS anomali kontrolü - anomalili konumları atla
     if (_isGpsAnomaly(position)) {
       debugPrint('[TripDetection] Skipping anomalous GPS data');
-      // Anomali varsa sadece zamanı güncelle, konum verilerini güncelleme
-      _lastPositionTime = now;
-      _lastPositionAccuracy = position.accuracy;
+      // Anomali varsa HİÇBİR ŞEYİ güncelleme
+      // _lastPositionTime'ı güncellemek sonraki geçerli konumda
+      // yanlış hız hesaplamasına neden olur
       return;
     }
 

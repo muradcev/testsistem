@@ -775,56 +775,70 @@ Future<void> _sendBatchLocations(
       },
     ));
 
-    // Önce bekleyen konumları gönder
+    // Tüm konumları birleştir (pending + yeni) ve tek seferde gönder
+    // Bu sayede atomik işlem yapılır ve veri kaybı önlenir
     final pendingJson = prefs.getString(StorageKeys.pendingLocations) ?? '[]';
     List<dynamic> pending = json.decode(pendingJson);
-    if (pending.isNotEmpty) {
-      try {
-        final data = {'locations': pending};
-        await dio.post(ApiConstants.locationBatch, data: data);
-        await prefs.setString(StorageKeys.pendingLocations, '[]');
-        healthStats.recordSuccess();
-        debugPrint('[Location] Sent ${pending.length} pending locations');
-      } catch (e) {
-        if (e is DioException && e.response?.statusCode == 401) {
-          // Token geçersiz - yenile
-          final newToken = await _tryRefreshToken(prefs);
-          if (newToken != null) {
-            dio.options.headers['Authorization'] = 'Bearer $newToken';
-            await dio.post(ApiConstants.locationBatch, data: {'locations': pending});
-            await prefs.setString(StorageKeys.pendingLocations, '[]');
-            healthStats.recordSuccess();
-          }
-        } else {
-          healthStats.recordFailure(e.toString());
-          debugPrint('[Location] Failed to send pending: $e');
-        }
-      }
+
+    // Yeni konumları pending'e ekle
+    final allLocations = [...pending, ...locations];
+
+    if (allLocations.isEmpty) {
+      debugPrint('[Location] No locations to send');
+      return;
     }
 
-    // Yeni konumları gönder
+    debugPrint('[Location] Sending ${allLocations.length} locations (${pending.length} pending + ${locations.length} new)');
+
+    bool sendSuccess = false;
     try {
-      final data = {'locations': locations};
+      final data = {'locations': allLocations};
       await dio.post(ApiConstants.locationBatch, data: data);
+      sendSuccess = true;
       healthStats.recordSuccess();
-      debugPrint('[Location] Sent ${locations.length} new locations');
+      debugPrint('[Location] Successfully sent ${allLocations.length} locations');
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 401) {
         // Token geçersiz - yenile ve tekrar dene
+        debugPrint('[Location] 401 error, attempting token refresh...');
         final newToken = await _tryRefreshToken(prefs);
         if (newToken != null) {
-          dio.options.headers['Authorization'] = 'Bearer $newToken';
-          await dio.post(ApiConstants.locationBatch, data: {'locations': locations});
-          healthStats.recordSuccess();
+          try {
+            dio.options.headers['Authorization'] = 'Bearer $newToken';
+            await dio.post(ApiConstants.locationBatch, data: {'locations': allLocations});
+            sendSuccess = true;
+            healthStats.recordSuccess();
+            debugPrint('[Location] Successfully sent after token refresh');
+          } catch (retryError) {
+            debugPrint('[Location] Retry after refresh failed: $retryError');
+            healthStats.recordFailure(retryError.toString());
+          }
+        } else {
+          debugPrint('[Location] Token refresh failed');
+          healthStats.recordFailure('Token refresh failed');
         }
       } else {
-        // Başarısız - pending'e ekle
         healthStats.recordFailure(e.toString());
-        debugPrint('[Location] Failed to send batch, queuing: $e');
-        final pendingJson2 = prefs.getString(StorageKeys.pendingLocations) ?? '[]';
-        List<dynamic> pending2 = json.decode(pendingJson2);
-        pending2.addAll(locations);
-        await prefs.setString(StorageKeys.pendingLocations, json.encode(pending2));
+        debugPrint('[Location] Failed to send batch: $e');
+      }
+    }
+
+    // Sadece başarılı gönderimde queue'yu temizle
+    if (sendSuccess) {
+      await prefs.setString(StorageKeys.pendingLocations, '[]');
+      debugPrint('[Location] Queue cleared after successful send');
+    } else {
+      // Başarısız - tüm konumları pending'de tut (yenilerini de ekleyerek)
+      // Ama duplicate'leri önlemek için sadece yeni konumları ekle
+      // (pending zaten var, sadece yeni eklenenler kaybolmasın)
+      if (locations.isNotEmpty) {
+        final maxOffline = _RemoteConfig.getMaxOfflineLocations(prefs);
+        pending.addAll(locations);
+        while (pending.length > maxOffline) {
+          pending.removeAt(0); // En eski konumları sil (FIFO)
+        }
+        await prefs.setString(StorageKeys.pendingLocations, json.encode(pending));
+        debugPrint('[Location] Queued ${locations.length} new locations, total pending: ${pending.length}');
       }
     }
 

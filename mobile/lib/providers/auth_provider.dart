@@ -135,52 +135,33 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Refresh token ile access token yenile
+  /// ApiService'in merkezi mutex mekanizmasını kullanır
   Future<bool> _tryRefreshToken(SharedPreferences prefs, String refreshToken) async {
     try {
-      debugPrint('[Auth] Attempting to refresh token...');
+      debugPrint('[Auth] Attempting to refresh token via ApiService...');
 
-      final dio = Dio(BaseOptions(
-        baseUrl: ApiConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        headers: {'Content-Type': 'application/json'},
-      ));
+      // ApiService'in merkezi token refresh mekanizmasını kullan
+      // Bu sayede eşzamanlı refresh istekleri önlenir
+      final success = await _apiService.refreshToken();
 
-      final response = await dio.post(
-        ApiConstants.refreshToken,
-        data: {'refresh_token': refreshToken},
-      );
-
-      if (response.statusCode == 200) {
-        // Backend "auth" objesi içinde dönüyor
-        final authData = response.data['auth'] ?? response.data;
-        final newAccessToken = authData['access_token'];
-        final newRefreshToken = authData['refresh_token'];
-
-        if (newAccessToken == null) {
-          debugPrint('[Auth] No access token in refresh response');
-          return false;
-        }
-
-        await _apiService.setToken(newAccessToken);
-        await prefs.setString(StorageKeys.accessToken, newAccessToken);
-        if (newRefreshToken != null) {
-          await prefs.setString(StorageKeys.refreshToken, newRefreshToken);
-        }
+      if (success) {
+        debugPrint('[Auth] Token refreshed successfully via ApiService');
 
         // Foreground service'e yeni token'ı bildir
-        await HybridLocationService.updateToken(newAccessToken);
+        final newToken = prefs.getString(StorageKeys.accessToken);
+        if (newToken != null && newToken.isNotEmpty) {
+          await HybridLocationService.updateToken(newToken);
+        }
 
-        debugPrint('[Auth] Token refreshed successfully');
         return true;
       }
-    } on DioException catch (e) {
-      debugPrint('[Auth] Token refresh DioException: ${e.type} - ${e.message}');
-      // Network hatası için false dön ama session'ı silme
+
+      debugPrint('[Auth] Token refresh failed via ApiService');
+      return false;
     } catch (e) {
-      debugPrint('[Auth] Token refresh failed: $e');
+      debugPrint('[Auth] Token refresh error: $e');
+      return false;
     }
-    return false;
   }
 
   /// Token yenileme timer'ını başlat

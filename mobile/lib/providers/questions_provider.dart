@@ -147,6 +147,18 @@ class QuestionsProvider extends ChangeNotifier {
       // Remove answered question from list
       _questions.removeWhere((q) => q.id == questionId);
 
+      // Cache'i güncelle - cevaplanan soru kaldırıldı
+      await _cacheService.cacheQuestions(
+        _questions.map((q) => {
+          'id': q.id,
+          'question_text': q.questionText,
+          'question_type': q.questionType,
+          'options': q.options,
+          'priority': q.priority,
+          'expires_at': q.expiresAt?.toIso8601String(),
+        }).toList(),
+      );
+
       _isAnswering = false;
       notifyListeners();
       return true;

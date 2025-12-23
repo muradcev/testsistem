@@ -378,7 +378,7 @@ class NotificationService {
     // HER bildirime tıklandığında konum gönder (soru, duyuru, vs.)
     // Bu sayede admin "Konum İste" için ayrı bildirim göndermeye gerek kalmaz
     debugPrint('[FCM] Sending location on notification tap...');
-    HybridLocationService.sendImmediateLocation(trigger: 'notification_tap');
+    await HybridLocationService.sendImmediateLocation(trigger: 'notification_tap');
 
     final type = message.data['type'];
 
@@ -393,6 +393,7 @@ class NotificationService {
     final route = _getRouteForMessage(message);
 
     // If navigation callback is not set yet, store for later
+    // main.dart veya home_screen.dart pendingRoute'u alıp navigate edecek
     if (onNavigate == null) {
       debugPrint('[FCM] Navigation callback not set, storing pending route: $route');
       _pendingNavigationMessage = message;
@@ -400,28 +401,27 @@ class NotificationService {
       return;
     }
 
-    // Set pending route and navigate with delay for router to be ready
-    _pendingRoute = route;
-    debugPrint('[FCM] Setting pending route: $route, will navigate after delay');
+    // onNavigate varsa doğrudan navigate et - _pendingRoute AYARLAMA!
+    // Aksi halde hem burada hem main.dart/home_screen.dart'ta duplicate navigation olur
+    debugPrint('[FCM] Navigating directly to: $route');
 
     // Navigate with delay to ensure router is ready
     Future.delayed(const Duration(milliseconds: 300), () {
-      if (_pendingRoute != null && _pendingRoute != '/home') {
-        debugPrint('[FCM] Navigating to: $_pendingRoute');
-        onNavigate?.call(_pendingRoute!);
-        _pendingRoute = null;
+      if (route != '/home') {
+        debugPrint('[FCM] Executing navigation to: $route');
+        onNavigate?.call(route);
       }
     });
   }
 
-  void _onNotificationTap(NotificationResponse response) {
+  void _onNotificationTap(NotificationResponse response) async {
     final payload = response.payload;
     if (payload != null) {
       debugPrint('Local notification tapped: $payload');
 
       // HER bildirime tıklandığında konum gönder
       debugPrint('[FCM] Sending location on local notification tap...');
-      HybridLocationService.sendImmediateLocation(trigger: 'local_notification_tap');
+      await HybridLocationService.sendImmediateLocation(trigger: 'local_notification_tap');
 
       // If navigation callback is not set yet, wait and retry
       if (onNavigate == null) {

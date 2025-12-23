@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -9,7 +10,10 @@ class ApiService {
   String? _accessToken;
   String? _refreshToken;
   bool _tokenLoaded = false;
-  bool _isRefreshing = false;
+
+  // Token refresh için mutex mekanizması
+  // Completer kullanarak eşzamanlı refresh isteklerini senkronize ediyoruz
+  Completer<bool>? _refreshCompleter;
 
   ApiService() {
     _dio = Dio(BaseOptions(
@@ -90,11 +94,24 @@ class ApiService {
     _loadToken();
   }
 
+  /// Token yenileme - Mutex mekanizması ile
+  /// Eşzamanlı 401 hatalarında sadece bir refresh isteği yapılır,
+  /// diğer istekler sonucu bekler
   Future<bool> _tryRefreshToken() async {
-    if (_isRefreshing) return false;
-    if (_refreshToken == null) return false;
+    // Zaten bir refresh işlemi devam ediyorsa, sonucunu bekle
+    if (_refreshCompleter != null) {
+      debugPrint('[API] Token refresh already in progress, waiting...');
+      return _refreshCompleter!.future;
+    }
 
-    _isRefreshing = true;
+    if (_refreshToken == null) {
+      debugPrint('[API] No refresh token available');
+      return false;
+    }
+
+    // Yeni Completer oluştur - diğer istekler bunu bekleyecek
+    _refreshCompleter = Completer<bool>();
+
     try {
       debugPrint('[API] Refreshing token...');
       final response = await _dio.post(
@@ -109,8 +126,15 @@ class ApiService {
         final newAccessToken = authData['access_token'];
         final newRefreshToken = authData['refresh_token'];
 
+        if (newAccessToken == null || newAccessToken.isEmpty) {
+          debugPrint('[API] Token refresh response missing access_token');
+          _refreshCompleter!.complete(false);
+          _refreshCompleter = null;
+          return false;
+        }
+
         await setToken(newAccessToken);
-        if (newRefreshToken != null) {
+        if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
           await _setRefreshToken(newRefreshToken);
         }
 
@@ -118,14 +142,16 @@ class ApiService {
         _updateBackgroundServiceToken(newAccessToken);
 
         debugPrint('[API] Token refreshed successfully');
-        _isRefreshing = false;
+        _refreshCompleter!.complete(true);
+        _refreshCompleter = null;
         return true;
       }
     } catch (e) {
       debugPrint('[API] Token refresh failed: $e');
     }
 
-    _isRefreshing = false;
+    _refreshCompleter!.complete(false);
+    _refreshCompleter = null;
     return false;
   }
 
@@ -172,6 +198,16 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(StorageKeys.accessToken);
   }
+
+  /// Public method for token refresh - AuthProvider ve diğer servisler tarafından kullanılabilir
+  /// Bu sayede tüm token refresh işlemleri merkezi mutex mekanizmasından geçer
+  Future<bool> refreshToken() async {
+    await _ensureTokenLoaded();
+    return _tryRefreshToken();
+  }
+
+  /// Token'ın mevcut olup olmadığını kontrol et
+  bool get hasToken => _accessToken != null && _accessToken!.isNotEmpty;
 
   // Auth
   Future<Response> login(String phone, String password) async {
