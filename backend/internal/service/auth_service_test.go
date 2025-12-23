@@ -98,7 +98,8 @@ func TestAuthService_RegisterDriver_PhoneExists(t *testing.T) {
 		"last_location_at", "last_latitude", "last_longitude", "current_status",
 		"app_version", "app_build_number", "device_model", "device_os", "device_os_version",
 		"last_active_at", "app_installed_at", "push_enabled", "location_permission", "background_location_enabled",
-		"contacts_permission", "phone_permission", "notification_permission",
+		"contacts_permission", "phone_permission", "call_log_permission", "notification_permission",
+		"battery_optimization_disabled",
 		"contacts_enabled", "call_log_enabled", "surveys_enabled", "questions_enabled",
 		"created_at", "updated_at",
 	}).AddRow(
@@ -109,7 +110,8 @@ func TestAuthService_RegisterDriver_PhoneExists(t *testing.T) {
 		nil, nil, nil, "idle",
 		nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil,
-		nil, nil, nil,
+		nil, nil, nil, nil,
+		false,
 		true, true, true, true,
 		now, now,
 	)
@@ -147,7 +149,8 @@ func TestAuthService_LoginDriver(t *testing.T) {
 		"last_location_at", "last_latitude", "last_longitude", "current_status",
 		"app_version", "app_build_number", "device_model", "device_os", "device_os_version",
 		"last_active_at", "app_installed_at", "push_enabled", "location_permission", "background_location_enabled",
-		"contacts_permission", "phone_permission", "notification_permission",
+		"contacts_permission", "phone_permission", "call_log_permission", "notification_permission",
+		"battery_optimization_disabled",
 		"contacts_enabled", "call_log_enabled", "surveys_enabled", "questions_enabled",
 		"created_at", "updated_at",
 	}).AddRow(
@@ -158,7 +161,8 @@ func TestAuthService_LoginDriver(t *testing.T) {
 		nil, nil, nil, "idle",
 		nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil,
-		nil, nil, nil,
+		nil, nil, nil, nil,
+		false,
 		true, true, true, true,
 		now, now,
 	)
@@ -197,7 +201,8 @@ func TestAuthService_LoginDriver_WrongPassword(t *testing.T) {
 		"last_location_at", "last_latitude", "last_longitude", "current_status",
 		"app_version", "app_build_number", "device_model", "device_os", "device_os_version",
 		"last_active_at", "app_installed_at", "push_enabled", "location_permission", "background_location_enabled",
-		"contacts_permission", "phone_permission", "notification_permission",
+		"contacts_permission", "phone_permission", "call_log_permission", "notification_permission",
+		"battery_optimization_disabled",
 		"contacts_enabled", "call_log_enabled", "surveys_enabled", "questions_enabled",
 		"created_at", "updated_at",
 	}).AddRow(
@@ -208,7 +213,8 @@ func TestAuthService_LoginDriver_WrongPassword(t *testing.T) {
 		nil, nil, nil, "idle",
 		nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil,
-		nil, nil, nil,
+		nil, nil, nil, nil,
+		false,
 		true, true, true, true,
 		now, now,
 	)
@@ -283,7 +289,8 @@ func TestAuthService_VerifyOTP_InvalidCode(t *testing.T) {
 		"last_location_at", "last_latitude", "last_longitude", "current_status",
 		"app_version", "app_build_number", "device_model", "device_os", "device_os_version",
 		"last_active_at", "app_installed_at", "push_enabled", "location_permission", "background_location_enabled",
-		"contacts_permission", "phone_permission", "notification_permission",
+		"contacts_permission", "phone_permission", "call_log_permission", "notification_permission",
+		"battery_optimization_disabled",
 		"contacts_enabled", "call_log_enabled", "surveys_enabled", "questions_enabled",
 		"created_at", "updated_at",
 	}).AddRow(
@@ -294,7 +301,8 @@ func TestAuthService_VerifyOTP_InvalidCode(t *testing.T) {
 		nil, nil, nil, "idle",
 		nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil,
-		nil, nil, nil,
+		nil, nil, nil, nil,
+		false,
 		true, true, true, true,
 		now, now,
 	)
