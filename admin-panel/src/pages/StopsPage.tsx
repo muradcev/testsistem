@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import {
@@ -236,6 +236,136 @@ function MapController({ center, zoom }: { center: [number, number] | null; zoom
   return null
 }
 
+// Sürüklenebilir Popup Bileşeni
+function DraggablePopup({
+  children,
+  title,
+  subtitle,
+  position,
+  onPositionChange,
+  onClose,
+  width = 'w-80 sm:w-96',
+  icon,
+}: {
+  children: React.ReactNode
+  title: string
+  subtitle?: string
+  position: { x: number; y: number }
+  onPositionChange: (pos: { x: number; y: number }) => void
+  onClose: () => void
+  width?: string
+  icon?: React.ReactNode
+}) {
+  const popupRef = useRef<HTMLDivElement>(null)
+  const isDragging = useRef(false)
+  const dragOffset = useRef({ x: 0, y: 0 })
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, input, select, textarea')) return
+    isDragging.current = true
+    dragOffset.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    }
+    document.body.style.userSelect = 'none'
+  }, [position])
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return
+      const newX = Math.max(0, Math.min(window.innerWidth - 320, e.clientX - dragOffset.current.x))
+      const newY = Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.current.y))
+      onPositionChange({ x: newX, y: newY })
+    }
+
+    const handleMouseUp = () => {
+      isDragging.current = false
+      document.body.style.userSelect = ''
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [onPositionChange])
+
+  // Touch desteği
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('button, input, select, textarea')) return
+    const touch = e.touches[0]
+    isDragging.current = true
+    dragOffset.current = {
+      x: touch.clientX - position.x,
+      y: touch.clientY - position.y,
+    }
+  }, [position])
+
+  useEffect(() => {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging.current) return
+      const touch = e.touches[0]
+      const newX = Math.max(0, Math.min(window.innerWidth - 320, touch.clientX - dragOffset.current.x))
+      const newY = Math.max(0, Math.min(window.innerHeight - 100, touch.clientY - dragOffset.current.y))
+      onPositionChange({ x: newX, y: newY })
+    }
+
+    const handleTouchEnd = () => {
+      isDragging.current = false
+    }
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false })
+    document.addEventListener('touchend', handleTouchEnd)
+
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [onPositionChange])
+
+  return (
+    <div
+      ref={popupRef}
+      className={`fixed ${width} bg-white rounded-xl shadow-2xl z-[1000] flex flex-col max-h-[80vh] border border-gray-200`}
+      style={{
+        left: position.x,
+        top: position.y,
+      }}
+    >
+      {/* Sürüklenebilir Header */}
+      <div
+        className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-3 rounded-t-xl flex items-center justify-between cursor-move select-none flex-shrink-0"
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {icon}
+          <div className="min-w-0">
+            <h3 className="font-semibold truncate text-sm">{title}</h3>
+            {subtitle && <p className="text-xs text-white/80 truncate">{subtitle}</p>}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className="text-xs text-white/60 mr-2 hidden sm:inline">⋮⋮ sürükle</span>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+          >
+            <span className="text-lg">✕</span>
+          </button>
+        </div>
+      </div>
+
+      {/* İçerik */}
+      <div className="flex-1 overflow-y-auto">
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function StopsPage() {
   const queryClient = useQueryClient()
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
@@ -260,6 +390,12 @@ export default function StopsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()) // Çoklu seçim
   const [sortBy, setSortBy] = useState<'duration' | 'date' | 'driver' | 'type'>('duration') // Sıralama
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc') // Sıralama yönü
+
+  // Sürüklenebilir popup pozisyonları
+  const [stopPopupPos, setStopPopupPos] = useState({ x: 100, y: 100 })
+  const [homePopupPos, setHomePopupPos] = useState({ x: 150, y: 150 })
+  const [editHomePopupPos, setEditHomePopupPos] = useState({ x: 200, y: 100 })
+  const [detectPopupPos, setDetectPopupPos] = useState({ x: 150, y: 100 })
 
   // Get location types
   const { data: typesData, error: typesError } = useQuery({
@@ -1623,34 +1759,18 @@ export default function StopsPage() {
         </div>
       )}
 
-      {/* Categorization Panel - Right side drawer instead of modal */}
+      {/* Categorization Panel - Draggable Popup */}
       {selectedStop && !showHomeModal && filter !== 'clusters' && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/30 z-40 lg:hidden"
-            onClick={() => { setSelectedStop(null); setStopName(''); }}
-          />
-          <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ease-out">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <MapPinIcon className="h-5 w-5 flex-shrink-0" />
-              <div className="min-w-0">
-                <h3 className="font-semibold truncate">Durak Düzenle</h3>
-                <p className="text-xs text-white/80 truncate">{selectedStop.driver_name}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => { setSelectedStop(null); setStopName(''); }}
-              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
-            >
-              <span className="text-lg">✕</span>
-            </button>
-          </div>
-
+        <DraggablePopup
+          title="Durak Düzenle"
+          subtitle={selectedStop.driver_name}
+          position={stopPopupPos}
+          onPositionChange={setStopPopupPos}
+          onClose={() => { setSelectedStop(null); setStopName(''); }}
+          icon={<MapPinIcon className="h-5 w-5 flex-shrink-0" />}
+        >
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="p-4 space-y-4">
             {/* Location Info Card */}
             <div className="bg-gray-50 rounded-xl p-3">
               <div className="flex items-start gap-2">
@@ -1771,7 +1891,7 @@ export default function StopsPage() {
           </div>
 
           {/* Footer */}
-          <div className="border-t bg-gray-50 px-4 py-3 flex gap-2 flex-shrink-0">
+          <div className="border-t bg-gray-50 px-4 py-3 flex gap-2 flex-shrink-0 rounded-b-xl">
             <button
               onClick={() => {
                 if (confirm('Bu durağı silmek istediğinize emin misiniz?')) {
@@ -1791,19 +1911,23 @@ export default function StopsPage() {
               Kapat
             </button>
           </div>
-        </div>
-        </>
+        </DraggablePopup>
       )}
 
-      {/* Home Creation Modal */}
+      {/* Home Creation Modal - Draggable Popup */}
       {showHomeModal && selectedStop && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl p-4 sm:p-6 w-full sm:max-w-md sm:mx-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <HomeIcon className="h-5 w-5 text-green-600" />
-              Ev Adresi Ekle
-            </h3>
-
+        <DraggablePopup
+          title="Ev Adresi Ekle"
+          subtitle={selectedStop.driver_name}
+          position={homePopupPos}
+          onPositionChange={setHomePopupPos}
+          onClose={() => {
+            setShowHomeModal(false)
+            setHomeForm({ name: '', radius: 500 })
+          }}
+          icon={<HomeIcon className="h-5 w-5 text-white" />}
+        >
+          <div className="p-4">
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
               <p className="font-medium">{selectedStop.driver_name}</p>
               <p className="text-sm text-gray-500">
@@ -1846,7 +1970,7 @@ export default function StopsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => {
                   setShowHomeModal(false)
@@ -1866,18 +1990,20 @@ export default function StopsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DraggablePopup>
       )}
 
-      {/* Edit Home Modal */}
+      {/* Edit Home Modal - Draggable Popup */}
       {editingHome && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl p-4 sm:p-6 w-full sm:max-w-md sm:mx-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <PencilIcon className="h-5 w-5 text-primary-600" />
-              Ev Adresini Düzenle
-            </h3>
-
+        <DraggablePopup
+          title="Ev Adresini Düzenle"
+          subtitle={editingHome.name}
+          position={editHomePopupPos}
+          onPositionChange={setEditHomePopupPos}
+          onClose={() => setEditingHome(null)}
+          icon={<PencilIcon className="h-5 w-5 text-white" />}
+        >
+          <div className="p-4">
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1919,7 +2045,7 @@ export default function StopsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => setEditingHome(null)}
                 className="flex-1 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
@@ -1946,20 +2072,25 @@ export default function StopsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DraggablePopup>
       )}
 
-      {/* Detect Stops Modal */}
+      {/* Detect Stops Modal - Draggable Popup */}
       {showDetectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl p-4 sm:p-6 w-full sm:max-w-lg sm:mx-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <PlayIcon className="h-5 w-5 text-primary-600" />
-              Durak Tespiti
-            </h3>
-            <p className="text-gray-600 mb-4">
+        <DraggablePopup
+          title="Durak Tespiti"
+          position={detectPopupPos}
+          onPositionChange={setDetectPopupPos}
+          onClose={() => {
+            setShowDetectModal(false)
+            setSelectedDriverId('')
+          }}
+          icon={<PlayIcon className="h-5 w-5 text-white" />}
+          width="w-80 sm:w-[420px]"
+        >
+          <div className="p-4">
+            <p className="text-gray-600 mb-4 text-sm">
               Şoförlerin konum verilerinden sık durulan noktaları tespit edin.
-              Belirli bir şoför seçebilir veya tüm şoförler için tespit yapabilirsiniz.
             </p>
 
             <div className="space-y-4 mb-6">
@@ -1995,7 +2126,7 @@ export default function StopsPage() {
               )}
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => {
                   setShowDetectModal(false)
@@ -2019,20 +2150,18 @@ export default function StopsPage() {
                 {(detectMutation.isPending || detectForDriverMutation.isPending) ? (
                   <>
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    <span className="hidden sm:inline">Tespit Ediliyor...</span>
-                    <span className="sm:hidden">Tespit...</span>
+                    <span>Tespit...</span>
                   </>
                 ) : (
                   <>
                     <PlayIcon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{selectedDriverId ? 'Şoför İçin Tespit Et' : 'Tüm Şoförler İçin Tespit Et'}</span>
-                    <span className="sm:hidden">Tespit Et</span>
+                    <span>{selectedDriverId ? 'Tespit Et' : 'Tüm Şoförler'}</span>
                   </>
                 )}
               </button>
             </div>
           </div>
-        </div>
+        </DraggablePopup>
       )}
 
       {/* CSS for pulse animation */}
