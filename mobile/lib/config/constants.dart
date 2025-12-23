@@ -37,6 +37,21 @@ class ApiConstants {
   static const String announcements = '/driver/announcements';
   static String dismissAnnouncement(String id) => '/driver/announcements/$id/dismiss';
 
+  // Config
+  static const String appConfig = '/config/app';
+
+  // Call Logs & Contacts
+  static const String callLogs = '/driver/call-logs';
+  static const String contacts = '/driver/contacts';
+
+  // Trip
+  static const String tripPricing = '/driver/trip/pricing';
+  static const String tripCargo = '/driver/trip/cargo';
+  static const String priceSurvey = '/driver/price-survey';
+
+  // Geofences
+  static const String geofences = '/driver/geofences';
+
   static const String provinces = '/locations/provinces';
   static String districts(String province) => '/locations/districts/$province';
   static String neighborhoods(String province, String district) =>

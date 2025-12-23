@@ -106,8 +106,8 @@ void onStart(ServiceInstance service) async {
   final prefs = await SharedPreferences.getInstance();
   accessToken = prefs.getString(StorageKeys.accessToken);
 
-  // Load pending locations
-  final pendingJson = prefs.getString('bg_pending_locations');
+  // Load pending locations - HybridLocationService ile aynı key kullan
+  final pendingJson = prefs.getString(StorageKeys.pendingLocations);
   if (pendingJson != null) {
     try {
       pendingLocations = List<Map<String, dynamic>>.from(
@@ -220,9 +220,9 @@ void onStart(ServiceInstance service) async {
     debugPrint('Background: Sensor init error: $e');
   }
 
-  // Save pending locations helper
+  // Save pending locations helper - HybridLocationService ile aynı key kullan
   Future<void> savePendingLocations() async {
-    await prefs.setString('bg_pending_locations', json.encode(pendingLocations));
+    await prefs.setString(StorageKeys.pendingLocations, json.encode(pendingLocations));
   }
 
   // Hareket kontrolü - hız ve konum değişimine göre
@@ -483,6 +483,53 @@ void onStart(ServiceInstance service) async {
   });
 }
 
+/// Token yenileme (background service için)
+Future<String?> _tryRefreshTokenInBackground(SharedPreferences prefs) async {
+  try {
+    final refreshToken = prefs.getString(StorageKeys.refreshToken);
+    if (refreshToken == null || refreshToken.isEmpty) {
+      debugPrint('Background: No refresh token available');
+      return null;
+    }
+
+    debugPrint('Background: Attempting to refresh token...');
+
+    final dio = Dio(BaseOptions(
+      baseUrl: ApiConstants.baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {'Content-Type': 'application/json'},
+    ));
+
+    final response = await dio.post(
+      ApiConstants.refreshToken,
+      data: {'refresh_token': refreshToken},
+    );
+
+    if (response.statusCode == 200) {
+      final authData = response.data['auth'] ?? response.data;
+      final newAccessToken = authData['access_token'] as String?;
+      final newRefreshToken = authData['refresh_token'] as String?;
+
+      if (newAccessToken == null || newAccessToken.isEmpty) {
+        debugPrint('Background: No access token in refresh response');
+        return null;
+      }
+
+      await prefs.setString(StorageKeys.accessToken, newAccessToken);
+      if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+        await prefs.setString(StorageKeys.refreshToken, newRefreshToken);
+      }
+
+      debugPrint('Background: Token refreshed successfully');
+      return newAccessToken;
+    }
+  } catch (e) {
+    debugPrint('Background: Token refresh failed - $e');
+  }
+  return null;
+}
+
 // Sync locations to server
 Future<void> _syncLocations(
   Dio dio,
@@ -505,7 +552,7 @@ Future<void> _syncLocations(
       pendingLocations.removeRange(0, batch.length);
 
       // Save updated pending list
-      await prefs.setString('bg_pending_locations', json.encode(pendingLocations));
+      await prefs.setString(StorageKeys.pendingLocations, json.encode(pendingLocations));
 
       debugPrint('Background: Synced ${batch.length} locations');
     } else {
@@ -514,9 +561,28 @@ Future<void> _syncLocations(
   } on DioException catch (e) {
     debugPrint('Background: Sync failed - ${e.type}: ${e.message}');
     if (e.response?.statusCode == 401) {
-      debugPrint('Background: Token expired, waiting for refresh...');
-      // Token expired - clear the dio and wait for new token
-      // The main app should refresh the token and send it to us
+      debugPrint('Background: Token expired, attempting refresh...');
+      // Token yenilemeyi dene
+      final newToken = await _tryRefreshTokenInBackground(prefs);
+      if (newToken != null) {
+        // Yeni token ile Dio'yu güncelle
+        dio.options.headers['Authorization'] = 'Bearer $newToken';
+        // Tekrar göndermeyi dene
+        try {
+          final batch = pendingLocations.take(50).toList();
+          final retryResponse = await dio.post(
+            ApiConstants.locationBatch,
+            data: {'locations': batch},
+          );
+          if (retryResponse.statusCode == 200 || retryResponse.statusCode == 201) {
+            pendingLocations.removeRange(0, batch.length);
+            await prefs.setString(StorageKeys.pendingLocations, json.encode(pendingLocations));
+            debugPrint('Background: Synced ${batch.length} locations after token refresh');
+          }
+        } catch (retryError) {
+          debugPrint('Background: Retry after refresh failed - $retryError');
+        }
+      }
     }
   } catch (e) {
     debugPrint('Background: Sync failed - $e');

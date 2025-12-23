@@ -213,6 +213,16 @@ class HybridLocationService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('foreground_service_enabled', true);
 
+      // Token'ı foreground service'e gönder (kritik!)
+      // Service SharedPreferences'tan okur ama race condition olabilir
+      // Bu yüzden hemen updateToken ile güncel token'ı gönderiyoruz
+      final accessToken = prefs.getString(StorageKeys.accessToken);
+      if (accessToken != null && accessToken.isNotEmpty) {
+        await Future.delayed(const Duration(milliseconds: 500)); // Service'in başlamasını bekle
+        await updateToken(accessToken);
+        debugPrint('[HybridLocation] Token sent to foreground service');
+      }
+
       debugPrint('[HybridLocation] Foreground service STARTED - auto interval based on movement');
     } catch (e) {
       debugPrint('[HybridLocation] Failed to start foreground service: $e');
@@ -543,11 +553,17 @@ Future<String?> _tryRefreshToken(SharedPreferences prefs) async {
     if (response.statusCode == 200) {
       // Backend "auth" objesi içinde dönüyor
       final authData = response.data['auth'] ?? response.data;
-      final newAccessToken = authData['access_token'];
-      final newRefreshToken = authData['refresh_token'];
+      final newAccessToken = authData['access_token'] as String?;
+      final newRefreshToken = authData['refresh_token'] as String?;
+
+      // Null check - token yoksa başarısız say
+      if (newAccessToken == null || newAccessToken.isEmpty) {
+        debugPrint('[Token] No access token in refresh response');
+        return null;
+      }
 
       await prefs.setString(StorageKeys.accessToken, newAccessToken);
-      if (newRefreshToken != null) {
+      if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
         await prefs.setString(StorageKeys.refreshToken, newRefreshToken);
       }
 

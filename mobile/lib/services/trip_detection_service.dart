@@ -151,6 +151,10 @@ class TripDetectionService {
   static String? _currentHomeId; // Hangi evde olduğu
   static const String _homeLocationsKey = 'trip_home_locations';
 
+  // GPS anomali filtreleme için son konum verisi
+  static DateTime? _lastPositionTime;
+  static double? _lastPositionAccuracy;
+
   /// State değişikliği callback'i
   static void setStateChangeCallback(Function(TripState state, Map<String, dynamic>? data) callback) {
     _onStateChange = callback;
@@ -358,17 +362,92 @@ class TripDetectionService {
     return baseThreshold;
   }
 
+  /// GPS anomali kontrolü
+  /// Fiziksel olarak imkansız hızları ve GPS atlamalarını filtreler
+  /// TIR/Kamyon için maksimum hız: 150 km/h (yasal sınır + tolerans)
+  static bool _isGpsAnomaly(Position position) {
+    // Accuracy kontrolü - çok düşük doğrulukta konum verilerini reddet
+    // Kamyon/TIR için 150m tolerans kabul edilebilir
+    if (position.accuracy > 200) {
+      debugPrint('[TripDetection] GPS anomaly: Poor accuracy ${position.accuracy.toStringAsFixed(0)}m');
+      return true;
+    }
+
+    // Önceki konum yoksa anomali değil
+    if (_lastLatitude == null || _lastLongitude == null || _lastPositionTime == null) {
+      return false;
+    }
+
+    final now = DateTime.now();
+    final timeDiffSeconds = now.difference(_lastPositionTime!).inSeconds;
+
+    // Zaman farkı 0 veya çok küçükse kontrol etme
+    if (timeDiffSeconds < 1) {
+      return false;
+    }
+
+    // Mesafe hesapla
+    final distanceMeters = Geolocator.distanceBetween(
+      _lastLatitude!,
+      _lastLongitude!,
+      position.latitude,
+      position.longitude,
+    );
+
+    // Hesaplanan hız (km/h)
+    final calculatedSpeedKmh = (distanceMeters / timeDiffSeconds) * 3.6;
+
+    // TIR/Kamyon için fiziksel olarak imkansız hız kontrolü
+    // Yasal hız sınırı 90 km/h, 150 km/h kesinlikle imkansız
+    const maxPossibleSpeedKmh = 150.0;
+
+    if (calculatedSpeedKmh > maxPossibleSpeedKmh) {
+      debugPrint('[TripDetection] GPS anomaly: Impossible speed ${calculatedSpeedKmh.toStringAsFixed(1)} km/h (${distanceMeters.toStringAsFixed(0)}m in ${timeDiffSeconds}s)');
+      return true;
+    }
+
+    // Ani GPS atlama kontrolü - düşük doğrulukla birlikte yüksek mesafe
+    if (distanceMeters > 1000 && position.accuracy > 100) {
+      debugPrint('[TripDetection] GPS anomaly: Large jump ${distanceMeters.toStringAsFixed(0)}m with accuracy ${position.accuracy.toStringAsFixed(0)}m');
+      return true;
+    }
+
+    // Konum sensörden gelen hız ile hesaplanan hız arasında büyük fark var mı?
+    // GPS raporlama hızı ile hesaplanan hız tutarsızsa anomali
+    if (position.speed > 0) {
+      final reportedSpeedKmh = position.speed * 3.6;
+      final speedDiff = (calculatedSpeedKmh - reportedSpeedKmh).abs();
+      // %100'den fazla fark anomali sayılır
+      if (speedDiff > reportedSpeedKmh && reportedSpeedKmh > 10) {
+        debugPrint('[TripDetection] GPS anomaly: Speed mismatch - reported ${reportedSpeedKmh.toStringAsFixed(1)} vs calculated ${calculatedSpeedKmh.toStringAsFixed(1)} km/h');
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /// Konum değişikliğinde sefer istatistiklerini güncelle
   static void _updateTripStats(Position position) {
+    final now = DateTime.now();
     final speedKmh = position.speed * 3.6;
+
+    // GPS anomali kontrolü - anomalili konumları atla
+    if (_isGpsAnomaly(position)) {
+      debugPrint('[TripDetection] Skipping anomalous GPS data');
+      // Anomali varsa sadece zamanı güncelle, konum verilerini güncelleme
+      _lastPositionTime = now;
+      _lastPositionAccuracy = position.accuracy;
+      return;
+    }
 
     // Hız örneklemesi (hareket ediyorsa)
     if (speedKmh > 2) {
       _totalSpeedSum += speedKmh;
       _speedSampleCount++;
 
-      // Maksimum hızı güncelle
-      if (_maxSpeedKmh == null || speedKmh > _maxSpeedKmh!) {
+      // Maksimum hızı güncelle (mantıklı bir üst sınır ile)
+      if (speedKmh <= 150 && (_maxSpeedKmh == null || speedKmh > _maxSpeedKmh!)) {
         _maxSpeedKmh = speedKmh;
       }
     }
@@ -381,11 +460,18 @@ class TripDetectionService {
         position.latitude,
         position.longitude,
       );
-      _totalDistanceKm += distanceMeters / 1000;
+
+      // Sadece mantıklı mesafeleri ekle (anomali filtresi geçtiği için güvenli)
+      if (distanceMeters < 5000) { // 5 km'den az - tek konum güncellemesi için makul
+        _totalDistanceKm += distanceMeters / 1000;
+      }
     }
 
+    // Konum verilerini güncelle
     _lastLatitude = position.latitude;
     _lastLongitude = position.longitude;
+    _lastPositionTime = now;
+    _lastPositionAccuracy = position.accuracy;
   }
 
   /// Sefer istatistiklerini sıfırla
@@ -396,6 +482,8 @@ class TripDetectionService {
     _lastLatitude = null;
     _lastLongitude = null;
     _maxSpeedKmh = null;
+    _lastPositionTime = null;
+    _lastPositionAccuracy = null;
   }
 
   /// Sefer istatistiklerini kaydet
@@ -407,6 +495,8 @@ class TripDetectionService {
       'lastLatitude': _lastLatitude,
       'lastLongitude': _lastLongitude,
       'maxSpeedKmh': _maxSpeedKmh,
+      'lastPositionTime': _lastPositionTime?.toIso8601String(),
+      'lastPositionAccuracy': _lastPositionAccuracy,
     }));
   }
 
@@ -421,6 +511,10 @@ class TripDetectionService {
       _lastLatitude = stats['lastLatitude']?.toDouble();
       _lastLongitude = stats['lastLongitude']?.toDouble();
       _maxSpeedKmh = stats['maxSpeedKmh']?.toDouble();
+      // GPS anomali filtreleme için zaman verisi
+      final lastTimeStr = stats['lastPositionTime'];
+      _lastPositionTime = lastTimeStr != null ? DateTime.tryParse(lastTimeStr) : null;
+      _lastPositionAccuracy = stats['lastPositionAccuracy']?.toDouble();
     }
   }
 

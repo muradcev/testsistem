@@ -91,6 +91,7 @@ class VehicleProvider extends ChangeNotifier {
     try {
       await _apiService.createVehicle(data);
       await loadVehicles();
+      // loadVehicles zaten isLoading'i resetliyor, ama tutarlılık için
       return true;
     } catch (e) {
       _error = _parseError(e);
@@ -108,6 +109,7 @@ class VehicleProvider extends ChangeNotifier {
     try {
       await _apiService.updateVehicle(id, data);
       await loadVehicles();
+      // loadVehicles zaten isLoading'i resetliyor
       return true;
     } catch (e) {
       _error = _parseError(e);
@@ -118,12 +120,18 @@ class VehicleProvider extends ChangeNotifier {
   }
 
   Future<bool> deleteVehicle(String id) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
       await _apiService.deleteVehicle(id);
       await loadVehicles();
+      // loadVehicles zaten isLoading'i resetliyor
       return true;
     } catch (e) {
       _error = _parseError(e);
+      _isLoading = false;
       notifyListeners();
       return false;
     }
