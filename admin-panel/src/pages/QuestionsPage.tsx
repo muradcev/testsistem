@@ -195,6 +195,8 @@ export default function QuestionsPage() {
   const [historyFilterDate, setHistoryFilterDate] = useState('all')
   const [historyFilterType, setHistoryFilterType] = useState('all')
   const [historyFilterCategory, setHistoryFilterCategory] = useState('all')
+  const [historyPage, setHistoryPage] = useState(0)
+  const historyPageSize = 50
 
   // Queries
   const { data: pendingData, isLoading: pendingLoading } = useQuery({
@@ -216,8 +218,8 @@ export default function QuestionsPage() {
   })
 
   const { data: allDriversData } = useQuery({
-    queryKey: ['all-drivers'],
-    queryFn: () => driversApi.getAll({ limit: 100 }),
+    queryKey: ['all-drivers-bulk'],
+    queryFn: () => driversApi.getAll({ limit: 5000 }),
     enabled: activeTab === 'bulk',
   })
 
@@ -227,8 +229,15 @@ export default function QuestionsPage() {
   })
 
   const { data: answeredData, isLoading: answeredLoading } = useQuery({
-    queryKey: ['answered-questions'],
-    queryFn: () => questionsApi.getAnswered(100, 0),
+    queryKey: ['answered-questions', historyPage],
+    queryFn: () => questionsApi.getAnswered(historyPageSize, historyPage * historyPageSize),
+    enabled: activeTab === 'history',
+  })
+
+  // Total count for pagination
+  const { data: answeredCountData } = useQuery({
+    queryKey: ['answered-questions-count'],
+    queryFn: () => questionsApi.getAnswered(1, 0), // Just to get total
     enabled: activeTab === 'history',
   })
 
@@ -302,11 +311,13 @@ export default function QuestionsPage() {
   // Data
   const pendingQuestions = (pendingData?.data?.questions || []) as Question[]
   const answeredQuestions = (answeredData?.data?.questions || []) as AnsweredQuestion[]
+  const answeredTotal = answeredCountData?.data?.total || answeredData?.data?.total || 0
   const scheduledQuestions = ((scheduledData?.data?.questions || []) as Question[]).filter(q => q.status === 'approved')
   const driversOnTrip = (driversOnTripData?.data?.drivers || []) as DriverOnTrip[]
   const idleDrivers = (idleDriversData?.data?.drivers || []) as IdleDriver[]
   const allDrivers = (allDriversData?.data?.drivers || []) as Driver[]
   const stats = statsData?.data?.stats || {}
+  const totalPages = Math.ceil(answeredTotal / historyPageSize)
 
   // Filtered history
   const filteredAnsweredQuestions = useMemo(() => {
@@ -643,6 +654,52 @@ export default function QuestionsPage() {
                     {filteredAnsweredQuestions.map((q) => (
                       <AnsweredQuestionCard key={q.answer_id} question={q} />
                     ))}
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                    <p className="text-sm text-gray-500">
+                      Toplam {answeredTotal} cevap - Sayfa {historyPage + 1} / {totalPages}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setHistoryPage(0)}
+                        disabled={historyPage === 0}
+                      >
+                        «
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
+                        disabled={historyPage === 0}
+                      >
+                        Onceki
+                      </Button>
+                      <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm font-medium">
+                        {historyPage + 1}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setHistoryPage(p => Math.min(totalPages - 1, p + 1))}
+                        disabled={historyPage >= totalPages - 1}
+                      >
+                        Sonraki
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setHistoryPage(totalPages - 1)}
+                        disabled={historyPage >= totalPages - 1}
+                      >
+                        »
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1408,6 +1465,8 @@ function BulkQuestionSender({
   const [filterRegion, setFilterRegion] = useState('Tumu')
   const [sendImmediately, setSendImmediately] = useState(true)
   const [driverSearch, setDriverSearch] = useState('')
+  const [driverPage, setDriverPage] = useState(0)
+  const driversPerPage = 100
 
   const filteredDrivers = useMemo(() => {
     return allDrivers.filter(driver => {
@@ -1426,6 +1485,14 @@ function BulkQuestionSender({
       return true
     })
   }, [allDrivers, driverSearch, filterRegion, turkeyRegions])
+
+  // Paginated drivers
+  const paginatedDrivers = useMemo(() => {
+    const start = driverPage * driversPerPage
+    return filteredDrivers.slice(start, start + driversPerPage)
+  }, [filteredDrivers, driverPage])
+
+  const totalDriverPages = Math.ceil(filteredDrivers.length / driversPerPage)
 
   const toggleDriver = (id: string) => {
     if (selectedDrivers.includes(id)) {
@@ -1492,18 +1559,23 @@ function BulkQuestionSender({
               />
             </div>
 
-            <div className="flex gap-2 text-sm">
+            <div className="flex flex-wrap gap-2 text-sm items-center">
               <button onClick={selectAll} className="text-primary-600 hover:text-primary-700">
-                Tumunu Sec ({filteredDrivers.length})
+                Filtrelenenleri Sec ({filteredDrivers.length})
               </button>
               <span className="text-gray-300">|</span>
               <button onClick={deselectAll} className="text-gray-600 hover:text-gray-700">
                 Secimi Temizle
               </button>
+              {allDrivers.length > 0 && (
+                <span className="ml-auto text-gray-400">
+                  Toplam: {allDrivers.length} sofor
+                </span>
+              )}
             </div>
 
             <div className="max-h-64 overflow-y-auto space-y-1 border rounded-lg p-2">
-              {filteredDrivers.map((driver) => (
+              {paginatedDrivers.map((driver) => (
                 <label
                   key={driver.id}
                   className={clsx(
@@ -1527,7 +1599,35 @@ function BulkQuestionSender({
                   </div>
                 </label>
               ))}
+              {filteredDrivers.length === 0 && (
+                <p className="text-center text-gray-400 py-4 text-sm">Sofor bulunamadi</p>
+              )}
             </div>
+
+            {/* Driver Pagination */}
+            {totalDriverPages > 1 && (
+              <div className="flex items-center justify-between text-sm pt-2 border-t">
+                <span className="text-gray-500">
+                  Sayfa {driverPage + 1} / {totalDriverPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setDriverPage(p => Math.max(0, p - 1))}
+                    disabled={driverPage === 0}
+                    className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    onClick={() => setDriverPage(p => Math.min(totalDriverPages - 1, p + 1))}
+                    disabled={driverPage >= totalDriverPages - 1}
+                    className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
