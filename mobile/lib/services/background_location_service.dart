@@ -26,7 +26,7 @@ class BackgroundLocationService {
           isForegroundMode: true,
           notificationChannelId: 'nakliyeo_location',
           initialNotificationTitle: 'Nakliyeo',
-          initialNotificationContent: 'Çalışıyor',
+          initialNotificationContent: 'Sefer takibi aktif',
           foregroundServiceNotificationId: 888,
           foregroundServiceTypes: [AndroidForegroundType.location],
         ),
@@ -77,10 +77,17 @@ void onStart(ServiceInstance service) async {
   Timer? locationTimer;
   Timer? syncTimer;
   Timer? notificationTimer;
+  Timer? intervalCheckTimer;
   StreamSubscription<List<ConnectivityResult>>? connectivitySubscription;
   List<Map<String, dynamic>> pendingLocations = [];
   int batteryLevel = 100;
+  bool isCharging = false;
   bool isOnline = true;
+  bool isMoving = false;
+  double? lastLat;
+  double? lastLon;
+  DateTime? lastLocationTime;
+  int currentInterval = 900; // Default 15 minutes (stationary)
 
   // Load saved data
   final prefs = await SharedPreferences.getInstance();
@@ -114,11 +121,16 @@ void onStart(ServiceInstance service) async {
 
   // Battery monitoring
   final battery = Battery();
-  try {
-    batteryLevel = await battery.batteryLevel;
-  } catch (e) {
-    batteryLevel = 100;
+  Future<void> updateBatteryInfo() async {
+    try {
+      batteryLevel = await battery.batteryLevel;
+      final state = await battery.batteryState;
+      isCharging = state == BatteryState.charging || state == BatteryState.full;
+    } catch (e) {
+      // Keep previous values
+    }
   }
+  await updateBatteryInfo();
 
   // Connectivity monitoring
   final connectivity = Connectivity();
@@ -141,18 +153,70 @@ void onStart(ServiceInstance service) async {
     await prefs.setString('bg_pending_locations', json.encode(pendingLocations));
   }
 
-  // Get location interval based on conditions
-  int getLocationInterval() {
-    // Low battery - longer interval
-    if (batteryLevel <= 20) {
-      return 600; // 10 minutes
+  // Hareket kontrolü - hız ve konum değişimine göre
+  bool checkMovement(Position position) {
+    // Hız kontrolü (7.2 km/h = 2 m/s üstü = hareket)
+    if (position.speed > 2.0) {
+      return true;
     }
-    // Normal interval
-    return 60; // 1 minute
+
+    // Konum değişimi kontrolü
+    if (lastLat != null && lastLon != null && lastLocationTime != null) {
+      final distance = Geolocator.distanceBetween(
+        lastLat!,
+        lastLon!,
+        position.latitude,
+        position.longitude,
+      );
+      final timeDiff = DateTime.now().difference(lastLocationTime!).inMinutes;
+
+      // Son 5 dakikada 100 metreden fazla hareket = hareket halinde
+      if (timeDiff <= 5 && distance > 100) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Get location interval based on conditions
+  // Hareket halinde: 5 dakika, Duruyorsa: 15 dakika, Düşük pil: 20 dakika
+  int getLocationInterval() {
+    // Kritik pil - çok uzun interval
+    if (batteryLevel <= 10 && !isCharging) {
+      return 1200; // 20 dakika (kritik pil)
+    }
+    // Düşük pil - uzun interval
+    if (batteryLevel <= 20 && !isCharging) {
+      return 900; // 15 dakika (düşük pil)
+    }
+    // Hareket halinde - sık interval
+    if (isMoving) {
+      return 300; // 5 dakika (hareket halinde)
+    }
+    // Duruyorsa - normal interval
+    return 900; // 15 dakika (sabit)
+  }
+
+  // Late function reference for timer restart
+  late Future<void> Function() fetchAndSendLocation;
+
+  // Timer'ı yeniden başlat (interval değiştiğinde)
+  void restartLocationTimer() {
+    final newInterval = getLocationInterval();
+    if (newInterval != currentInterval) {
+      debugPrint('Background: Interval changed from ${currentInterval}s to ${newInterval}s (moving: $isMoving, battery: $batteryLevel%)');
+      currentInterval = newInterval;
+      locationTimer?.cancel();
+      locationTimer = Timer.periodic(
+        Duration(seconds: currentInterval),
+        (_) => fetchAndSendLocation(),
+      );
+    }
   }
 
   // Fetch and send location
-  Future<void> fetchAndSendLocation() async {
+  fetchAndSendLocation = () async {
     try {
       // Check permission
       LocationPermission permission = await Geolocator.checkPermission();
@@ -169,31 +233,46 @@ void onStart(ServiceInstance service) async {
         return;
       }
 
+      // Update battery info
+      await updateBatteryInfo();
+
       // Get current position
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: batteryLevel <= 20
+        desiredAccuracy: batteryLevel <= 20 && !isCharging
             ? LocationAccuracy.low
-            : LocationAccuracy.high,
+            : LocationAccuracy.medium,
       );
 
-      // Update battery level
-      try {
-        batteryLevel = await battery.batteryLevel;
-      } catch (e) {
-        // Keep previous value
+      // Hareket durumunu güncelle
+      final wasMoving = isMoving;
+      isMoving = checkMovement(position);
+
+      // Hareket durumu değiştiyse interval'ı güncelle
+      if (wasMoving != isMoving) {
+        debugPrint('Background: Movement status changed - now ${isMoving ? "MOVING" : "STATIONARY"}');
+        restartLocationTimer();
       }
+
+      // Son konumu kaydet
+      lastLat = position.latitude;
+      lastLon = position.longitude;
+      lastLocationTime = DateTime.now();
 
       // Create location data
       final locationData = {
         'latitude': position.latitude,
         'longitude': position.longitude,
         'speed': position.speed,
+        'speed_kmh': position.speed * 3.6,
         'accuracy': position.accuracy,
         'altitude': position.altitude,
         'heading': position.heading,
-        'is_moving': position.speed > 2,
-        'activity_type': position.speed > 5 ? 'driving' : 'still',
+        'is_moving': isMoving,
+        'activity_type': position.speed * 3.6 > 30 ? 'driving' : (isMoving ? 'moving' : 'still'),
         'battery_level': batteryLevel,
+        'is_charging': isCharging,
+        'trigger': 'foreground_service',
+        'interval_seconds': currentInterval,
         'recorded_at': DateTime.now().toUtc().toIso8601String(),
       };
 
@@ -207,17 +286,17 @@ void onStart(ServiceInstance service) async {
 
       await savePendingLocations();
 
-      debugPrint('Background: Location recorded - ${position.latitude}, ${position.longitude}');
+      debugPrint('Background: Location recorded - ${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)} | Speed: ${(position.speed * 3.6).toStringAsFixed(1)} km/h | Moving: $isMoving | Battery: $batteryLevel%');
 
-      // Try to sync if online
-      if (isOnline && dio != null && pendingLocations.length >= 5) {
+      // Try to sync if online and enough locations
+      if (isOnline && dio != null && pendingLocations.length >= 3) {
         await _syncLocations(dio!, pendingLocations, prefs);
       }
 
     } catch (e) {
       debugPrint('Background: Error getting location - $e');
     }
-  }
+  };
 
   // Listen for stop command
   if (service is AndroidServiceInstance) {
@@ -225,6 +304,7 @@ void onStart(ServiceInstance service) async {
       locationTimer?.cancel();
       syncTimer?.cancel();
       notificationTimer?.cancel();
+      intervalCheckTimer?.cancel();
       connectivitySubscription?.cancel();
       savePendingLocations();
       service.stopSelf();
@@ -258,9 +338,10 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  // Start location timer
+  // Start location timer with initial interval
+  currentInterval = getLocationInterval();
   locationTimer = Timer.periodic(
-    Duration(seconds: getLocationInterval()),
+    Duration(seconds: currentInterval),
     (_) => fetchAndSendLocation(),
   );
 
@@ -274,16 +355,27 @@ void onStart(ServiceInstance service) async {
     },
   );
 
+  // Check interval changes periodically (pil durumu değişebilir)
+  intervalCheckTimer = Timer.periodic(
+    const Duration(minutes: 2),
+    (_) async {
+      await updateBatteryInfo();
+      restartLocationTimer();
+    },
+  );
+
   // Initial location fetch
   fetchAndSendLocation();
 
-  // Update notification periodically (less frequently, less info)
-  notificationTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
+  // Update notification periodically
+  notificationTimer = Timer.periodic(const Duration(minutes: 3), (timer) async {
     if (service is AndroidServiceInstance) {
       if (await service.isForegroundService()) {
+        final statusText = isMoving ? 'Hareket halinde' : 'Sabit';
+        final batteryText = '$batteryLevel%';
         service.setForegroundNotificationInfo(
           title: 'Nakliyeo',
-          content: isOnline ? 'Çalışıyor' : 'Çevrimdışı',
+          content: '$statusText • Pil: $batteryText',
         );
       }
     }

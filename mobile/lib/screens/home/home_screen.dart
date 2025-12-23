@@ -18,6 +18,7 @@ import '../../services/location_status_service.dart';
 import '../../config/theme.dart';
 import '../../widgets/location_health_widget.dart';
 import '../../services/trip_detection_service.dart';
+import '../../services/notification_setup_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -163,25 +164,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     debugPrint('[HomeScreen] Initializing hybrid location service...');
     try {
       await HybridLocationService.initialize();
+
+      // WorkManager'ı yedek olarak başlat
       await HybridLocationService.startWorkManagerMode();
-      debugPrint('[HomeScreen] WorkManager started (15 dk interval, no notification)');
+      debugPrint('[HomeScreen] WorkManager started as backup');
 
       // Geofence bölgelerini sunucudan senkronize et
       await HybridLocationService.syncGeofences();
 
-      // TripDetectionService callback'ini ayarla - sefer başladığında foreground mode aç
+      // TripDetectionService callback'ini ayarla (log için)
       TripDetectionService.setStateChangeCallback((state, data) async {
         debugPrint('[HomeScreen] Trip state changed: ${state.name}');
         await HybridLocationService.handleTripStateChange(state, data);
       });
 
-      // Aktif sefer varsa foreground mode'u geri yükle
-      await HybridLocationService.restoreActiveTripMode();
+      // Foreground service'i başlat veya geri yükle
+      // Hareket durumuna göre interval otomatik: 5dk (hareket) / 15dk (sabit)
+      await HybridLocationService.restoreForegroundService();
+      if (!HybridLocationService.isServiceRunning) {
+        await HybridLocationService.startForegroundService();
+      }
+      debugPrint('[HomeScreen] Foreground service started - auto interval based on movement');
 
       // İlk konumu hemen gönder
       _sendImmediateLocation('app_opened');
+
+      // Bildirim gizleme kurulum dialogunu göster (ilk kez)
+      _showNotificationSetupIfNeeded();
     } catch (e) {
       debugPrint('[HomeScreen] Hybrid location service init error: $e');
+    }
+  }
+
+  /// Bildirim gizleme kurulum dialogunu göster (gerekirse)
+  Future<void> _showNotificationSetupIfNeeded() async {
+    if (!mounted) return;
+
+    // Diğer dialoglar kapandıktan sonra göster
+    await Future.delayed(const Duration(seconds: 6));
+    if (!mounted) return;
+
+    final shouldShow = await NotificationSetupService.shouldShowSetup();
+    if (shouldShow && mounted) {
+      await NotificationSetupService.showSetupDialog(context);
     }
   }
 

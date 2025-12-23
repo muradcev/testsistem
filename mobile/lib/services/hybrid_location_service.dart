@@ -191,18 +191,21 @@ class HybridLocationService {
     }
   }
 
-  /// Aktif sefer modu açık mı?
-  static bool get isActiveTripMode => _isActiveTripMode;
+  /// Foreground service çalışıyor mu?
+  static bool get isServiceRunning => _isActiveTripMode;
 
-  /// Aktif sefer modunu başlat (foreground service ile daha sık konum)
-  /// Sefer başladığında çağrılır - 1 dakikada bir konum güncelleme sağlar
-  static Future<void> startActiveTripMode() async {
+  /// Foreground service'i başlat (giriş yapıldığında)
+  /// Hareket durumuna göre interval otomatik ayarlanır:
+  /// - Hareket halinde: 5 dakika
+  /// - Duruyorsa: 15 dakika
+  /// - Düşük pil: 20 dakika
+  static Future<void> startForegroundService() async {
     if (_isActiveTripMode) {
-      debugPrint('[HybridLocation] Active trip mode already running');
+      debugPrint('[HybridLocation] Foreground service already running');
       return;
     }
 
-    debugPrint('[HybridLocation] Starting ACTIVE TRIP MODE with foreground service');
+    debugPrint('[HybridLocation] Starting FOREGROUND SERVICE');
 
     try {
       // Foreground service'i başlat
@@ -211,23 +214,22 @@ class HybridLocationService {
 
       // SharedPreferences'a kaydet (restart için)
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('active_trip_mode', true);
+      await prefs.setBool('foreground_service_enabled', true);
 
-      debugPrint('[HybridLocation] Active trip mode STARTED - 1 minute location updates');
+      debugPrint('[HybridLocation] Foreground service STARTED - auto interval based on movement');
     } catch (e) {
-      debugPrint('[HybridLocation] Failed to start active trip mode: $e');
+      debugPrint('[HybridLocation] Failed to start foreground service: $e');
     }
   }
 
-  /// Aktif sefer modunu durdur (normal WorkManager moduna dön)
-  /// Sefer bittiğinde çağrılır
-  static Future<void> stopActiveTripMode() async {
+  /// Foreground service'i durdur (çıkış yapıldığında)
+  static Future<void> stopForegroundService() async {
     if (!_isActiveTripMode) {
-      debugPrint('[HybridLocation] Active trip mode not running');
+      debugPrint('[HybridLocation] Foreground service not running');
       return;
     }
 
-    debugPrint('[HybridLocation] Stopping active trip mode');
+    debugPrint('[HybridLocation] Stopping foreground service');
 
     try {
       // Foreground service'i durdur
@@ -236,45 +238,38 @@ class HybridLocationService {
 
       // SharedPreferences'tan kaldır
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('active_trip_mode', false);
+      await prefs.setBool('foreground_service_enabled', false);
 
-      debugPrint('[HybridLocation] Active trip mode STOPPED - back to WorkManager mode');
+      debugPrint('[HybridLocation] Foreground service STOPPED');
     } catch (e) {
-      debugPrint('[HybridLocation] Failed to stop active trip mode: $e');
+      debugPrint('[HybridLocation] Failed to stop foreground service: $e');
     }
   }
 
-  /// Sefer durumu değişikliğini işle
+  /// Sefer durumu değişikliğini işle (log için)
   /// TripDetectionService'den callback ile çağrılır
   static Future<void> handleTripStateChange(TripState state, Map<String, dynamic>? data) async {
     debugPrint('[HybridLocation] Trip state changed: ${state.name}');
-
-    switch (state) {
-      case TripState.active:
-        // Sefer başladı - foreground mode aç
-        await startActiveTripMode();
-        break;
-      case TripState.idle:
-        // Sefer bitti - foreground mode kapat
-        await stopActiveTripMode();
-        break;
-      case TripState.starting:
-      case TripState.ending:
-        // Onay bekleniyor - mevcut durumu koru
-        break;
-    }
+    // Artık foreground service her zaman çalışıyor
+    // Sadece log amaçlı
   }
 
-  /// Uygulama başlangıcında aktif sefer modunu kontrol et
-  static Future<void> restoreActiveTripMode() async {
+  /// Uygulama başlangıcında foreground service'i geri yükle
+  static Future<void> restoreForegroundService() async {
     final prefs = await SharedPreferences.getInstance();
-    final wasActiveTripMode = prefs.getBool('active_trip_mode') ?? false;
+    final wasEnabled = prefs.getBool('foreground_service_enabled') ?? false;
+    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
 
-    if (wasActiveTripMode && TripDetectionService.hasActiveTrip) {
-      debugPrint('[HybridLocation] Restoring active trip mode...');
-      await startActiveTripMode();
+    if (wasEnabled && isLoggedIn) {
+      debugPrint('[HybridLocation] Restoring foreground service...');
+      await startForegroundService();
     }
   }
+
+  // Eski API uyumluluğu
+  static Future<void> startActiveTripMode() async => startForegroundService();
+  static Future<void> stopActiveTripMode() async => stopForegroundService();
+  static Future<void> restoreActiveTripMode() async => restoreForegroundService();
 
   /// Token güncellemesini foreground service'e ilet
   static Future<void> updateToken(String token) async {
