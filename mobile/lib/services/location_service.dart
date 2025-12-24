@@ -79,6 +79,7 @@ class LocationService {
   Timer? _syncTimer;
 
   Position? _lastPosition;
+  DateTime? _lastPositionTime; // Hız hesaplama için son konum zamanı
   bool _isMoving = false;
   double _currentAcceleration = 0;
   int _currentBatteryLevel = 100;
@@ -318,20 +319,53 @@ class LocationService {
   }
 
   void _processPosition(Position position) {
+    final now = DateTime.now();
+
+    // GPS hızı 0 veya çok düşükse, koordinat değişiminden hız hesapla
+    double calculatedSpeed = position.speed;
+
+    if (_lastPosition != null && _lastPositionTime != null) {
+      final timeDiffSeconds = now.difference(_lastPositionTime!).inMilliseconds / 1000.0;
+
+      if (timeDiffSeconds > 0) {
+        final distanceMeters = Geolocator.distanceBetween(
+          _lastPosition!.latitude,
+          _lastPosition!.longitude,
+          position.latitude,
+          position.longitude,
+        );
+
+        // Hesaplanan hız (m/s)
+        final speedFromDistance = distanceMeters / timeDiffSeconds;
+
+        // GPS hızı 0.5 m/s'den düşükse ve hesaplanan hız daha yüksekse, hesaplananı kullan
+        // Ayrıca hesaplanan hız mantıklı bir aralıkta olmalı (0-50 m/s = 0-180 km/h)
+        if (position.speed < 0.5 && speedFromDistance > 0.5 && speedFromDistance < 50) {
+          calculatedSpeed = speedFromDistance;
+          // debugPrint('[LocationService] Using calculated speed: ${(calculatedSpeed * 3.6).toStringAsFixed(1)} km/h (GPS: ${(position.speed * 3.6).toStringAsFixed(1)} km/h)');
+        }
+      }
+    }
+
+    // Hareket durumunu hesaplanan hıza göre de güncelle
+    if (calculatedSpeed > 2.0) { // > 7.2 km/h
+      _isMoving = true;
+    }
+
     ActivityType activityType = _determineActivityType();
-    DriverStatus status = _determineStatus(position);
+    DriverStatus status = _determineStatusWithSpeed(position, calculatedSpeed);
 
     final locationData = LocationData(
       latitude: position.latitude,
       longitude: position.longitude,
-      speed: position.speed,
+      speed: calculatedSpeed,
       accuracy: position.accuracy,
       altitude: position.altitude,
       heading: position.heading,
       isMoving: _isMoving,
       activityType: activityType,
       batteryLevel: _currentBatteryLevel,
-      recordedAt: DateTime.now(),
+      recordedAt: now,
     );
 
     _locationController.add(locationData);
@@ -343,6 +377,7 @@ class LocationService {
     }
 
     _lastPosition = position;
+    _lastPositionTime = now;
   }
 
   ActivityType _determineActivityType() {
@@ -358,6 +393,10 @@ class LocationService {
   }
 
   DriverStatus _determineStatus(Position position) {
+    return _determineStatusWithSpeed(position, position.speed);
+  }
+
+  DriverStatus _determineStatusWithSpeed(Position position, double speed) {
     // Home check
     if (homeLatitude != null && homeLongitude != null) {
       double distance = Geolocator.distanceBetween(
@@ -374,7 +413,7 @@ class LocationService {
 
     // Driving: significant speed (> 5 m/s = 18 km/h)
     // Hız yeterli ise hareket durumundan bağımsız olarak seferde say
-    if (position.speed > 5) {
+    if (speed > 5) {
       return DriverStatus.driving;
     }
 
