@@ -190,13 +190,16 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         if (currentLoc != null) ...[
                           const SizedBox(height: 12),
+                          // Hız Göstergesi
+                          _buildSpeedGauge(currentLoc.speed),
+                          const SizedBox(height: 12),
                           const Divider(height: 1),
                           const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
                               _buildInfoItem(
-                                Icons.speed,
+                                Icons.gps_fixed,
                                 'Doğruluk',
                                 '±${currentLoc.accuracy?.toStringAsFixed(0) ?? '-'}m',
                               ),
@@ -262,6 +265,86 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSpeedGauge(double? speedMs) {
+    // GPS hızı m/s olarak gelir, km/h'ye çevir
+    final speedKmh = (speedMs ?? 0) * 3.6;
+    final displaySpeed = speedKmh.clamp(0, 999).toInt();
+
+    // Hız kategorisi için renk
+    Color speedColor;
+    String speedLabel;
+    if (displaySpeed < 5) {
+      speedColor = Colors.grey;
+      speedLabel = 'Durgun';
+    } else if (displaySpeed < 50) {
+      speedColor = AppColors.success;
+      speedLabel = 'Şehir İçi';
+    } else if (displaySpeed < 90) {
+      speedColor = AppColors.accent;
+      speedLabel = 'Normal';
+    } else if (displaySpeed < 120) {
+      speedColor = Colors.orange;
+      speedLabel = 'Hızlı';
+    } else {
+      speedColor = AppColors.error;
+      speedLabel = 'Çok Hızlı';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: speedColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: speedColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.speed, color: speedColor, size: 32),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$displaySpeed',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: speedColor,
+                      height: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      'km/h',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: speedColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                speedLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: speedColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

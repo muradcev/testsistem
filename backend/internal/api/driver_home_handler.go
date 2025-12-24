@@ -38,7 +38,7 @@ func (h *DriverHomeHandler) GetMyHomes(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// Get driver ID from context (set by auth middleware)
-	driverIDValue, exists := c.Get("user_id")
+	driverIDValue, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
 		return
