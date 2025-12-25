@@ -17,6 +17,7 @@ import '../../services/manufacturer_settings_service.dart';
 import '../../services/location_status_service.dart';
 import '../../config/theme.dart';
 import '../../widgets/location_health_widget.dart';
+import '../../widgets/system_health_widget.dart';
 import '../../services/trip_detection_service.dart';
 import '../../services/notification_setup_service.dart';
 
@@ -509,6 +510,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
               // Location Health Widget - Konum takip durumu
               const LocationHealthWidget(),
+              const SizedBox(height: 8),
+
+              // System Health Widget - Sistem durumu ve izinler
+              const SystemHealthWidget(),
               const SizedBox(height: 8),
 
               // Announcements section
