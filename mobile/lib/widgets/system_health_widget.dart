@@ -30,12 +30,17 @@ class _SystemHealthWidgetState extends State<SystemHealthWidget> {
   @override
   void initState() {
     super.initState();
-    _loadReport();
+    // Foreground service başlaması için 3 saniye bekle
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) _loadReport();
+    });
   }
 
   Future<void> _loadReport() async {
     setState(() => _isLoading = true);
     try {
+      // Service başlaması için kısa bir bekleme daha
+      await Future.delayed(const Duration(milliseconds: 500));
       final report = await SystemHealthService.getHealthReport();
       if (mounted) {
         setState(() {
