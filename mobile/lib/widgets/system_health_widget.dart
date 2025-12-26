@@ -204,6 +204,13 @@ class _SystemHealthWidgetState extends State<SystemHealthWidget> {
                 children: [
                   // Cihaz bilgisi
                   _buildDeviceInfo(),
+
+                  // MIUI/Xiaomi özel uyarı - her zaman göster
+                  if (_isMiuiDevice()) ...[
+                    const SizedBox(height: 12),
+                    _buildMiuiWarning(),
+                  ],
+
                   const SizedBox(height: 16),
 
                   // Durum listesi
@@ -313,6 +320,129 @@ class _SystemHealthWidgetState extends State<SystemHealthWidget> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  /// MIUI/Xiaomi cihaz mı kontrol et
+  bool _isMiuiDevice() {
+    if (_report == null) return false;
+    final manufacturer = _report!.manufacturerInfo.manufacturer.toLowerCase();
+    return ['xiaomi', 'redmi', 'poco'].contains(manufacturer);
+  }
+
+  /// MIUI için özel uyarı kartı
+  Widget _buildMiuiWarning() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'MIUI Ozel Ayarlar Gerekli',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade800,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Xiaomi/Redmi cihazlarda arka plan servisi icin asagidaki ayarlari yapmaniz gerekiyor:',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+          ),
+          const SizedBox(height: 12),
+          // AutoStart butonu
+          _buildMiuiSettingButton(
+            icon: Icons.play_circle_outline,
+            title: 'Otomatik Baslatma',
+            subtitle: 'AutoStart izni acin',
+            onTap: () => ManufacturerSettingsService.openAutoStartSettings('xiaomi'),
+          ),
+          const SizedBox(height: 8),
+          // Pil tasarrufu butonu
+          _buildMiuiSettingButton(
+            icon: Icons.battery_saver,
+            title: 'Pil Tasarrufu',
+            subtitle: 'Sinırlama yok secin',
+            onTap: () => ManufacturerSettingsService.openAppSettings(),
+          ),
+          const SizedBox(height: 8),
+          // Arka plan kısıtlaması butonu
+          _buildMiuiSettingButton(
+            icon: Icons.lock_open,
+            title: 'Arka Plan Kilidi',
+            subtitle: 'Son uygulamalarda kilitleyin',
+            onTap: null,
+            isInfo: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiuiSettingButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+    bool isInfo = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.orange.shade100),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icon, color: Colors.orange.shade700, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+            if (!isInfo)
+              Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey.shade400),
+            if (isInfo)
+              Icon(Icons.info_outline, size: 16, color: Colors.grey.shade400),
+          ],
+        ),
       ),
     );
   }
